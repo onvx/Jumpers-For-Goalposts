@@ -87,3 +87,11 @@ Every PR must include:
 - Don't add TypeScript, ESLint configs, or other tooling changes
 - Don't rename existing files or restructure directories
 - Don't add comments, docstrings, or type annotations to code you didn't change
+
+## Commit Identity
+
+When writing commit messages, always end with:
+```
+Co-Authored-By: Claude Cowork <noreply@anthropic.com>
+```
+This distinguishes your commits from the primary Claude Code agent.
