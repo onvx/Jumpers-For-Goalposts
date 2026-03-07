@@ -35,6 +35,7 @@ export function createUnlockablePlayer(unlockDef, joinedSeason, ovrCap = 20) {
     nationality: unlockDef.nationality || "ENG",
     ...(unlockDef.learnedPositions ? { learnedPositions: [...unlockDef.learnedPositions] } : {}),
     ...(unlockDef.capBonus ? { legendCap: playerCap } : {}),
+    ...(unlockDef.flavour ? { flavour: unlockDef.flavour } : {}),
   };
 }
 
