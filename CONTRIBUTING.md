@@ -92,6 +92,6 @@ Every PR must include:
 
 When writing commit messages, always end with:
 ```
-Co-Authored-By: Claude Cowork <noreply@anthropic.com>
+Co-Authored-By: Trask <noreply@github.com>
 ```
-This distinguishes your commits from the primary Claude Code agent.
+This distinguishes your commits from the primary agent (Calo).
