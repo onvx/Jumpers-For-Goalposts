@@ -1477,6 +1477,7 @@ function FootballManager() {
       }
       // Reporter intro — soft onboarding for Story Arcs
       const rName = reporterName || generateReporterName();
+      if (!reporterName) setReporterName(rName);
       const pName = newspaperName || generateNewspaperName(teamName);
       setInboxMessages(prev => [...prev, {
         id: "msg_reporter_intro", week: 2, season: 1,
