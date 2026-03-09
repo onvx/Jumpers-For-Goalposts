@@ -25,6 +25,7 @@ export function AchievementCabinet({ unlocked, squad, clubHistory, currentTier, 
   const [filterCat, setFilterCat] = useState(null);
   const [ticketPicker, setTicketPicker] = useState(null);
   const achStyleId = React.useRef("ach-styles-" + Math.random().toString(36).slice(2, 8));
+  const ticketPickerPanelRef = useRef(null);
 
   // Trophy data from club history
   const leagueTrophies = {};
@@ -172,6 +173,15 @@ export function AchievementCabinet({ unlocked, squad, clubHistory, currentTier, 
     document.head.appendChild(style);
     return () => { const el = document.getElementById(achStyleId.current); if (el) el.remove(); };
   }, []);
+
+  // Ticket picker is rendered below the full grid; auto-scroll to keep it visible on mobile.
+  useEffect(() => {
+    if (!ticketPicker?.type || !ticketPickerPanelRef.current) return;
+    const raf = window.requestAnimationFrame(() => {
+      ticketPickerPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [ticketPicker?.type, ticketPicker?.showNameInput]);
   return (
     <div style={{ fontFamily: FONT }}>
       {/* Header bar */}
@@ -691,7 +701,7 @@ export function AchievementCabinet({ unlocked, squad, clubHistory, currentTier, 
                   const def = activeDef;
 
                   return (
-                    <div style={{
+                    <div ref={ticketPickerPanelRef} style={{
                       marginTop: 14,
                       background: "rgba(15,23,42,0.95)",
                       border: `1px solid ${def.color}44`,
