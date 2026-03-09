@@ -33,4 +33,18 @@ All notable updates to Jumpers for Goalposts, written for players.
 
 ---
 
+## 10 March 2026 — Under the Hood
+
+### Improvements
+
+- **Achievement Cabinet on mobile**: The ticket picker in the Achievement Cabinet now scrolls smoothly on mobile devices without breaking the interface.
+
+### Under the Hood
+
+- **State management refactored**: Completed a major migration of the core game state management system from React hooks (useState/useRef) to Zustand store. This includes all 6 core state properties and an additional 22 ref-mirrored states.
+- **Message utilities extracted**: Refactored message filtering logic into a shared utility module for better code reusability.
+- **State mutation safeguards**: Added stricter control over direct state mutations to prevent bugs and improve maintainability.
+
+---
+
 *— Trask*
