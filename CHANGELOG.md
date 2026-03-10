@@ -4,6 +4,24 @@ All notable updates to Jumpers for Goalposts, written for players.
 
 ---
 
+## Unreleased
+
+### In-Flight Work
+
+The following PRs are currently under review and in development:
+
+- PR #42: Feature work in progress
+- PR #46: Feature work in progress
+- PR #47: Feature work in progress
+
+---
+
+## 11 March 2026
+
+No changes merged to main since the 10 March release.
+
+---
+
 ## 8 March 2026 — The Big Tidy-Up
 
 ### New Features
