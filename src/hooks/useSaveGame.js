@@ -20,7 +20,7 @@ export function useSaveGame({
   // Export save data as a JSON file download
   const exportSave = useCallback(async () => {
     try {
-      const result = await window.storage.get(`jfg-save-${activeSaveSlot}`);
+      const result = await window.storage.get(getSaveKey(useGameStore.getState().activeProfileId, activeSaveSlot));
       if (!result) { setImportStatus("no-save"); setTimeout(() => setImportStatus(null), 2500); return; }
       const blob = new Blob([result.value], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -51,7 +51,7 @@ export function useSaveGame({
         setTimeout(() => setImportStatus(null), 3000);
         return;
       }
-      await window.storage.set(`jfg-save-${activeSaveSlot}`, text);
+      await window.storage.set(getSaveKey(useGameStore.getState().activeProfileId, activeSaveSlot), text);
       setImportStatus("imported");
       setTimeout(() => {
         setImportStatus(null);
