@@ -1,17 +1,17 @@
-import { FONT } from "../../data/tokens";
+import * as tokens from "../../data/tokens";
 
+// Map global tokens to local names for backward compatibility
 const C = {
-  text: "#f1f5f9", textMuted: "#94a3b8", bg: "#06060f",
-  red: "#f87171", yellow: "#fbbf24", green: "#4ade80",
-  dim: "#334155", slate: "#475569",
+  ...tokens.C,
+  dim: "#334155",  // Not in main tokens, keeping local
 };
-// Larger sizes — Press Start 2P needs room to breathe
 const F = {
-  hero: "clamp(20px,5vw,28px)",
-  title: "clamp(14px,3.5vw,18px)",
-  body: "clamp(11px,2.5vw,13px)",
-  label: "clamp(9px,2vw,11px)",
+  hero: tokens.F.hero,
+  title: tokens.F.h2,
+  body: tokens.F.md,
+  label: tokens.F.sm,
 };
+const FONT = tokens.FONT;
 
 function ordinal(n) {
   if (!n) return "—";

@@ -1,13 +1,6 @@
 import { useState, useEffect } from "react";
 
-import { FONT } from "../../data/tokens";
-
-const C = {
-  green: "#4ade80", text: "#f1f5f9", textMuted: "#94a3b8",
-  bg: "#0a0a1a", red: "#f87171", yellow: "#fbbf24",
-  slate: "#475569",
-};
-const F = { xl: "clamp(12px,3vw,17px)", lg: "clamp(9px,2.5vw,13px)", md: "clamp(7px,2vw,10px)", sm: "clamp(6px,1.5vw,8px)", xs: "clamp(5px,1.2vw,7px)" };
+import { C, F, FONT } from "../../data/tokens";
 
 function StatPill({ label, value }) {
   return (

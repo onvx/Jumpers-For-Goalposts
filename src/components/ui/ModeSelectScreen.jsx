@@ -1,13 +1,6 @@
 import { useState } from "react";
 
-import { FONT } from "../../data/tokens";
-
-const C = {
-  green: "#4ade80", text: "#f1f5f9", textMuted: "#94a3b8",
-  bg: "#0a0a1a", red: "#f87171", yellow: "#fbbf24",
-  slate: "#475569", blue: "#60a5fa", lightRed: "#f87171",
-};
-const F = { xl: "clamp(12px,3vw,16px)", lg: "clamp(9px,2.5vw,13px)", md: "clamp(7px,2vw,10px)", sm: "clamp(6px,1.5vw,8px)" };
+import { C, F, FONT } from "../../data/tokens";
 
 const MODES = [
   {
