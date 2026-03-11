@@ -1,12 +1,8 @@
 import { useState } from "react";
 
-import { FONT } from "../../data/tokens";
+import { C as TC, FONT } from "../../data/tokens";
 
-const C = {
-  green: "#4ade80", text: "#f1f5f9", textMuted: "#94a3b8",
-  bg: "#0a0a1a", bgCard: "rgba(30,41,59,0.6)", bgInput: "#1e293b",
-  red: "#f87171", slate: "#475569", lightRed: "#f87171",
-};
+const C = { ...TC, bg: "#0a0a1a", bgCard: "rgba(30,41,59,0.6)", bgInput: "#1e293b" };
 const F = { xl: "clamp(13px,3vw,18px)", lg: "clamp(10px,2.5vw,14px)", md: "clamp(8px,2vw,11px)", sm: "clamp(6px,1.5vw,9px)" };
 
 export function ProfileSelectScreen({ profiles, onSelect, onCreate, onViewMuseum }) {
