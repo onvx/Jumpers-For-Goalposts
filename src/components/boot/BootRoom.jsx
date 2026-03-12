@@ -410,13 +410,13 @@ export function BootRoom({ settings, save, debug, inbox, calendar, calendarIndex
                 {gameMode !== "ironman" && (<>
                 {(() => {
                   const EXPORT_STATUS = {
-                    loading:        { label: "EXPORTING...", bg: "rgba(96,165,250,0.1)", border: C.blue, color: C.blue },
+                    exporting:      { label: "EXPORTING...", bg: "rgba(96,165,250,0.1)", border: C.blue, color: C.blue },
                     exported:       { label: "EXPORTED ✓",  bg: "rgba(74,222,128,0.15)", border: C.green, color: C.green },
                     "export-error": { label: "EXPORT FAILED", bg: "rgba(239,68,68,0.1)", border: C.red, color: C.red },
                     "no-save":      { label: "NO SAVE",     bg: "rgba(239,68,68,0.1)", border: C.red, color: C.red },
                   };
                   const IMPORT_STATUS = {
-                    loading:  { label: "IMPORTING...", bg: "rgba(96,165,250,0.1)", border: C.blue, color: C.blue },
+                    importing: { label: "IMPORTING...", bg: "rgba(96,165,250,0.1)", border: C.blue, color: C.blue },
                     imported: { label: "IMPORTED ✓",  bg: "rgba(74,222,128,0.15)", border: C.green, color: C.green },
                     invalid:  { label: "INVALID FILE", bg: "rgba(239,68,68,0.1)", border: C.red, color: C.red },
                   };
