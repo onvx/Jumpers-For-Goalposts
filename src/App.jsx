@@ -6075,8 +6075,8 @@ function FootballManager() {
           const ratings = playerRatingTracker[player.name] || [];
           const avgRating = ratings.length > 0 ? (ratings.reduce((s, r) => s + r, 0) / ratings.length).toFixed(1) : "—";
 
-          const rowBg = isMobileSelected ? "rgba(74,222,128,0.15)" : isDragging ? "rgba(74,222,128,0.1)" : isInjured ? "rgba(239,68,68,0.03)" : idx % 2 === 0 ? "transparent" : "rgba(30, 41, 59, 0.15)";
-          const rowBorderLeft = isMobileSelected ? `3px solid ${C.green}` : isDragging ? `3px solid ${C.green}` : "3px solid transparent";
+          const rowBg = isMobileSelected ? "rgba(74,222,128,0.15)" : isDragging ? "rgba(74,222,128,0.1)" : isInjured ? "rgba(239,68,68,0.08)" : idx % 2 === 0 ? "transparent" : "rgba(30, 41, 59, 0.15)";
+          const rowBorderLeft = isMobileSelected ? `3px solid ${C.green}` : isDragging ? `3px solid ${C.green}` : isInjured ? `3px solid ${C.red}` : "3px solid transparent";
 
           return (
             <div
@@ -6123,7 +6123,7 @@ function FootballManager() {
                 userSelect: "none",
               }}
               onMouseEnter={!isMobile ? (e => { if (!isDragging) e.currentTarget.style.background = "rgba(74, 222, 128, 0.05)"; }) : undefined}
-              onMouseLeave={!isMobile ? (e => { e.currentTarget.style.background = isDragging ? "rgba(74,222,128,0.1)" : isInjured ? "rgba(239,68,68,0.03)" : idx % 2 === 0 ? "transparent" : "rgba(30, 41, 59, 0.15)"; }) : undefined}
+              onMouseLeave={!isMobile ? (e => { e.currentTarget.style.background = isDragging ? "rgba(74,222,128,0.1)" : isInjured ? "rgba(239,68,68,0.08)" : idx % 2 === 0 ? "transparent" : "rgba(30, 41, 59, 0.15)"; }) : undefined}
             >
               {/* Chip slot — assigned position or empty drop zone */}
               {(() => {
@@ -6199,13 +6199,13 @@ function FootballManager() {
                   </span>
                 );
               })()}
-              <span style={{ fontSize: isMobile ? F.sm : F.md, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{ fontSize: isMobile ? F.sm : F.md, color: isInjured ? C.lightRed : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{player.name}</span>
                 <span style={{
                   fontSize: F.xs, color: getPosColor(player.position), opacity: 0.6,
                   fontFamily: FONT, flexShrink: 0,
                 }}>{player.position}</span>
-                {isInjured ? <span style={{ flexShrink: 0 }}>🏥</span> : ""}{retiringPlayers.has(player.id) ? <span style={{ fontSize: F.xs, color: "#ef444488", flexShrink: 0 }}>RET</span> : ""}{player.isLegend ? <span style={{ fontSize: F.xs, color: C.amber, flexShrink: 0, background: "rgba(251,191,36,0.15)", padding: "2px 6px", border: "1px solid rgba(251,191,36,0.3)" }}>LGN {12 - (player.legendAppearances || 0)}</span> : ""}{player.isTrial ? <span style={{ fontSize: F.xs, color: C.green, flexShrink: 0, background: "rgba(74,222,128,0.15)", padding: "2px 6px", border: "1px solid #4ade8044" }}>TRIAL {player.trialWeeksLeft}w</span> : ""}
+                {isInjured ? <span style={{ fontSize: F.xs, color: C.red, flexShrink: 0, background: "rgba(239,68,68,0.15)", padding: "2px 6px", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 2 }}>INJ {player.injury.weeksLeft}w</span> : ""}{retiringPlayers.has(player.id) ? <span style={{ fontSize: F.xs, color: "#ef444488", flexShrink: 0 }}>RET</span> : ""}{player.isLegend ? <span style={{ fontSize: F.xs, color: C.amber, flexShrink: 0, background: "rgba(251,191,36,0.15)", padding: "2px 6px", border: "1px solid rgba(251,191,36,0.3)" }}>LGN {12 - (player.legendAppearances || 0)}</span> : ""}{player.isTrial ? <span style={{ fontSize: F.xs, color: C.green, flexShrink: 0, background: "rgba(74,222,128,0.15)", padding: "2px 6px", border: "1px solid #4ade8044" }}>TRIAL {player.trialWeeksLeft}w</span> : ""}
               </span>
               {isMobile ? (
                 <>
