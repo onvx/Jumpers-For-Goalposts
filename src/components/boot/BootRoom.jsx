@@ -218,8 +218,11 @@ export function BootRoom({ settings, save, debug, inbox, calendar, calendarIndex
                   const isCup = entry.type === "cup";
                   const isDynasty = entry.type === "dynasty";
                   const isMini = entry.type === "mini";
-                  const bgColor = isCurrent ? "rgba(74,222,128,0.1)" : (isCup || isDynasty || isMini) ? "rgba(250,204,21,0.04)" : "transparent";
+                  const isMatchType = isCup || isDynasty || isMini;
+                  const typeAccent = isMatchType ? C.amber : C.green;
+                  const bgColor = isCurrent ? "rgba(74,222,128,0.1)" : isMatchType ? "rgba(251,191,36,0.04)" : entry.type === "league" ? "rgba(74,222,128,0.03)" : "transparent";
                   const borderColor = isCurrent ? C.green : C.bgCard;
+                  const rowBorderLeft = isCurrent ? `3px solid ${C.green}` : isMatchType ? `3px solid ${C.amber}44` : entry.type === "league" ? `3px solid ${C.green}44` : "3px solid transparent";
 
                   let fixtureText = "";
                   let resultText = "";
@@ -289,24 +292,25 @@ export function BootRoom({ settings, save, debug, inbox, calendar, calendarIndex
                       <div style={{
                         padding: "14px 7px", color: isCurrent ? C.green : isPlayed ? C.textDim : C.textMuted,
                         borderBottom: `1px solid ${borderColor}`, background: bgColor,
-                        borderLeft: isCurrent ? `3px solid ${C.green}` : "3px solid transparent",
+                        borderLeft: rowBorderLeft,
                       }}>
                         {idx + 1}
                       </div>
                       <div style={{
                         padding: "14px 7px",
-                        color: (isCup || isDynasty || isMini) ? C.gold : (isPlayed ? C.bgInput : league?.leagueColor || C.blue),
+                        color: isPlayed ? C.bgInput : typeAccent,
                         borderBottom: `1px solid ${borderColor}`, background: bgColor,
                         fontSize: F.xs,
                       }}>
-                        {isDynasty ? `DC` : isMini ? `5v5` : isCup ? `CUP` : `MD ${entry.leagueMD + 1}`}
+                        {isDynasty ? `DC` : isMini ? `5v5` : isCup ? `CUP` : `LGE`}
                       </div>
                       <div style={{
                         padding: "14px 7px",
                         color: isCurrent ? C.text : isPlayed ? C.textDim : C.textMuted,
                         borderBottom: `1px solid ${borderColor}`, background: bgColor,
                       }}>
-                        {isCup && <span style={{ color: C.gold, marginRight: 7 }}>{entry.cupRoundName}</span>}
+                        {entry.type === "league" && <span style={{ color: isPlayed ? C.bgInput : C.green, marginRight: 7 }}>MD {entry.leagueMD + 1}</span>}
+                        {isCup && <span style={{ color: isPlayed ? C.bgInput : C.amber, marginRight: 7 }}>{entry.cupRoundName}</span>}
                         {fixtureText}
                         {isCurrent && <span style={{ color: C.green, marginLeft: 9 }}>◄</span>}
                       </div>
@@ -937,8 +941,11 @@ function CalendarView({ calendar, calendarIndex, league, cup, calendarResults, o
             const isCup = entry.type === "cup";
             const isDynasty = entry.type === "dynasty";
             const isMini = entry.type === "mini";
-            const bgColor = isCurrent ? "rgba(74,222,128,0.1)" : (isCup || isDynasty || isMini) ? "rgba(250,204,21,0.04)" : "transparent";
+            const isMatchType = isCup || isDynasty || isMini;
+            const typeAccent = isMatchType ? C.amber : C.green;
+            const bgColor = isCurrent ? "rgba(74,222,128,0.1)" : isMatchType ? "rgba(251,191,36,0.04)" : entry.type === "league" ? "rgba(74,222,128,0.03)" : "transparent";
             const borderColor = isCurrent ? C.green : C.bgCard;
+            const rowBorderLeft = isCurrent ? `3px solid ${C.green}` : isMatchType ? `3px solid ${C.amber}44` : entry.type === "league" ? `3px solid ${C.green}44` : "3px solid transparent";
 
             let fixtureText = "";
             let resultText = "";
@@ -1006,24 +1013,25 @@ function CalendarView({ calendar, calendarIndex, league, cup, calendarResults, o
                 <div style={{
                   padding: "12px 6px", color: isCurrent ? C.green : isPlayed ? C.textDim : C.textMuted,
                   borderBottom: `1px solid ${borderColor}`, background: bgColor,
-                  borderLeft: isCurrent ? `3px solid ${C.green}` : "3px solid transparent",
+                  borderLeft: rowBorderLeft,
                 }}>
                   {idx + 1}
                 </div>
                 <div style={{
                   padding: "12px 6px",
-                  color: (isCup || isDynasty) ? C.gold : (isPlayed ? C.bgInput : league?.leagueColor || C.blue),
+                  color: isPlayed ? C.bgInput : typeAccent,
                   borderBottom: `1px solid ${borderColor}`, background: bgColor,
                   fontSize: F.xs,
                 }}>
-                  {isDynasty ? `DC` : isMini ? `5v5` : isCup ? `CUP` : `MD ${entry.leagueMD + 1}`}
+                  {isDynasty ? `DC` : isMini ? `5v5` : isCup ? `CUP` : `LGE`}
                 </div>
                 <div style={{
                   padding: "12px 6px",
                   color: isCurrent ? C.text : isPlayed ? C.textDim : C.textMuted,
                   borderBottom: `1px solid ${borderColor}`, background: bgColor,
                 }}>
-                  {isCup && <span style={{ color: C.gold, marginRight: 7 }}>{entry.cupRoundName}</span>}
+                  {entry.type === "league" && <span style={{ color: isPlayed ? C.bgInput : C.green, marginRight: 7 }}>MD {entry.leagueMD + 1}</span>}
+                  {isCup && <span style={{ color: isPlayed ? C.bgInput : C.amber, marginRight: 7 }}>{entry.cupRoundName}</span>}
                   {fixtureText}
                   {isCurrent && <span style={{ color: C.green, marginLeft: 9 }}>◄</span>}
                 </div>
