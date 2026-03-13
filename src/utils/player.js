@@ -738,7 +738,7 @@ export function generateFreeAgent(tierStrength, squadAvgOvr, ovrCap = 20) {
   return {
     id: genId("free"),
     name, position, age, attrs, potential, nationality: natCode,
-    statProgress: {}, training: null, gains: {},
+    statProgress: {}, training: "balanced", gains: {},
     history: [{ ...attrs }], injury: null, tags: [], injuryHistory: {},
   };
 }
