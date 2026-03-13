@@ -242,8 +242,8 @@ export function TransfersPage({
         clubTier: undefined,
         isOwnPlayer: undefined,
         ovr: undefined,
-        // Reset training
-        training: null,
+        // Default to balanced training so transferred players still improve
+        training: "balanced",
         positionTraining: null,
         statProgress: {},
         gains: {},
@@ -309,7 +309,7 @@ export function TransfersPage({
     setSquad(prev => {
       const updated = prev.filter(p => !offeredIds.has(p.id));
       const incoming = offer.aiOffers.map(p => ({
-        ...p, training: null, positionTraining: null, statProgress: {}, gains: {}, history: p.history || [],
+        ...p, training: "balanced", positionTraining: null, statProgress: {}, gains: {}, history: p.history || [],
       }));
       return [...updated, ...incoming];
     });
