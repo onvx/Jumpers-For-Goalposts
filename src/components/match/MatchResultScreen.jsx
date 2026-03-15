@@ -412,6 +412,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
               </span>
               <span style={{
                 color: kick.scored ? C.green : C.red, flex: 1,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>
                 {kick.scored ? "⚽" : "✕"} {kick.player} ({kick.side === "home" ? homeTeam.name : awayTeam.name})
                 {kick.scored ? " SCORES!" : " MISSES!"}
