@@ -73,7 +73,7 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
   const isRecent = (id) => {
     const u = achievementUnlockWeeks[id];
     if (!u || typeof u === "number") return false; // migration: old format (bare number) treated as not recent
-    return absNow - ((u.season - 1) * seasonLength + u.week) <= 2;
+    return absNow - ((u.season - 1) * (u.seasonLen || seasonLength) + u.week) <= 2;
   };
   const recentIds = new Set(ACHIEVEMENTS.filter(a => unlocked.has(a.id) && isRecent(a.id)).map(a => a.id));
   const hasRecent = recentIds.size > 0;

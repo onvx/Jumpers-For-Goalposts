@@ -244,7 +244,7 @@ function FootballManager() {
   }, []);
   const [selectedForMove, setSelectedForMove] = useState(null); // mobile tap-to-move
   const [unlockedAchievements, setUnlockedAchievements] = useState(new Set());
-  const [achievementUnlockWeeks, setAchievementUnlockWeeks] = useState({}); // { achId: calendarIndex }
+  const [achievementUnlockWeeks, setAchievementUnlockWeeks] = useState({}); // { achId: { season, week, seasonLen } }
   const achievementUnlockWeeksRef = useRef(achievementUnlockWeeks);
   const [achievementQueue, setAchievementQueue] = useState([]);
   const achievementToastKeyRef = useRef(0);
@@ -282,7 +282,7 @@ function FootballManager() {
     const updated = { ...prev };
     let changed = false;
     for (const id of unlockedAchievements) {
-      if (!(id in updated)) { updated[id] = { season: seasonNumber, week: calendarIndex }; changed = true; }
+      if (!(id in updated)) { updated[id] = { season: seasonNumber, week: calendarIndex, seasonLen: seasonCalendar?.length || 48 }; changed = true; }
     }
     if (changed) { achievementUnlockWeeksRef.current = updated; setAchievementUnlockWeeks(updated); }
   }, [unlockedAchievements, calendarIndex, seasonNumber]);
@@ -4449,7 +4449,7 @@ function FootballManager() {
             {cup && <button onClick={() => { if (showCup) setCupKey(k => k + 1); clearAll(); setShowCup(true); }} style={navBtn(showCup, cup.playerEliminated ? C.slate : C.gold)}>🏆 CUP{cup.playerEliminated ? " (OUT)" : ""}</button>}
             <button onClick={() => { if (showTransfers) setTransfersKey(k => k + 1); clearAll(); setShowTransfers(true); }} style={navBtn(showTransfers, C.green)}>🤝 TRANSFERS</button>
             <button onClick={() => { if (showLegends) setClubKey(k => k + 1); clearAll(); setShowLegends(true); }} style={navBtn(showLegends, C.purple)}>📜 CLUB</button>
-            <button onClick={() => { if (showAchievements) setCabinetKey(k => k + 1); clearAll(); setShowAchievements(true); }} style={navBtn(showAchievements, C.gold)}>🏅 CABINET{!showAchievements && (() => { const sLen = seasonCalendar?.length || 48; const now = (seasonNumber - 1) * sLen + calendarIndex; return [...unlockedAchievements].some(id => { const u = achievementUnlockWeeks[id]; if (!u || typeof u === "number") return false; return now - ((u.season - 1) * sLen + u.week) <= 2; }); })() ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.gold, marginLeft: 6, verticalAlign: "middle", boxShadow: "0 0 6px rgba(250,204,21,0.6)" }} /> : null}</button>
+            <button onClick={() => { if (showAchievements) setCabinetKey(k => k + 1); clearAll(); setShowAchievements(true); }} style={navBtn(showAchievements, C.gold)}>🏅 CABINET{!showAchievements && (() => { const sLen = seasonCalendar?.length || 48; const now = (seasonNumber - 1) * sLen + calendarIndex; return [...unlockedAchievements].some(id => { const u = achievementUnlockWeeks[id]; if (!u || typeof u === "number") return false; return now - ((u.season - 1) * (u.seasonLen || sLen) + u.week) <= 2; }); })() ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.gold, marginLeft: 6, verticalAlign: "middle", boxShadow: "0 0 6px rgba(250,204,21,0.6)" }} /> : null}</button>
           </div>
         );
       })()}
