@@ -1756,7 +1756,7 @@ function FootballManager() {
         }]);
         setInboxMessages(prev => [...prev, {
           id: `msg_trial_followup_${Date.now()}`,
-          week: trialAtWeek, season: seasonNumber,
+          week: trialAtWeek + 1, season: seasonNumber,
           icon: "📰", color: C.blue,
           title: `${tp.name} On Trial at ${rival?.name || "Rival"}`,
           body: `${tp.name} ${tp.flag} has gone on trial at ${rival?.name || "a rival club"}. They're giving him the chance you didn't.`,
@@ -2708,7 +2708,7 @@ function FootballManager() {
               icon: "📰", color: C.blue,
               title: `${trialAction.name} On Trial at ${trialAction.rivalTeam}`,
               body: `${trialAction.name} ${trialAction.flag || ""} has gone on trial at ${trialAction.rivalTeam}. They're giving him the chance he didn't get here.`,
-              read: false, pendingUntilWeek: trialAtWeek,
+              read: false, pendingUntilWeek: trialAtWeek - 1,
             }]);
           } else if (trialAction.type === "continue") {
             setTrialPlayer(prev => prev ? { ...prev, trialWeeksLeft: trialAction.newWeeksLeft, trialStarts: trialAction.newStarts } : null);
@@ -7159,7 +7159,7 @@ function FootballManager() {
                   icon: "📰", color: C.blue,
                   title: `${trialAction.name} On Trial at ${trialAction.rivalTeam}`,
                   body: `${trialAction.name} ${trialAction.flag || ""} has gone on trial at ${trialAction.rivalTeam}. They're giving him the chance he didn't get here.`,
-                  read: false, pendingUntilWeek: trialAtWeek,
+                  read: false, pendingUntilWeek: trialAtWeek - 1,
                 }]);
               } else if (trialAction.type === "continue") {
                 setTrialPlayer(prev => prev ? { ...prev, trialWeeksLeft: trialAction.newWeeksLeft, trialStarts: trialAction.newStarts } : null);
