@@ -43,18 +43,18 @@ export function Dashboard({
   // Inbox
   const visibleMessages = useMemo(() => {
     if (!inboxMessages) return [];
-    return [...inboxMessages]
-      .filter(m => isMessageVisible(m, week || 1))
-      .sort((a, b) => {
-        if ((b.season || 1) !== (a.season || 1)) return (b.season || 1) - (a.season || 1);
-        return (b.week || 1) - (a.week || 1);
-      });
-  }, [inboxMessages, week]);
+    const filtered = inboxMessages.filter(m => isMessageVisible(m, calendarIndex));
+    return filtered.sort((a, b) => {
+      if ((b.season || 1) !== (a.season || 1)) return (b.season || 1) - (a.season || 1);
+      if ((b.week || 1) !== (a.week || 1)) return (b.week || 1) - (a.week || 1);
+      return inboxMessages.indexOf(b) - inboxMessages.indexOf(a);
+    });
+  }, [inboxMessages, calendarIndex]);
 
   const unreadCount = useMemo(() => {
     if (!inboxMessages) return 0;
-    return inboxMessages.filter(m => !m.read && isMessageVisible(m, week || 1)).length;
-  }, [inboxMessages, week]);
+    return inboxMessages.filter(m => !m.read && isMessageVisible(m, calendarIndex)).length;
+  }, [inboxMessages, calendarIndex]);
 
   // League table
   const sortedTable = useMemo(() => {
