@@ -178,6 +178,11 @@ function FootballManager() {
     setPlayerSeasonStats, setBeatenTeams, setPlayerInjuryCount,
     setSeasonInjuryLog, setCareerMilestones, setBenchStreaks,
     setHighScoringMatches, setTrainedThisWeek, setLopsidedWarned,
+    setUnlockedAchievements, setAchievementUnlockWeeks, setInboxMessages,
+    setUsedTicketTypes, setFormationsWonWith, setFreeAgentSignings,
+    setHolidayMatchesThisSeason, setFastMatchesThisSeason, setGkCleanSheets,
+    setTotalShortlisted, setPrevSeasonSquadIds, setTradesMadeInWindow,
+    setTradedWithClubs, setSeasonCards, setReadsThisWeek,
   } = useMemo(() => useGameStore.getState(), []);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [viewingTeamGlobal, setViewingTeamGlobal] = useState(null); // { team, tableRow, seasonGoals, seasonAssists } — global AITeamPanel
@@ -228,17 +233,17 @@ function FootballManager() {
   const pendingFreeAgent = useGameStore(s => s.pendingFreeAgent);
   const scoutedPlayers = useGameStore(s => s.scoutedPlayers);
   const testimonialPlayer = useGameStore(s => s.testimonialPlayer);
-  // Achievement tracking state
-  const [usedTicketTypes, setUsedTicketTypes] = useState(new Set());
-  const [formationsWonWith, setFormationsWonWith] = useState(new Set());
-  const [freeAgentSignings, setFreeAgentSignings] = useState(0);
-  const [holidayMatchesThisSeason, setHolidayMatchesThisSeason] = useState(0);
-  const [fastMatchesThisSeason, setFastMatchesThisSeason] = useState(0);
-  const [gkCleanSheets, setGkCleanSheets] = useState({}); // { playerName: count }
-  const [totalShortlisted, setTotalShortlisted] = useState(0); // lifetime shortlist additions
-  const [prevSeasonSquadIds, setPrevSeasonSquadIds] = useState(null); // player IDs from last season
-  const [tradesMadeInWindow, setTradesMadeInWindow] = useState(0); // trades in current transfer window
-  const [tradedWithClubs, setTradedWithClubs] = useState(new Set()); // clubs traded with (for Old Boys Network)
+  // Achievement tracking state (Zustand)
+  const usedTicketTypes = useGameStore(s => s.usedTicketTypes);
+  const formationsWonWith = useGameStore(s => s.formationsWonWith);
+  const freeAgentSignings = useGameStore(s => s.freeAgentSignings);
+  const holidayMatchesThisSeason = useGameStore(s => s.holidayMatchesThisSeason);
+  const fastMatchesThisSeason = useGameStore(s => s.fastMatchesThisSeason);
+  const gkCleanSheets = useGameStore(s => s.gkCleanSheets);
+  const totalShortlisted = useGameStore(s => s.totalShortlisted);
+  const prevSeasonSquadIds = useGameStore(s => s.prevSeasonSquadIds);
+  const tradesMadeInWindow = useGameStore(s => s.tradesMadeInWindow);
+  const tradedWithClubs = useGameStore(s => s.tradedWithClubs);
   const startingXI = useGameStore(s => s.startingXI);
   const [showLineupWarning, setShowLineupWarning] = useState(null); // null | "advance" | "match"
   const bench = useGameStore(s => s.bench);
@@ -258,14 +263,14 @@ function FootballManager() {
     }
   }, []);
   const [selectedForMove, setSelectedForMove] = useState(null); // mobile tap-to-move
-  const [unlockedAchievements, setUnlockedAchievements] = useState(new Set());
-  const [achievementUnlockWeeks, setAchievementUnlockWeeks] = useState({}); // { achId: { season, week, seasonLen } }
+  const unlockedAchievements = useGameStore(s => s.unlockedAchievements);
+  const achievementUnlockWeeks = useGameStore(s => s.achievementUnlockWeeks);
   const achievementUnlockWeeksRef = useRef(achievementUnlockWeeks);
   const [achievementQueue, setAchievementQueue] = useState([]);
   const achievementToastKeyRef = useRef(0);
   const [showAchievements, setShowAchievements] = useState(false);
   const [showLegends, setShowLegends] = useState(false);
-  const [seasonCards, setSeasonCards] = useState(0);
+  const seasonCards = useGameStore(s => s.seasonCards);
   const seasonNumber = useGameStore(s => s.seasonNumber);
   const leagueWins = useGameStore(s => s.leagueWins);
   const leagueTier = useGameStore(s => s.leagueTier);
@@ -303,7 +308,7 @@ function FootballManager() {
   const seasonCalendar = useGameStore(s => s.seasonCalendar);
   const matchweekIndex = useGameStore(s => s.matchweekIndex);
   const calendarResults = useGameStore(s => s.calendarResults);
-  const [inboxMessages, setInboxMessages] = useState([]); // { id, week, season, icon, title, body, color, read, choices?, choiceResult?, type? }
+  const inboxMessages = useGameStore(s => s.inboxMessages);
   const trialPlayer = useGameStore(s => s.trialPlayer);
   const trialHistory = useGameStore(s => s.trialHistory);
   const prodigalSon = useGameStore(s => s.prodigalSon);
@@ -424,7 +429,7 @@ function FootballManager() {
   const ironmanSaveVersion = useGameStore(s => s.ironmanSaveVersion);
   const [isTainted, setIsTainted] = useState(false);
 
-  const [readsThisWeek, setReadsThisWeek] = useState(0);
+  const readsThisWeek = useGameStore(s => s.readsThisWeek);
   const lopsidedWarned = useGameStore(s => s.lopsidedWarned);
   // Persistent club history — survives across seasons
   const clubHistory = useGameStore(s => s.clubHistory);
