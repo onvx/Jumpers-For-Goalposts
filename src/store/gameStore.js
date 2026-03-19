@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { getLeagueMatchdaysPlayed } from "../utils/league.js";
 import { DEFAULT_FORMATION } from "../data/formations.js";
+import { initStoryArcs } from "../utils/arcs.js";
 
 /**
  * Core game state store — replaces the useState + useRef mirror pattern.
@@ -170,7 +171,7 @@ export const useGameStore = create((set, get) => ({
   pendingTicketBoosts: [],
 
   // === Story arcs ===
-  storyArcs: null,
+  storyArcs: initStoryArcs(),
   arcStepQueue: [],
 
   // === Season/summer state ===
@@ -451,7 +452,7 @@ export const useGameStore = create((set, get) => ({
     shortlist: [],
     tickets: [],
     pendingTicketBoosts: [],
-    storyArcs: null,
+    storyArcs: initStoryArcs(),
     arcStepQueue: [],
     summerData: null,
     leagueRosters: null,
