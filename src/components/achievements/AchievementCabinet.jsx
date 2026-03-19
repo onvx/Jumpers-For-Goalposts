@@ -18,11 +18,15 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
   tickets, retiringPlayers, transferFocus, doubleTrainingWeek,
   twelfthManActive, youthCoupActive, pendingFreeAgent, shortlist, scoutedPlayers, testimonialPlayer,
   rewindableMatches,
-  onUseTicket, gameMode = "casual", isTainted = false }) {
+  onUseTicket, onViewAchievements, hasUnseenAchievements = false, gameMode = "casual", isTainted = false }) {
   const isCasual = gameMode === "casual";
   const mob = window.innerWidth <= 768;
   const [tab, setTab] = useState("trophies");
   const [filterCat, setFilterCat] = useState(null);
+  const handleTabChange = (newTab) => {
+    if (newTab === "achievements" && onViewAchievements) onViewAchievements();
+    setTab(newTab);
+  };
   const [ticketPicker, setTicketPicker] = useState(null);
   const achStyleId = React.useRef("ach-styles-" + Math.random().toString(36).slice(2, 8));
   const ticketPickerPanelRef = useRef(null);
@@ -205,11 +209,11 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
       <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
         {[
           { id: "trophies", label: "TROPHY CABINET" },
-          { id: "achievements", label: `ACHIEVEMENTS (${unlocked.size}/${ACHIEVEMENTS.length})`, disabled: isCasual || isTainted },
+          { id: "achievements", label: `ACHIEVEMENTS (${unlocked.size}/${ACHIEVEMENTS.length})`, disabled: isCasual || isTainted, dot: hasUnseenAchievements },
           { id: "players", label: "UNLOCKABLE PLAYERS" },
           { id: "tickets", label: `TICKETS${tickets?.length ? ` (${tickets.length})` : ""}` },
         ].map(t => (
-          <button key={t.id} onClick={() => !t.disabled && setTab(t.id)} style={{
+          <button key={t.id} onClick={() => !t.disabled && handleTabChange(t.id)} style={{
             padding: mob ? "10px 13px" : "10px 18px", fontSize: mob ? F.xs : F.sm, letterSpacing: 1,
             background: tab === t.id && !t.disabled ? "rgba(250,204,21,0.1)" : "rgba(15,15,35,0.6)",
             border: tab === t.id && !t.disabled ? `1px solid ${C.gold}` : `1px solid ${C.bgCard}`,
@@ -217,7 +221,7 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
             cursor: t.disabled ? "not-allowed" : "pointer", fontFamily: FONT,
             opacity: t.disabled ? 0.45 : 1,
             borderRadius: 20, flex: mob ? "1 1 auto" : undefined, textAlign: "center",
-          }}>{t.label}{t.disabled ? " 🔒" : ""}</button>
+          }}>{t.label}{t.disabled ? " 🔒" : ""}{t.dot && tab !== t.id ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.gold, marginLeft: 6, verticalAlign: "middle", boxShadow: "0 0 6px rgba(250,204,21,0.6)" }} /> : null}</button>
         ))}
       </div>
 
@@ -395,7 +399,13 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
 
           {/* Achievement grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(253px, 1fr))", gap: 7 }}>
-            {ACHIEVEMENTS.filter(a => !filterCat || (filterCat === "Recent" ? recentIds.has(a.id) : ACH_CATS.find(c => c.label === filterCat)?.ids.has(a.id))).map((ach, achIdx) => {
+            {ACHIEVEMENTS.filter(a => !filterCat || (filterCat === "Recent" ? recentIds.has(a.id) : ACH_CATS.find(c => c.label === filterCat)?.ids.has(a.id))).sort((a, b) => {
+              if (filterCat !== "Recent") return 0; // preserve default order for non-recent filters
+              const uA = achievementUnlockWeeks[a.id]; const uB = achievementUnlockWeeks[b.id];
+              const absA = uA ? (uA.season - 1) * (uA.seasonLen || seasonLength) + uA.week : 0;
+              const absB = uB ? (uB.season - 1) * (uB.seasonLen || seasonLength) + uB.week : 0;
+              return absB - absA; // newest first
+            }).map((ach, achIdx) => {
               const ok = unlocked.has(ach.id);
               const isLegendary = ok && LEGENDARY_ACHIEVEMENTS.has(ach.id);
               const isPlayerUnlock = ok && PLAYER_UNLOCK_ACHIEVEMENTS.has(ach.id);
