@@ -7568,7 +7568,7 @@ function FootballManager() {
                 });
               }
               setInboxMessages(prev => [...prev, createInboxMessage(
-                MSG.dynastyDrawColor(`The league season is over. The top 4 enter the Dynasty Cup knockout!\n\n`, leagueTier),
+                MSG.dynastyDrawColor(`The league season is over. The top 4 enter the Dynasty Cup knockout!\n\nSF: ${top4[0]?.name || "TBD"} vs ${top4[3]?.name || "TBD"}\nSF: ${top4[1]?.name || "TBD"} vs ${top4[2]?.name || "TBD"}\n\n${playerInTop4 ? "You're in!" : "You didn't make the cut."}`, leagueTier),
                 { calendarIndex, seasonNumber },
               )]);
             }
@@ -7595,7 +7595,7 @@ function FootballManager() {
                 });
               }
               setInboxMessages(prev => [...prev, createInboxMessage(
-                MSG.miniDraw(`The league season is over. The top 4 enter the 5v5 Mini-Tournament!\n\n`, leagueTier),
+                MSG.miniDraw(`The league season is over. The top 4 enter the 5v5 Mini-Tournament!\n\nSF: ${top4[0]?.name || "TBD"} vs ${top4[3]?.name || "TBD"} (2 legs)\nSF: ${top4[1]?.name || "TBD"} vs ${top4[2]?.name || "TBD"} (2 legs)\n\n${playerInTop4 ? "You're in! (Auto-picking your 5v5 squad)" : "You didn't qualify."}`, leagueTier),
                 { calendarIndex, seasonNumber },
               )]);
             }

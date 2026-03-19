@@ -1,6 +1,5 @@
 import { C } from "./tokens.js";
 import { LEAGUE_DEFS } from "./leagues.js";
-import { rand } from "../utils/calc.js";
 
 /**
  * Inbox message templates.
