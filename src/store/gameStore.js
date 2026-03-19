@@ -131,6 +131,23 @@ export const useGameStore = create((set, get) => ({
   trainedThisWeek: new Set(),
   lopsidedWarned: new Set(),
 
+  // === Achievements / inbox / career tracking ===
+  unlockedAchievements: new Set(),
+  achievementUnlockWeeks: {},
+  inboxMessages: [],
+  usedTicketTypes: new Set(),
+  formationsWonWith: new Set(),
+  freeAgentSignings: 0,
+  holidayMatchesThisSeason: 0,
+  fastMatchesThisSeason: 0,
+  gkCleanSheets: {},
+  totalShortlisted: 0,
+  prevSeasonSquadIds: null,
+  tradesMadeInWindow: 0,
+  tradedWithClubs: new Set(),
+  seasonCards: 0,
+  readsThisWeek: 0,
+
   // === Derived (kept in sync by setCalendarIndex) ===
   matchweekIndex: 0,
 
@@ -242,6 +259,22 @@ export const useGameStore = create((set, get) => ({
   setTrainedThisWeek: (val) => set(s => ({ trainedThisWeek: typeof val === "function" ? val(s.trainedThisWeek) : val })),
   setLopsidedWarned: (val) => set(s => ({ lopsidedWarned: typeof val === "function" ? val(s.lopsidedWarned) : val })),
 
+  setUnlockedAchievements: (val) => set(s => ({ unlockedAchievements: typeof val === "function" ? val(s.unlockedAchievements) : val })),
+  setAchievementUnlockWeeks: (val) => set(s => ({ achievementUnlockWeeks: typeof val === "function" ? val(s.achievementUnlockWeeks) : val })),
+  setInboxMessages: (val) => set(s => ({ inboxMessages: typeof val === "function" ? val(s.inboxMessages) : val })),
+  setUsedTicketTypes: (val) => set(s => ({ usedTicketTypes: typeof val === "function" ? val(s.usedTicketTypes) : val })),
+  setFormationsWonWith: (val) => set(s => ({ formationsWonWith: typeof val === "function" ? val(s.formationsWonWith) : val })),
+  setFreeAgentSignings: (val) => set(s => ({ freeAgentSignings: typeof val === "function" ? val(s.freeAgentSignings) : val })),
+  setHolidayMatchesThisSeason: (val) => set(s => ({ holidayMatchesThisSeason: typeof val === "function" ? val(s.holidayMatchesThisSeason) : val })),
+  setFastMatchesThisSeason: (val) => set(s => ({ fastMatchesThisSeason: typeof val === "function" ? val(s.fastMatchesThisSeason) : val })),
+  setGkCleanSheets: (val) => set(s => ({ gkCleanSheets: typeof val === "function" ? val(s.gkCleanSheets) : val })),
+  setTotalShortlisted: (val) => set(s => ({ totalShortlisted: typeof val === "function" ? val(s.totalShortlisted) : val })),
+  setPrevSeasonSquadIds: (val) => set(s => ({ prevSeasonSquadIds: typeof val === "function" ? val(s.prevSeasonSquadIds) : val })),
+  setTradesMadeInWindow: (val) => set(s => ({ tradesMadeInWindow: typeof val === "function" ? val(s.tradesMadeInWindow) : val })),
+  setTradedWithClubs: (val) => set(s => ({ tradedWithClubs: typeof val === "function" ? val(s.tradedWithClubs) : val })),
+  setSeasonCards: (val) => set(s => ({ seasonCards: typeof val === "function" ? val(s.seasonCards) : val })),
+  setReadsThisWeek: (val) => set(s => ({ readsThisWeek: typeof val === "function" ? val(s.readsThisWeek) : val })),
+
   // === Bulk operations ===
 
   /** Full reset — return to main menu or start a brand new game. Clears everything. */
@@ -329,6 +362,21 @@ export const useGameStore = create((set, get) => ({
     highScoringMatches: 0,
     trainedThisWeek: new Set(),
     lopsidedWarned: new Set(),
+    unlockedAchievements: new Set(),
+    achievementUnlockWeeks: {},
+    inboxMessages: [],
+    usedTicketTypes: new Set(),
+    formationsWonWith: new Set(),
+    freeAgentSignings: 0,
+    holidayMatchesThisSeason: 0,
+    fastMatchesThisSeason: 0,
+    gkCleanSheets: {},
+    totalShortlisted: 0,
+    prevSeasonSquadIds: null,
+    tradesMadeInWindow: 0,
+    tradedWithClubs: new Set(),
+    seasonCards: 0,
+    readsThisWeek: 0,
     matchweekIndex: 0,
   }),
 
@@ -390,11 +438,18 @@ export const useGameStore = create((set, get) => ({
     highScoringMatches: 0,
     trainedThisWeek: new Set(),
     lopsidedWarned: new Set(),
+    formationsWonWith: new Set(),
+    holidayMatchesThisSeason: 0,
+    fastMatchesThisSeason: 0,
+    gkCleanSheets: {},
+    seasonCards: 0,
+    readsThisWeek: 0,
     matchweekIndex: 0,
     // NOTE: seasonNumber, leagueTier, leagueWins, prestigeLevel, totalGains, totalMatches, secondPlaceFinishes, ovrHistory, clubHistory, allTimeLeagueStats, recentScorelines, formation are intentionally preserved.
     // NOTE: trialHistory, careerMilestones are career-spanning and intentionally preserved.
     // NOTE: squad, fanSentiment, boardSentiment, gameMode, activeProfileId,
     // ironmanSaveVersion, gameOver are intentionally preserved.
+    // NOTE: unlockedAchievements, achievementUnlockWeeks, inboxMessages, usedTicketTypes, freeAgentSignings, totalShortlisted, tradesMadeInWindow, tradedWithClubs, prevSeasonSquadIds are intentionally preserved.
     // Prestige flow sets sentiment via partial carry-over formula, not hard reset.
   }),
 }));
