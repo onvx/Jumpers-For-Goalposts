@@ -9190,7 +9190,8 @@ function FootballManager() {
             {
               const newSN = (seasonNumber || 1) + 1;
               const RECURRING_PREFIXES = ["msg_train_", "msg_md_", "msg_cup_", "msg_lopsided_", "card-skip-"];
-              const isRecurring = (id) => RECURRING_PREFIXES.some(p => id?.startsWith(p));
+              const NARRATIVE_EXEMPT = ["msg_cup_hope_", "msg_cup_reprieve_"];
+              const isRecurring = (id) => RECURRING_PREFIXES.some(p => id?.startsWith(p)) && !NARRATIVE_EXEMPT.some(p => id?.startsWith(p));
               setInboxMessages(prev => prev.filter(m => !isRecurring(m.id) || m.season >= newSN));
             }
             setRetiringPlayers(new Set());
@@ -9629,7 +9630,8 @@ function FootballManager() {
               {
                 const newSN = (seasonNumber || 1) + 1;
                 const RECURRING_PREFIXES = ["msg_train_", "msg_md_", "msg_cup_", "msg_lopsided_", "card-skip-"];
-                const isRecurring = (id) => RECURRING_PREFIXES.some(p => id?.startsWith(p));
+                const NARRATIVE_EXEMPT = ["msg_cup_hope_", "msg_cup_reprieve_"];
+                const isRecurring = (id) => RECURRING_PREFIXES.some(p => id?.startsWith(p)) && !NARRATIVE_EXEMPT.some(p => id?.startsWith(p));
                 setInboxMessages(prev => prev.filter(m => !isRecurring(m.id) || m.season >= newSN));
               }
               // Reset season-specific arc tracking
