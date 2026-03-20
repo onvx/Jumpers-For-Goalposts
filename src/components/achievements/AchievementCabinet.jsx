@@ -211,7 +211,7 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
           { id: "trophies", label: "TROPHY CABINET" },
           { id: "achievements", label: `ACHIEVEMENTS (${unlocked.size}/${ACHIEVEMENTS.length})`, disabled: isCasual || isTainted, dot: hasUnseenAchievements },
           { id: "players", label: "UNLOCKABLE PLAYERS" },
-          { id: "tickets", label: `TICKETS${tickets?.length ? ` (${new Set(tickets.map(t => t.type)).size})` : ""}` },
+          { id: "tickets", label: `TICKETS${tickets?.length ? ` (${new Set(tickets.filter(t => TICKET_DEFS[t.type]).map(t => t.type)).size})` : ""}` },
         ].map(t => (
           <button key={t.id} onClick={() => !t.disabled && handleTabChange(t.id)} style={{
             padding: mob ? "10px 13px" : "10px 18px", fontSize: mob ? F.xs : F.sm, letterSpacing: 1,
