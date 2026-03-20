@@ -135,6 +135,7 @@ export const useGameStore = create((set, get) => ({
   // === Achievements / inbox / career tracking ===
   unlockedAchievements: new Set(),
   achievementUnlockWeeks: {},
+  lastSeenAchievementCount: 0,
   inboxMessages: [],
   usedTicketTypes: new Set(),
   formationsWonWith: new Set(),
@@ -294,6 +295,7 @@ export const useGameStore = create((set, get) => ({
 
   setUnlockedAchievements: (val) => set(s => ({ unlockedAchievements: typeof val === "function" ? val(s.unlockedAchievements) : val })),
   setAchievementUnlockWeeks: (val) => set(s => ({ achievementUnlockWeeks: typeof val === "function" ? val(s.achievementUnlockWeeks) : val })),
+  setLastSeenAchievementCount: (val) => set({ lastSeenAchievementCount: val }),
   setInboxMessages: (val) => set(s => ({ inboxMessages: typeof val === "function" ? val(s.inboxMessages) : val })),
   setUsedTicketTypes: (val) => set(s => ({ usedTicketTypes: typeof val === "function" ? val(s.usedTicketTypes) : val })),
   setFormationsWonWith: (val) => set(s => ({ formationsWonWith: typeof val === "function" ? val(s.formationsWonWith) : val })),
@@ -424,6 +426,7 @@ export const useGameStore = create((set, get) => ({
     lopsidedWarned: new Set(),
     unlockedAchievements: new Set(),
     achievementUnlockWeeks: {},
+    lastSeenAchievementCount: 0,
     inboxMessages: [],
     usedTicketTypes: new Set(),
     formationsWonWith: new Set(),
