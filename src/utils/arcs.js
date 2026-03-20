@@ -68,19 +68,25 @@ export function applyArcFx(fx, squad, targetId, prodigalSonId, bonuses, ovrCap =
   let newSquad = squad.map(p => ({...p, attrs:{...p.attrs}, gains:{...(p.gains||{})}}));
   const newBonuses = {...bonuses};
   const ATR_KEYS = ATTRIBUTES.map(a => a.key);
-  const boost = (p, stat, amt) => { p.attrs[stat] = Math.min(p.legendCap || ovrCap, (p.attrs[stat]||0) + amt); };
+  const cap = (p) => p.legendCap || ovrCap;
+  const boost = (p, stat, amt) => { p.attrs[stat] = Math.min(cap(p), (p.attrs[stat]||0) + amt); };
+  // Pick the best uncapped stat — falls through to next best if top choice is already at cap
+  const pickBestUncapped = (p, sortFn) => {
+    const sorted = [...ATR_KEYS].sort(sortFn);
+    return sorted.find(k => (p.attrs[k] || 0) < cap(p)) || sorted[0]; // fallback to first if all capped
+  };
 
   if (fx.target || fx.prodigal) {
     const tid = fx.prodigal ? prodigalSonId : targetId;
     const p = newSquad.find(pp => pp.id === tid);
     if (p) {
       if (fx.stats) Object.entries(fx.stats).forEach(([k,v]) => boost(p, k, v));
-      if (fx.mode === "highest") { const best = ATR_KEYS.reduce((a,b) => (p.attrs[a]||0)>=(p.attrs[b]||0)?a:b); boost(p, best, fx.amt); }
+      if (fx.mode === "highest") { const best = pickBestUncapped(p, (a,b) => (p.attrs[b]||0)-(p.attrs[a]||0)); boost(p, best, fx.amt); }
       if (fx.mode === "lowest3") { const sorted = [...ATR_KEYS].sort((a,b) => (p.attrs[a]||0)-(p.attrs[b]||0)); sorted.slice(0,3).forEach(k => boost(p, k, fx.amt)); }
-      if (fx.mode === "trained") { const tk = p.training && TRAINING_FOCUSES.find(f=>f.key===p.training)?.attrs?.[0]; if(tk) boost(p, tk, fx.amt); else { const best = ATR_KEYS.reduce((a,b) => (p.attrs[a]||0)>=(p.attrs[b]||0)?a:b); boost(p, best, fx.amt); } }
+      if (fx.mode === "trained") { const tk = p.training && TRAINING_FOCUSES.find(f=>f.key===p.training)?.attrs?.[0]; if(tk && (p.attrs[tk]||0) < cap(p)) boost(p, tk, fx.amt); else { const best = pickBestUncapped(p, (a,b) => (p.attrs[b]||0)-(p.attrs[a]||0)); boost(p, best, fx.amt); } }
       if (fx.mode === "all") ATR_KEYS.forEach(k => boost(p, k, fx.amt));
-      if (fx.mode === "random3") { const shuffled = [...ATR_KEYS].sort(()=>Math.random()-0.5); shuffled.slice(0,3).forEach(k => boost(p, k, fx.amt)); }
-      if (fx.mode === "random12") { const shuffled = [...ATR_KEYS].sort(()=>Math.random()-0.5); boost(p, shuffled[0], fx.amts[0]); boost(p, shuffled[1], fx.amts[1]); }
+      if (fx.mode === "random3") { const uncapped = ATR_KEYS.filter(k => (p.attrs[k]||0) < cap(p)); const pool = uncapped.length >= 3 ? uncapped : ATR_KEYS; const shuffled = [...pool].sort(()=>Math.random()-0.5); shuffled.slice(0,3).forEach(k => boost(p, k, fx.amt)); }
+      if (fx.mode === "random12") { const uncapped = ATR_KEYS.filter(k => (p.attrs[k]||0) < cap(p)); const pool = uncapped.length >= 2 ? uncapped : ATR_KEYS; const shuffled = [...pool].sort(()=>Math.random()-0.5); boost(p, shuffled[0], fx.amts[0]); boost(p, shuffled[1], fx.amts[1]); }
     }
   }
   if (fx.squad) {
@@ -94,8 +100,8 @@ export function applyArcFx(fx, squad, targetId, prodigalSonId, bonuses, ovrCap =
     const sorted = [...newSquad].sort((a,b) => getOverall(b)-getOverall(a)).slice(0,3);
     sorted.forEach(p => {
       const pp = newSquad.find(q => q.id === p.id);
-      if (fx.mode === "primary") { const tk = pp.training && TRAINING_FOCUSES.find(f=>f.key===pp.training)?.attrs?.[0]; if(tk) boost(pp,tk,fx.amt); else boost(pp, ATR_KEYS.reduce((a,b)=>(pp.attrs[a]||0)>=(pp.attrs[b]||0)?a:b), fx.amt); }
-      if (fx.mode === "random") { const rk = ATR_KEYS[Math.floor(Math.random()*ATR_KEYS.length)]; boost(pp, rk, fx.amt); }
+      if (fx.mode === "primary") { const tk = pp.training && TRAINING_FOCUSES.find(f=>f.key===pp.training)?.attrs?.[0]; if(tk && (pp.attrs[tk]||0) < cap(pp)) boost(pp,tk,fx.amt); else { const best = pickBestUncapped(pp, (a,b) => (pp.attrs[b]||0)-(pp.attrs[a]||0)); boost(pp, best, fx.amt); } }
+      if (fx.mode === "random") { const uncapped = ATR_KEYS.filter(k => (pp.attrs[k]||0) < cap(pp)); const rk = uncapped.length > 0 ? uncapped[Math.floor(Math.random()*uncapped.length)] : ATR_KEYS[Math.floor(Math.random()*ATR_KEYS.length)]; boost(pp, rk, fx.amt); }
     });
   }
   if (fx.bonus) Object.entries(fx.bonus).forEach(([k,v]) => { newBonuses[k] = (newBonuses[k]||0) + v; });
@@ -107,7 +113,8 @@ export function applyFinalReward(arc, squad, targetId, prodigalSonId, bonuses, o
   let newSquad = squad.map(p => ({...p, attrs:{...p.attrs}, tags:[...(p.tags||[])]}));
   const newBonuses = {...bonuses};
   const ATR_KEYS = ATTRIBUTES.map(a => a.key);
-  const boost = (p, stat, amt) => { p.attrs[stat] = Math.min(p.legendCap || ovrCap, (p.attrs[stat]||0) + amt); };
+  const capFn = (p) => p.legendCap || ovrCap;
+  const boost = (p, stat, amt) => { p.attrs[stat] = Math.min(capFn(p), (p.attrs[stat]||0) + amt); };
 
   if (fx.tag) {
     const p = newSquad.find(pp => pp.id === targetId);
@@ -115,7 +122,11 @@ export function applyFinalReward(arc, squad, targetId, prodigalSonId, bonuses, o
   }
   if (fx.targetWeakest) {
     const p = newSquad.find(pp => pp.id === targetId);
-    if (p) { const weakest = ATR_KEYS.reduce((a,b) => (p.attrs[a]||0)<=(p.attrs[b]||0)?a:b); boost(p, weakest, fx.targetWeakest); }
+    if (p) {
+      const sorted = [...ATR_KEYS].sort((a,b) => (p.attrs[a]||0)-(p.attrs[b]||0));
+      const weakest = sorted.find(k => (p.attrs[k]||0) < capFn(p)) || sorted[0];
+      boost(p, weakest, fx.targetWeakest);
+    }
   }
   if (fx.squadStats) {
     const targets = fx.filter ? newSquad.filter(p => POSITION_TYPES[p.position] === fx.filter) : newSquad;

@@ -2401,6 +2401,10 @@ function FootballManager() {
       if (!opt?.fx) return;
       const fx = opt.fx;
       const intendedAttrBoost = !!(fx.stats || fx.mode || fx.target || fx.prodigal || fx.squad || fx.top3);
+      // Check target player exists before claiming boost was intended
+      const targetExists = fx.target ? newSquad.some(p => p.id === cs.tracking?.targetId) : true;
+      const prodigalExists = fx.prodigal ? newSquad.some(p => p.id === prodigalSon?.playerId) : true;
+      const boostTargetValid = targetExists && prodigalExists;
       // Snapshot pre-boost stats to compute diffs
       const preBoost = {};
       newSquad.forEach(p => {
@@ -2435,7 +2439,8 @@ function FootballManager() {
         });
       });
       // If arc intended attr boosts but all were capped, offer ticket choice instead
-      if (intendedAttrBoost && gainCount === 0) {
+      // Don't trigger if the target player simply doesn't exist (traded/released)
+      if (intendedAttrBoost && boostTargetValid && gainCount === 0) {
         const shuffled = [...ARC_TICKET_POOL].sort(() => Math.random() - 0.5);
         cappedArcTickets.push({
           arcName: opt.name || arc.name,
@@ -3260,12 +3265,13 @@ function FootballManager() {
         // Check if reward was fully capped
         const ffxSE = arc.finalFx;
         const intendedBoostSE = !!(ffxSE.targetWeakest || ffxSE.squadStats || ffxSE.squadAll);
+        const targetExistsSE = ffxSE.targetWeakest ? newSquad.some(p => p.id === targetId) : true;
         let gainCountSE = 0;
         newSquad.forEach(p => {
           const pre = preBoostSE[p.id] || {};
           Object.keys(p.attrs).forEach(k => { if ((p.attrs[k] || 0) > (pre[k] || 0)) gainCountSE++; });
         });
-        if (intendedBoostSE && gainCountSE === 0) {
+        if (intendedBoostSE && targetExistsSE && gainCountSE === 0) {
           const shuffled = [...ARC_TICKET_POOL].sort(() => Math.random() - 0.5);
           const pick = shuffled[0];
           setTickets(prev => [...prev, { id: `t_arc_se_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, type: pick }]);
@@ -3359,6 +3365,7 @@ function FootballManager() {
           newSquad = res.squad;
           const ffxGP = arc.finalFx;
           const intendedBoostGP = !!(ffxGP.targetWeakest || ffxGP.squadStats || ffxGP.squadAll);
+          const targetExistsGP = ffxGP.targetWeakest ? newSquad.some(p => p.id === targetId) : true;
           let gainCountGP = 0;
           newSquad.forEach(p => {
             const before = preBefore[p.id] || {};
@@ -3369,7 +3376,7 @@ function FootballManager() {
               }
             });
           });
-          if (intendedBoostGP && gainCountGP === 0) {
+          if (intendedBoostGP && targetExistsGP && gainCountGP === 0) {
             const _atp = ["double_session", "miracle_cream", "twelfth_man", "relation_boost", "transfer_insider", "youth_coup", "rewind", "random_attr"];
             const pick = _atp[Math.floor(Math.random() * _atp.length)];
             setTickets(prev => [...prev, { id: `t_arc_gp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, type: pick }]);
