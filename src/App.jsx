@@ -833,7 +833,7 @@ function FootballManager() {
       setBench(s.bench);
       setUnlockedAchievements(new Set(s.unlockedAchievements || []));
       if (s.achievementUnlockWeeks) { setAchievementUnlockWeeks(s.achievementUnlockWeeks); achievementUnlockWeeksRef.current = s.achievementUnlockWeeks; }
-      setLastSeenAchievementCount(s.lastSeenAchievementCount || 0);
+      setLastSeenAchievementCount(s.lastSeenAchievementCount ?? (s.unlockedAchievements?.length ?? 0));
       setSeasonCards(s.seasonCards || 0);
       setSeasonNumber(s.seasonNumber || 1);
       setLeagueWins(s.leagueWins || 0);
