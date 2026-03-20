@@ -664,11 +664,17 @@ function FootballManager() {
       setTeamName(s.teamName);
       setNewspaperName(s.newspaperName || generateNewspaperName(s.teamName));
       setReporterName(s.reporterName || generateReporterName());
-      // Migrate: add nationality and statProgress to existing players if missing
+      // Migrate: add nationality, statProgress, and potential to existing players if missing
+      const loadOvrCap = getOvrCap(s.prestigeLevel || 0);
       const migratedSquad = (s.squad || []).map(p => {
         const migrated = { ...p };
         if (!migrated.nationality) migrated.nationality = inferNationality(migrated.name);
         if (!migrated.statProgress) migrated.statProgress = {};
+        if (migrated.potential == null) {
+          const ovr = getOverall(migrated);
+          const maxGap = migrated.age <= 19 ? rand(5,10) : migrated.age <= 23 ? rand(3,8) : migrated.age <= 27 ? rand(2,5) : migrated.age <= 30 ? rand(1,3) : rand(0,2);
+          migrated.potential = Math.min(loadOvrCap, ovr + maxGap);
+        }
         return migrated;
       });
       setSquad(migratedSquad);
