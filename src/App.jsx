@@ -7494,7 +7494,7 @@ function FootballManager() {
              const newSeasonUnlocks = collectSeasonEndAchievements({
                position, currentTier, moveType, newTier, lastSeasonMove, league, leagueResults,
                playerSeasonStats, beatenTeams, unlockedAchievements, clubHistory,
-               wonCupThisSeason: unlockedAchievements.has("cup_winner"),
+               wonCupThisSeason: useGameStore.getState().unlockedAchievements.has("cup_winner"),
                squad: useGameStore.getState().squad, prevSeasonSquadIds, seasonNumber,
                dynastyCupBracket: useGameStore.getState().dynastyCupBracket, cup: useGameStore.getState().cup,
              }, BGM.getCurrentTrackId());
