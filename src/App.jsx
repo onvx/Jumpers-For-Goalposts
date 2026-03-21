@@ -1888,10 +1888,11 @@ function FootballManager() {
 
         // === STORY ARC SEASON-END TRACKING (recovery path) ===
         {
-          const cupWon = cup && !cup.playerEliminated && (() => {
-            const rKeys = Object.keys(cup.rounds || {}).map(Number).sort((a,b)=>a-b);
+          const freshCup = useGameStore.getState().cup;
+          const cupWon = freshCup && !freshCup.playerEliminated && (() => {
+            const rKeys = Object.keys(freshCup.rounds || {}).map(Number).sort((a,b)=>a-b);
             if (rKeys.length === 0) return false;
-            const finalRound = cup.rounds[rKeys[rKeys.length-1]];
+            const finalRound = freshCup.rounds[rKeys[rKeys.length-1]];
             return finalRound?.matches?.some(m => m.result?.winner?.isPlayer);
           })();
           setStoryArcs(prev => resolveSeasonEndArcs(prev, position, cupWon));
@@ -7493,7 +7494,7 @@ function FootballManager() {
              const newSeasonUnlocks = collectSeasonEndAchievements({
                position, currentTier, moveType, newTier, lastSeasonMove, league, leagueResults,
                playerSeasonStats, beatenTeams, unlockedAchievements, clubHistory,
-               wonCupThisSeason: unlockedAchievements.has("cup_winner"),
+               wonCupThisSeason: useGameStore.getState().unlockedAchievements.has("cup_winner"),
                squad: useGameStore.getState().squad, prevSeasonSquadIds, seasonNumber,
                dynastyCupBracket: useGameStore.getState().dynastyCupBracket, cup: useGameStore.getState().cup,
              }, BGM.getCurrentTrackId());
@@ -7517,10 +7518,11 @@ function FootballManager() {
 
              // === STORY ARC SEASON-END TRACKING ===
              {
-               const cupWon3 = cup && !cup.playerEliminated && (() => {
-                 const rKeys = Object.keys(cup.rounds || {}).map(Number).sort((a,b)=>a-b);
+               const freshCup = useGameStore.getState().cup;
+               const cupWon3 = freshCup && !freshCup.playerEliminated && (() => {
+                 const rKeys = Object.keys(freshCup.rounds || {}).map(Number).sort((a,b)=>a-b);
                  if (rKeys.length === 0) return false;
-                 const finalRound = cup.rounds[rKeys[rKeys.length-1]];
+                 const finalRound = freshCup.rounds[rKeys[rKeys.length-1]];
                  return finalRound?.matches?.some(m => m.result?.winner?.isPlayer);
                })();
                setStoryArcs(prev => resolveSeasonEndArcs(prev, position, cupWon3));
@@ -8865,10 +8867,11 @@ function FootballManager() {
 
               // === STORY ARC SEASON-END TRACKING (cup path) ===
               {
-                const cupWon2 = cup && !cup.playerEliminated && (() => {
-                  const rKeys = Object.keys(cup.rounds || {}).map(Number).sort((a,b)=>a-b);
+                const freshCup = useGameStore.getState().cup;
+                const cupWon2 = freshCup && !freshCup.playerEliminated && (() => {
+                  const rKeys = Object.keys(freshCup.rounds || {}).map(Number).sort((a,b)=>a-b);
                   if (rKeys.length === 0) return false;
-                  const finalRound = cup.rounds[rKeys[rKeys.length-1]];
+                  const finalRound = freshCup.rounds[rKeys[rKeys.length-1]];
                   return finalRound?.matches?.some(m => m.result?.winner?.isPlayer);
                 })();
                 setStoryArcs(prev => resolveSeasonEndArcs(prev, position, cupWon2));
