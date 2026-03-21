@@ -52,16 +52,17 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
         zIndex: Z.modal, fontFamily: FONT,
         transition: swipeOffset !== 0 ? "opacity 0.4s ease" : "transform 0.4s ease, opacity 0.4s ease",
         opacity: visible ? 1 : 0, cursor: "pointer",
-        width: mob ? "calc(100% - 20px)" : "auto",
-        maxWidth: mob ? 360 : "none",
+        width: mob ? "calc(100% - 24px)" : "auto",
+        maxWidth: mob ? "none" : 480,
       }}
     >
       <div style={{
-        background: "linear-gradient(135deg, #1a1a2e 0%, #0d0d1f 100%)",
-        border: `2px solid ${C.gold}`,
-        padding: mob ? "14px 16px" : "18px 26px",
+        background: "linear-gradient(135deg, #0f172a 0%, #1a1a3e 100%)",
+        border: "1px solid #1e293b",
+        borderLeft: `4px solid ${C.gold}`,
+        padding: mob ? "14px 12px" : "16px 20px",
         borderRadius: 6,
-        boxShadow: "0 0 30px rgba(250,204,21,0.3)",
+        boxShadow: "0 0 24px rgba(250,204,21,0.15)",
         display: "flex", alignItems: "center", gap: mob ? 10 : 14,
       }}>
         <span style={{ fontSize: mob ? F.lg : F.h3, flexShrink: 0 }}>{ach.icon}</span>
