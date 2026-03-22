@@ -25,17 +25,10 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
   const mob = useMobile();
   const [tab, setTab] = useState("trophies");
   const [filterCat, setFilterCat] = useState(null);
-  const viewedAchievements = useRef(false);
   const handleTabChange = (newTab) => {
-    if (newTab === "achievements") viewedAchievements.current = true;
+    if (newTab === "achievements" && onViewAchievements) onViewAchievements();
     setTab(newTab);
   };
-  // Mark achievements as seen when cabinet unmounts (if user visited the achievements tab)
-  const onViewRef = useRef(onViewAchievements);
-  onViewRef.current = onViewAchievements;
-  useEffect(() => {
-    return () => { if (viewedAchievements.current && onViewRef.current) onViewRef.current(); };
-  }, []);
   const [ticketPicker, setTicketPicker] = useState(null);
   const achStyleId = React.useRef("ach-styles-" + Math.random().toString(36).slice(2, 8));
   const ticketPickerPanelRef = useRef(null);
