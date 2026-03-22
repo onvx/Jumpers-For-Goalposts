@@ -7,6 +7,7 @@ import { CUP_DEFS } from "../../data/cups.js";
 import { TICKET_DEFS } from "../../data/tickets.js";
 import { getOverall, getPosColor, getAttrColor } from "../../utils/calc.js";
 import { displayName } from "../../utils/player.js";
+import { useMobile } from "../../hooks/useMobile.js";
 
 const hexToRgb = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -21,7 +22,7 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
   rewindableMatches,
   onUseTicket, onViewAchievements, hasUnseenAchievements = false, gameMode = "casual", isTainted = false }) {
   const isCasual = gameMode === "casual";
-  const mob = window.innerWidth <= 768;
+  const mob = useMobile();
   const [tab, setTab] = useState("trophies");
   const [filterCat, setFilterCat] = useState(null);
   const handleTabChange = (newTab) => {

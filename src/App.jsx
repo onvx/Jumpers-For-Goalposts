@@ -19,6 +19,7 @@ import { getTeamStrength, generateFixtures, simulateMatch, generatePenaltyShooto
 import { initLeagueRosters, normalizeRosters, sortStandings, collectSeasonEndAchievements, processSeasonSwaps, initLeague, initAILeague, buildSeasonCalendar, computeCalendarIndex, getLeagueMatchdaysPlayed, getCupForTier, initCup, advanceCupRound, buildNextCupRound } from "./utils/league.js";
 import { SFX, BGM, BGM_TRACKS } from "./utils/sfx.js";
 import * as Tone from "tone";
+import { useMobile } from "./hooks/useMobile.js";
 import { useSettings } from "./hooks/useSettings.js";
 import { useTickets } from "./hooks/useTickets.js";
 import { useDebug } from "./hooks/useDebug.js";
@@ -256,12 +257,7 @@ function FootballManager() {
   const [showLineupWarning, setShowLineupWarning] = useState(null); // null | "advance" | "match"
   const bench = useGameStore(s => s.bench);
   const [dragPlayer, setDragPlayer] = useState(null);
-  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 768);
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+  const isMobile = useMobile();
   useEffect(() => {
     if (!document.querySelector('meta[name="viewport"]')) {
       const meta = document.createElement("meta");

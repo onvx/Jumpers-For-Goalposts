@@ -8,6 +8,7 @@ import { LevelUpPips } from "../ui/LevelUpPips.jsx";
 import { PixelDissolveCard } from "../ui/PixelDissolveCard.jsx";
 import { MysteryCard } from "./MysteryCard.jsx";
 import { F, C, FONT, Z } from "../../data/tokens";
+import { useMobile } from "../../hooks/useMobile.js";
 
 import { TICKET_DEFS } from "../../data/tickets.js";
 
@@ -15,7 +16,7 @@ export function GainPopup({ gains, onDone, onPlayerClick, onAchievementCheck, on
   const [visible, setVisible] = useState(false);
   const [revealedCount, setRevealedCount] = useState(0);
   const [pickedTickets, setPickedTickets] = useState({});
-  const mob = window.innerWidth <= 768;
+  const mob = useMobile();
   const dn = displayName; // abbreviated on mobile, full on desktop
   const isQuick = cardSpeed === "quick";
   const isSummary = cardSpeed === "summary";

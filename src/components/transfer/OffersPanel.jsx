@@ -4,6 +4,7 @@ import { getOverall, getAttrColor, getPosColor } from "../../utils/calc.js";
 import { displayName } from "../../utils/player.js";
 import { getPlayerValue, getTotalValue } from "../../utils/transfer.js";
 import { ClubBadge } from "../ui/ClubBadge.jsx";
+import { useMobile } from "../../hooks/useMobile.js";
 
 function OfferPlayerChip({ player, mob, onClick, ovrCap = 20 }) {
   const ovr = getOverall(player);
@@ -24,6 +25,7 @@ function OfferPlayerChip({ player, mob, onClick, ovrCap = 20 }) {
 }
 
 export function OffersPanel({ offers, onAccept, onReject, onCounter, mob, onPlayerClick, ovrCap = 20 }) {
+  useMobile();
   if (!offers || offers.length === 0) {
     return (
       <div style={{

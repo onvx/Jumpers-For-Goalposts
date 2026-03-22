@@ -4,10 +4,11 @@ import { LEAGUE_DEFS } from "../../data/leagues.js";
 import { getPosColor } from "../../utils/calc.js";
 import { displayName } from "../../utils/player.js";
 import { F, C, FONT } from "../../data/tokens";
+import { useMobile } from "../../hooks/useMobile.js";
 
 export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlayerClick, onTeamClick }) {
   const [activeTab, setActiveTab] = useState("bracket");
-  const mob = window.innerWidth <= 768;
+  const mob = useMobile();
 
   // Build a live name→tier lookup from current leagueRosters so tier chips always reflect current placement
   const liveTierByName = React.useMemo(() => {

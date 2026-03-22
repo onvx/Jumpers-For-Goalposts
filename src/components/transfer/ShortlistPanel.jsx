@@ -2,8 +2,10 @@ import React from "react";
 import { F, C, FONT } from "../../data/tokens";
 import { getPosColor } from "../../utils/calc.js";
 import { displayName } from "../../utils/player.js";
+import { useMobile } from "../../hooks/useMobile.js";
 
 export function ShortlistPanel({ shortlist, setShortlist, onPlayerClick, onTeamClick, mob }) {
+  useMobile();
   const sorted = [...(shortlist || [])].sort((a, b) => (b.ovr || 0) - (a.ovr || 0));
 
   const handleRemove = (entry) => {

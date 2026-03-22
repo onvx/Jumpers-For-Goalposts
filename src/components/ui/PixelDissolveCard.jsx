@@ -4,12 +4,13 @@ import { ATTRIBUTES } from "../../data/training.js";
 import { getPosColor } from "../../utils/calc.js";
 import { displayName } from "../../utils/player.js";
 import { SFX } from "../../utils/sfx.js";
+import { useMobile } from "../../hooks/useMobile.js";
 
 export function PixelDissolveCard({ gain, onRevealed, index, isNext, onPlayerClick }) {
   const [dissolving, setDissolving] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [pixels, setPixels] = useState([]);
-  const mob = window.innerWidth <= 768;
+  const mob = useMobile();
   const attr = ATTRIBUTES.find(a => a.key === gain.attr);
 
   const handleClick = () => {

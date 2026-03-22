@@ -4,6 +4,7 @@ import { sortStandings } from "../../utils/league.js";
 import { getNatFlag, inferNationality, displayName } from "../../utils/player.js";
 import { OvrProgressChart } from "../charts/OvrCharts.jsx";
 import { F, C, FONT } from "../../data/tokens";
+import { useMobile } from "../../hooks/useMobile.js";
 
 export function ClubLegends({ clubHistory, teamName, playerSeasonStats, playerRatingTracker, league, seasonNumber, leagueTier, squad, ovrHistory, ovrCap = 20 }) {
   const [tab, setTab] = useState("records");
@@ -248,7 +249,7 @@ export function ClubLegends({ clubHistory, teamName, playerSeasonStats, playerRa
     { id: "seasons", label: "SEASONS" },
   ];
 
-  const mob = window.innerWidth <= 768;
+  const mob = useMobile();
 
   return (
     <div style={{ fontFamily: FONT }}>

@@ -3,8 +3,10 @@ import { F, C, FONT } from "../../data/tokens";
 import { getOverall, getAttrColor, getPosColor } from "../../utils/calc.js";
 import { displayName } from "../../utils/player.js";
 import { ClubBadge } from "../ui/ClubBadge.jsx";
+import { useMobile } from "../../hooks/useMobile.js";
 
 export function TradeHistory({ history, teamName, mob, onPlayerClick, onTeamClick, ovrCap = 20 }) {
+  useMobile();
   if (!history || history.length === 0) {
     return (
       <div style={{

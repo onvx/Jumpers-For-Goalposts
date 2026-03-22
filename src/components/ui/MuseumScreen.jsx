@@ -1,5 +1,6 @@
 import { C as TC, FONT } from "../../data/tokens";
 import { displayName } from "../../utils/player.js";
+import { useMobile } from "../../hooks/useMobile.js";
 
 const C = { ...TC, bg: "#06060f", dim: "#334155" };
 // Larger sizes — Press Start 2P needs room to breathe
@@ -30,6 +31,7 @@ function Section({ title, children }) {
 }
 
 export function MuseumScreen({ career, onClose, closeLabel = "RETURN TO MENU" }) {
+  useMobile();
   const ch = career?.clubHistory || {};
   const seasons = ch.seasonArchive || [];
   const cups = ch.cupHistory || [];

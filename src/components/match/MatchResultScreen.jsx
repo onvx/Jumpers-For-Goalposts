@@ -6,6 +6,7 @@ import { SFX } from "../../utils/sfx.js";
 import { AITeamPanel } from "../league/AITeamPanel.jsx";
 import { POSITION_ORDER } from "../../data/positions.js";
 import { F, C, FONT, Z } from "../../data/tokens";
+import { useMobile } from "../../hooks/useMobile.js";
 
 export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpeedChange, competitionLabel, matchDetail, instantMatch, isOnHoliday, onPlayerClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, ovrCap = 20, formation, slotAssignments, startingXI }) {
   const [visible, setVisible] = useState(false);
@@ -34,7 +35,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
   const eventsRef = React.useRef(result.events || []);
   const processedRef = React.useRef(new Set());
   const tickerRef = React.useRef(null);
-  const mob = window.innerWidth <= 768;
+  const mob = useMobile();
   const [viewingTeam, setViewingTeam] = useState(null); // { team, tableRow, matchGoals }
 
   // Penalty shootout state

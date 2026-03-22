@@ -3,6 +3,7 @@ import { F, C, FONT, Z } from "../../data/tokens";
 import { getOverall, getAttrColor, getPosColor } from "../../utils/calc.js";
 import { evaluateTrade, getRelationshipDiscount } from "../../utils/transfer.js";
 import { displayName } from "../../utils/player.js";
+import { useMobile } from "../../hooks/useMobile.js";
 import { ClubBadge } from "../ui/ClubBadge.jsx";
 import { PositionChip } from "../ui/PositionChip.jsx";
 
@@ -106,7 +107,7 @@ export function TradeProposal({
   const [userWant, setUserWant] = useState(preSelectedPlayer ? [preSelectedPlayer] : []);
   const [mobileTab, setMobileTab] = useState("yours"); // "yours" | "theirs"
   const [success, setSuccess] = useState(false);
-  const mob = window.innerWidth <= 768;
+  const mob = useMobile();
 
   const userOfferIds = useMemo(() => new Set(userOffer.map(p => p.id)), [userOffer]);
   const userWantIds = useMemo(() => new Set(userWant.map(p => p.id)), [userWant]);

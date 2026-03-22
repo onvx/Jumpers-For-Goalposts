@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { F, C, FONT, Z } from "../../data/tokens";
+import { useMobile } from "../../hooks/useMobile.js";
 import { ATTRIBUTES } from "../../data/training.js";
 import { LEAGUE_DEFS } from "../../data/leagues.js";
 import { POSITION_TYPES } from "../../data/positions.js";
@@ -122,7 +123,7 @@ export function PlayerSearch({
     if (k === "positions") return Array.isArray(v) && v.length > 0;
     return v !== "" && v != null;
   }).length;
-  const mob = window.innerWidth <= 768;
+  const mob = useMobile();
 
   // --- Sort header helpers ---
   function handleSort(col) {

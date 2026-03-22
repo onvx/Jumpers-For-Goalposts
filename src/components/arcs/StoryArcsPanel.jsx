@@ -4,9 +4,10 @@ import { getOverall, getPosColor } from "../../utils/calc.js";
 import { getArcById, getArcsForCat, getValidTargets } from "../../utils/arcs.js";
 import { displayName } from "../../utils/player.js";
 import { F, C, FONT } from "../../data/tokens";
+import { useMobile } from "../../hooks/useMobile.js";
 
 export function StoryArcsPanel({ storyArcs, setStoryArcs, squad, setSquad, prodigalSon, league, leagueTier, onAchievementCheck, week, seasonNumber }) {
-  const mob = window.innerWidth <= 768;
+  const mob = useMobile();
   const [selectingArc, setSelectingArc] = useState(null); // cat being selected
   const [selectingTarget, setSelectingTarget] = useState(null); // { cat, arcId }
   const [focusChoice, setFocusChoice] = useState(null); // { cat }

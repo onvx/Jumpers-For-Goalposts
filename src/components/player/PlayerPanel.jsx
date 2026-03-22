@@ -7,6 +7,7 @@ import { getPlayerValue, getRelationshipTier } from "../../utils/transfer.js";
 import { Sparkline } from "../charts/Sparkline.jsx";
 import { ClubBadge } from "../ui/ClubBadge.jsx";
 import { F, C, FONT, Z } from "../../data/tokens";
+import { useMobile } from "../../hooks/useMobile.js";
 
 export function PlayerPanel({ player, onAssignTraining, onAssignPositionTraining, onClose, onRelease, tradeContext, onToggleShortlist, shortlist, ovrCap = 20 }) {
   const effectiveCap = player.isLegend ? player.legendCap
@@ -17,7 +18,7 @@ export function PlayerPanel({ player, onAssignTraining, onAssignPositionTraining
   const ovrPips = Math.min(4, Math.floor(getOvrProgress(player) * 5)); // 0–4; 5 would mean already levelled up
   const [showChart, setShowChart] = useState(false);
   const [confirmRelease, setConfirmRelease] = useState(false);
-  const mob = window.innerWidth <= 768;
+  const mob = useMobile();
   const isShortlisted = shortlist?.some(p =>
     (p.id && p.id === player.id) || (p.name === player.name && p.clubName === (player.clubName || ""))
   );

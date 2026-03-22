@@ -3,6 +3,7 @@ import { ATTRIBUTES } from "../../data/training.js";
 import { getAttrColor, getPosColor } from "../../utils/calc.js";
 import { getNatFlag, displayName } from "../../utils/player.js";
 import { F, C, FONT, Z } from "../../data/tokens";
+import { useMobile } from "../../hooks/useMobile.js";
 
 const ARCHETYPE_BADGE = {
   specialist: { label: "SPECIALIST", color: "#34d399", bg: "rgba(52,211,153,0.12)" },
@@ -15,7 +16,7 @@ export function YouthIntakeScreen({ intake, onDone, squadSize, onClose, isMobile
   const [expanded, setExpanded] = useState(null);
   const SQUAD_CAP = 25;
   const slotsAvailable = Math.max(0, SQUAD_CAP - (squadSize || 0));
-  const mob = isMobile;
+  const mob = useMobile();
 
   const toggleSelect = (id) => {
     setSelected(prev => {

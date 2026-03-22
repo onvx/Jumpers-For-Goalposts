@@ -5,6 +5,7 @@ import { LEAGUE_DEFS, NUM_TIERS } from "../../data/leagues.js";
 import { getEffectiveSlots, detectFormationName } from "../../utils/formation.js";
 import { displayName } from "../../utils/player.js";
 import { getVisibleMessages, getUnreadCount } from "../../utils/messageUtils.js";
+import { useMobile } from "../../hooks/useMobile.js";
 
 export function Dashboard({
   inboxMessages, week, seasonNumber,
@@ -23,7 +24,7 @@ export function Dashboard({
   gameMode = "casual",
   showLineupWarning = false, onDismissLineupWarning, onLineupWarningGoToSquad, onLineupWarningPlayAnyway,
 }) {
-  const mob = isMobile;
+  const mob = useMobile();
 
   // ─── Derived data ───
 

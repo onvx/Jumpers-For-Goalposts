@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import { F, C, FONT, Z } from "../../data/tokens";
 import { getOverall, getPosColor } from "../../utils/calc.js";
 import { displayName } from "../../utils/player.js";
+import { useMobile } from "../../hooks/useMobile.js";
 
 export function LegendSelectionScreen({ squad, maxPicks = 5, legendCap, newPrestigeLevel, onDone }) {
   const [selected, setSelected] = useState(new Set());
   const [confirming, setConfirming] = useState(false);
   const [phase, setPhase] = useState(0); // 0=black, 1=bg, 2=title, 3=cards
-  const mob = window.innerWidth <= 768;
+  const mob = useMobile();
 
   const pickable = squad.filter(p => !p.isLegend);
   const effectiveMax = Math.min(maxPicks, pickable.length);
