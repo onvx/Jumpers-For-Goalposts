@@ -4,9 +4,10 @@ import { getPosColor } from "../../utils/calc.js";
 import { shortName } from "../../utils/player.js";
 import { SFX } from "../../utils/sfx.js";
 import { AITeamPanel } from "../league/AITeamPanel.jsx";
+import { POSITION_ORDER } from "../../data/positions.js";
 import { F, C, FONT, Z } from "../../data/tokens";
 
-export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpeedChange, competitionLabel, matchDetail, instantMatch, isOnHoliday, onPlayerClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, ovrCap = 20 }) {
+export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpeedChange, competitionLabel, matchDetail, instantMatch, isOnHoliday, onPlayerClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, ovrCap = 20, formation, slotAssignments, startingXI }) {
   const [visible, setVisible] = useState(false);
   const [minute, setMinute] = useState(instantMatch ? 90 : 0);
   const isHighlights = matchDetail === "highlights";
@@ -438,7 +439,27 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
             </button>
 
             {showRatings && result.playerRatings && (() => {
-              const starters = result.playerRatings.filter(pr => !pr.isSub);
+              // Build slot position map: player name → formation slot position
+              const slotPosMap = {};
+              if (formation && slotAssignments) {
+                // slotAssignments maps formation slot index → player ID
+                slotAssignments.forEach((pid, slotIdx) => {
+                  if (!pid || !formation[slotIdx]) return;
+                  const pr = result.playerRatings.find(r => r.id === pid);
+                  if (pr) slotPosMap[pr.name] = formation[slotIdx].pos;
+                });
+              } else if (formation && startingXI) {
+                // Fallback: startingXI order maps to formation slots
+                startingXI.forEach((pid, i) => {
+                  if (!pid || !formation[i]) return;
+                  const pr = result.playerRatings.find(r => r.id === pid);
+                  if (pr) slotPosMap[pr.name] = formation[i].pos;
+                });
+              }
+              const getPos = (pr) => slotPosMap[pr.name] || pr.position;
+              const starters = result.playerRatings
+                .filter(pr => !pr.isSub)
+                .sort((a, b) => (POSITION_ORDER[getPos(a)] ?? 99) - (POSITION_ORDER[getPos(b)] ?? 99));
               const subs = result.playerRatings.filter(pr => pr.isSub);
               const side = result.isPlayerHome ? "home" : "away";
               const renderRow = (pr, i) => {
@@ -451,7 +472,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
                 if (!pr.rating && pr.isSub) return (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 13px" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ background: getPosColor(pr.position), color: C.bg, padding: "1px 5px", fontSize: F.micro, fontWeight: "bold", opacity: 0.5 }}>{pr.position}</span>
+                      <span style={{ background: getPosColor(getPos(pr)), color: C.bg, padding: "1px 5px", fontSize: F.micro, fontWeight: "bold", opacity: 0.5 }}>{getPos(pr)}</span>
                       <span onClick={() => onPlayerClick?.(pr.name)} style={{ color: C.slate, fontSize: F.xs, cursor: "pointer" }}>{mob ? shortName(pr.name) : pr.name}</span>
                     </span>
                     <span style={{ color: C.slate, fontSize: F.md, fontWeight: "bold" }}>—</span>
@@ -467,7 +488,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
                     background: pr.rating >= 8 ? "rgba(74,222,128,0.05)" : "transparent",
                   }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ background: getPosColor(pr.position), color: C.bg, padding: "1px 5px", fontSize: F.micro, fontWeight: "bold" }}>{pr.position}</span>
+                      <span style={{ background: getPosColor(getPos(pr)), color: C.bg, padding: "1px 5px", fontSize: F.micro, fontWeight: "bold" }}>{getPos(pr)}</span>
                       <span onClick={() => onPlayerClick?.(pr.name)} style={{ color: pr.isSub ? C.textMuted : C.text, fontSize: F.xs, cursor: "pointer" }}>{mob ? shortName(pr.name) : pr.name}</span>
                       {pr.isSub && pr.minutesPlayed > 0 && <span style={{ color: C.slate, fontSize: F.micro }}>{pr.minutesPlayed}'</span>}
                     </span>

@@ -827,7 +827,7 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
 
     const starterRatings = team.squad
       .filter(p => playerStartingXI.includes(p.id))
-      .map(p => ({ name: p.name, position: p.position, rating: calcRating(p, false), isSub: false }));
+      .map(p => ({ id: p.id, name: p.name, position: p.position, rating: calcRating(p, false), isSub: false }));
 
     const teamSubMinutes = subMinutes[team.name] || {};
     const benchRatings = (playerBench || [])
@@ -836,13 +836,13 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
       .map(p => {
         const minuteOn = teamSubMinutes[p.name];
         if (minuteOn === undefined) {
-          return { name: p.name, position: p.position, rating: null, isSub: true, minutesPlayed: 0 };
+          return { id: p.id, name: p.name, position: p.position, rating: null, isSub: true, minutesPlayed: 0 };
         }
         const minutesPlayed = 90 - minuteOn;
         if (minutesPlayed < MATCH.RATE_SUB_THRESHOLD) {
-          return { name: p.name, position: p.position, rating: null, isSub: true, minutesPlayed };
+          return { id: p.id, name: p.name, position: p.position, rating: null, isSub: true, minutesPlayed };
         }
-        return { name: p.name, position: p.position, rating: calcRating(p, true), isSub: true, minutesPlayed };
+        return { id: p.id, name: p.name, position: p.position, rating: calcRating(p, true), isSub: true, minutesPlayed };
       });
 
     return [...starterRatings, ...benchRatings];
