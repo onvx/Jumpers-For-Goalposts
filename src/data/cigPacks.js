@@ -121,7 +121,7 @@ export const CIG_PACKS = [
       "remember_the_name",  // Score on debut
       "brace_yourself",     // Injured player scores brace
       "up_for_a_corner",    // GK scores
-      "injections",         // Force injured player to play
+      "who_shot_rr",        // Injury return brace (player unlock, swapped from Pineapple)
     ],
   },
 
@@ -177,7 +177,7 @@ export const CIG_PACKS = [
       "sudden_death",       // Sudden death shootout win
       "the_double",         // Win league and cup same season
       "wembley",            // Play in a cup final
-      "do_it_cold",         // Away win vs 3+ tiers above
+      "joga_bonito",        // Brazilian scores in cup (player unlock, swapped from Pineapple)
       "catenaccio",         // Cup win without conceding
       "professional_job",   // Cup win without penalties
       "win_sub_money",      // Win Sub Money Cup
@@ -209,7 +209,7 @@ export const CIG_PACKS = [
       "fifty_not_out",      // 50 career appearances
       "golden_boot",        // 20+ goals in a season
       "veteran",            // Player reaches age 42
-      "scouts_honour",      // Sign 3 trial players
+      "bayda",              // MF 8.5+ without scoring (player unlock, swapped from Pineapple)
       "end_of_an_era",      // 3+ retirements in one season
       "steady_climb",       // Finish higher 3x in a row
       "the_rebuild",        // Promote after relegation
@@ -355,12 +355,12 @@ export const CIG_PACKS = [
     unlockCondition: { type: "packs_complete", count: 3 },
     unlockDesc: "Complete 3 cigarette packs",
     achievementIds: [
-      "mixed_up",           // Defensive striker scores
+      "mixed_up",           // Defensive striker scores (player unlock)
       "enzo_drive",         // Enzo scores late winner
       "nomin_determ",       // Baker/Cook/King hat-trick
-      "who_shot_rr",        // Injury return brace
-      "joga_bonito",        // Brazilian scores in cup
-      "bayda",              // MF 8.5+ without scoring
+      "injections",         // (swapped from Mango)
+      "do_it_cold",         // (swapped from Lime)
+      "scouts_honour",      // (swapped from Grape)
       "old_pace",           // 30+ with 20 Pace
       "giant_killing",      // Beat Albion
       "impossible_job",     // Lose to Nomads

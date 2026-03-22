@@ -332,7 +332,7 @@ function FootballManager() {
       setUnlockedPacks(prev => { const n = new Set(prev); newPacks.forEach(id => n.add(id)); return n; });
       setPackUnlockQueue(prev => [...prev, ...newPacks]);
     }
-  }, [unlockedAchievements, seasonNumber, leagueTier, prestigeLevel]);
+  }, [unlockedAchievements, unlockedPacks, seasonNumber, leagueTier, prestigeLevel]);
   const seasonCalendar = useGameStore(s => s.seasonCalendar);
   const matchweekIndex = useGameStore(s => s.matchweekIndex);
   const calendarResults = useGameStore(s => s.calendarResults);
