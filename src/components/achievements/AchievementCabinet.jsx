@@ -76,10 +76,15 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
   ];
 
   const absNow = (seasonNumber - 1) * seasonLength + calendarIndex;
+  const getAbsWeek = (u) => {
+    if (!u) return -1;
+    if (typeof u === "number") return u; // migration: old format was bare absolute week
+    return (u.season - 1) * (u.seasonLen || seasonLength) + u.week;
+  };
   const isRecent = (id) => {
-    const u = achievementUnlockWeeks[id];
-    if (!u || typeof u === "number") return false; // migration: old format (bare number) treated as not recent
-    return absNow - ((u.season - 1) * (u.seasonLen || seasonLength) + u.week) <= 2;
+    const abs = getAbsWeek(achievementUnlockWeeks[id]);
+    if (abs < 0) return false;
+    return absNow - abs <= 4;
   };
   const recentIds = new Set(ACHIEVEMENTS.filter(a => unlocked.has(a.id) && isRecent(a.id)).map(a => a.id));
   const hasRecent = recentIds.size > 0;
@@ -223,7 +228,7 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
             cursor: t.disabled ? "not-allowed" : "pointer", fontFamily: FONT,
             opacity: t.disabled ? 0.45 : 1,
             borderRadius: 20, flex: mob ? "1 1 auto" : undefined, textAlign: "center",
-          }}>{t.label}{t.disabled ? " 🔒" : ""}{t.dot && tab !== t.id ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.gold, marginLeft: 6, verticalAlign: "middle", boxShadow: "0 0 6px rgba(250,204,21,0.6)" }} /> : null}</button>
+          }}>{t.label}{t.disabled ? " 🔒" : ""}{t.dot ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.gold, marginLeft: 6, verticalAlign: "middle", boxShadow: "0 0 6px rgba(250,204,21,0.6)" }} /> : null}</button>
         ))}
       </div>
 
@@ -402,11 +407,8 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
           {/* Achievement grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(253px, 1fr))", gap: 7 }}>
             {ACHIEVEMENTS.filter(a => !filterCat || (filterCat === "Recent" ? recentIds.has(a.id) : ACH_CATS.find(c => c.label === filterCat)?.ids.has(a.id))).sort((a, b) => {
-              if (filterCat !== "Recent") return 0; // preserve default order for non-recent filters
-              const uA = achievementUnlockWeeks[a.id]; const uB = achievementUnlockWeeks[b.id];
-              const absA = uA ? (uA.season - 1) * (uA.seasonLen || seasonLength) + uA.week : 0;
-              const absB = uB ? (uB.season - 1) * (uB.seasonLen || seasonLength) + uB.week : 0;
-              return absB - absA; // newest first
+              if (filterCat !== "Recent") return 0;
+              return getAbsWeek(achievementUnlockWeeks[b.id]) - getAbsWeek(achievementUnlockWeeks[a.id]);
             }).map((ach, achIdx) => {
               const ok = unlocked.has(ach.id);
               const isLegendary = ok && LEGENDARY_ACHIEVEMENTS.has(ach.id);
