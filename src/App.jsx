@@ -8,7 +8,7 @@ import { TIER_WIN_ACHS, ACHIEVEMENTS, LEGENDARY_ACHIEVEMENTS, PRESTIGIOUS_ACHIEV
 import { LEAGUE_DEFS, NUM_TIERS, TEAM_TRAITS, AI_BENCH_POSITIONS } from "./data/leagues.js";
 import { ARC_TICKET_POOL, ARC_CATS, ARC_CAT_LABELS, STORY_ARCS, ARC_NARRATIVES } from "./data/storyArcs.js";
 import { CIG_PACKS, STARTER_PACKS, ACH_TO_PACK } from "./data/cigPacks.js";
-import { checkPackUnlocks } from "./utils/packUnlocks.js";
+import { checkPackUnlocks, isPackComplete } from "./utils/packUnlocks.js";
 import { F, C, FONT, BTN, MODAL, CARD, Z } from "./data/tokens";
 import { TICKET_DEFS } from "./data/tickets.js";
 import { MSG } from "./data/messages.js";
@@ -333,6 +333,30 @@ function FootballManager() {
       setPackUnlockQueue(prev => [...prev, ...newPacks]);
     }
   }, [unlockedAchievements, unlockedPacks, seasonNumber, leagueTier, prestigeLevel]);
+
+  // Unlock players when their pack is fully completed (replaces per-achievement player unlock)
+  const playerUnlockedPacksRef = useRef(new Set());
+  useEffect(() => {
+    const newPlayerUnlocks = [];
+    for (const pack of CIG_PACKS) {
+      if (!unlockedPacks.has(pack.id)) continue;
+      if (playerUnlockedPacksRef.current.has(pack.id)) continue;
+      if (!isPackComplete(pack.id, unlockedAchievements)) continue;
+      // Pack just completed — check for player unlock achievement in this pack
+      const playerAch = pack.achievementIds.find(achId => PLAYER_UNLOCK_ACHIEVEMENTS.has(achId));
+      if (playerAch) {
+        const unlock = UNLOCKABLE_PLAYERS.find(u => u.achievementId === playerAch);
+        if (unlock && unlock.attrs && !squad.some(p => p.id === `unlockable_${unlock.id}`)) {
+          newPlayerUnlocks.push(unlock);
+        }
+      }
+      playerUnlockedPacksRef.current.add(pack.id);
+    }
+    if (newPlayerUnlocks.length > 0) {
+      setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat(newPlayerUnlocks) : newPlayerUnlocks);
+    }
+  }, [unlockedAchievements, unlockedPacks, squad]);
+
   const seasonCalendar = useGameStore(s => s.seasonCalendar);
   const matchweekIndex = useGameStore(s => s.matchweekIndex);
   const calendarResults = useGameStore(s => s.calendarResults);
@@ -7538,12 +7562,7 @@ function FootballManager() {
              if (newSeasonUnlocks.length > 0) {
                setUnlockedAchievements(prev => { const next = new Set(prev); newSeasonUnlocks.forEach(id => next.add(id)); return next; });
                setAchievementQueue(prev => { const ex = new Set(prev); const f = newSeasonUnlocks.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
-               const seasonUnlockPlayers = newSeasonUnlocks
-                 .map(achId => UNLOCKABLE_PLAYERS.find(u => u.achievementId === achId))
-                 .filter(u => u && u.attrs);
-               if (seasonUnlockPlayers.length > 0) {
-                 setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat(seasonUnlockPlayers) : seasonUnlockPlayers);
-               }
+               // Player unlocks now triggered by pack completion (useEffect above)
              }
              setLastSeasonMove(moveType);
              // Season-end sentiment swings
@@ -7706,12 +7725,7 @@ function FootballManager() {
             if (newUnlocks.length > 0) {
               setUnlockedAchievements(prev => { const next = new Set(prev); newUnlocks.forEach(id => next.add(id)); return next; });
               setAchievementQueue(prev => { const ex = new Set(prev); const f = newUnlocks.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
-              const unlockPlayers = newUnlocks
-                .map(achId => UNLOCKABLE_PLAYERS.find(u => u.achievementId === achId))
-                .filter(u => u && u.attrs);
-              if (unlockPlayers.length > 0) {
-                setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat(unlockPlayers) : unlockPlayers);
-              }
+              // Player unlocks now triggered by pack completion (useEffect above)
             }
            } catch(err) {
              console.error("Achievement check error:", err, err.stack);
@@ -8752,9 +8766,7 @@ function FootballManager() {
                 if (brazilianGoal) {
                   setUnlockedAchievements(prev => { const n = new Set(prev); n.add("joga_bonito"); return n; });
                   setAchievementQueue(prev => [...prev, "joga_bonito"]);
-                  // Trigger player unlock if this achievement has one
-                  const unlock = UNLOCKABLE_PLAYERS.find(u => u.achievementId === "joga_bonito");
-                  if (unlock && unlock.attrs) setPendingPlayerUnlock(prev => prev ? [].concat(prev, unlock) : unlock);
+                  // Player unlocks now triggered by pack completion (useEffect above)
                 }
               }
             }
@@ -8803,12 +8815,7 @@ function FootballManager() {
               if (cupNewUnlocks.length > 0) {
                 setUnlockedAchievements(prev => { const next = new Set(prev); cupNewUnlocks.forEach(id => next.add(id)); return next; });
                 setAchievementQueue(prev => { const ex = new Set(prev); const f = cupNewUnlocks.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
-                const cupUnlockPlayers = cupNewUnlocks
-                  .map(achId => UNLOCKABLE_PLAYERS.find(u => u.achievementId === achId))
-                  .filter(u => u && u.attrs);
-                if (cupUnlockPlayers.length > 0) {
-                  setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat(cupUnlockPlayers) : cupUnlockPlayers);
-                }
+                // Player unlocks now triggered by pack completion (useEffect above)
               }
             } catch(err) {
               console.error("Cup achievement check error:", err, err.stack);
@@ -8888,12 +8895,7 @@ function FootballManager() {
               if (newSeasonUnlocks2.length > 0) {
                 setUnlockedAchievements(prev => { const next = new Set(prev); newSeasonUnlocks2.forEach(id => next.add(id)); return next; });
                 setAchievementQueue(prev => { const ex = new Set(prev); const f = newSeasonUnlocks2.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
-                const seasonUnlockPlayers2 = newSeasonUnlocks2
-                  .map(achId => UNLOCKABLE_PLAYERS.find(u => u.achievementId === achId))
-                  .filter(u => u && u.attrs);
-                if (seasonUnlockPlayers2.length > 0) {
-                  setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat(seasonUnlockPlayers2) : seasonUnlockPlayers2);
-                }
+                // Player unlocks now triggered by pack completion (useEffect above)
               }
               setLastSeasonMove(moveType);
               // Season-end sentiment swings (cup path)
