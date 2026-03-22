@@ -8,6 +8,7 @@ import { TICKET_DEFS } from "../../data/tickets.js";
 import { getOverall, getPosColor, getAttrColor } from "../../utils/calc.js";
 import { displayName } from "../../utils/player.js";
 import { useMobile } from "../../hooks/useMobile.js";
+import { CigPacksTab } from "./CigPacksTab.jsx";
 
 const hexToRgb = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -16,17 +17,17 @@ const hexToRgb = (hex) => {
   return `${r},${g},${b}`;
 };
 
-export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, calendarIndex = 0, seasonNumber = 1, seasonLength = 48, squad, clubHistory, currentTier, ovrCap = 20,
+export function AchievementCabinet({ unlocked, unlockedPacks, achievementUnlockWeeks = {}, calendarIndex = 0, seasonNumber = 1, seasonLength = 48, squad, clubHistory, currentTier, ovrCap = 20,
   tickets, retiringPlayers, transferFocus, doubleTrainingWeek,
   twelfthManActive, youthCoupActive, pendingFreeAgent, shortlist, scoutedPlayers, testimonialPlayer,
   rewindableMatches,
   onUseTicket, onViewAchievements, hasUnseenAchievements = false, gameMode = "casual", isTainted = false }) {
   const isCasual = gameMode === "casual";
   const mob = useMobile();
-  const [tab, setTab] = useState("trophies");
+  const [tab, setTab] = useState("cigs");
   const [filterCat, setFilterCat] = useState(null);
   const handleTabChange = (newTab) => {
-    if (newTab === "achievements" && onViewAchievements) onViewAchievements();
+    if (newTab === "cigs" && onViewAchievements) onViewAchievements();
     setTab(newTab);
   };
   const [ticketPicker, setTicketPicker] = useState(null);
@@ -209,16 +210,16 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
         marginBottom: 18, padding: "9px 0",
         borderBottom: `2px solid ${C.bgInput}`,
       }}>
-        <div style={{ fontSize: mob ? F.xl : F.h2, color: C.gold, letterSpacing: 2 }}>🏅 CABINET</div>
+        <div style={{ fontSize: mob ? F.xl : F.h2, color: C.gold, letterSpacing: 2 }}>🏪 CORNER SHOP</div>
       </div>
 
       {/* Tabs */}
       <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
         {[
-          { id: "trophies", label: "TROPHY CABINET" },
-          { id: "achievements", label: `ACHIEVEMENTS (${unlocked.size}/${ACHIEVEMENTS.length})`, disabled: isCasual || isTainted, dot: hasUnseenAchievements },
-          { id: "players", label: "UNLOCKABLE PLAYERS" },
-          { id: "tickets", label: `TICKETS${tickets?.length ? ` (${new Set(tickets.filter(t => TICKET_DEFS[t.type]).map(t => t.type)).size})` : ""}` },
+          { id: "cigs", label: `CIG PACKS`, dot: hasUnseenAchievements },
+          { id: "trophies", label: "TOP SHELF" },
+          { id: "players", label: "REGULARS" },
+          { id: "tickets", label: `SCRATCH CARDS${tickets?.length ? ` (${new Set(tickets.filter(t => TICKET_DEFS[t.type]).map(t => t.type)).size})` : ""}` },
         ].map(t => (
           <button key={t.id} onClick={() => !t.disabled && handleTabChange(t.id)} style={{
             padding: mob ? "10px 13px" : "10px 18px", fontSize: mob ? F.xs : F.sm, letterSpacing: 1,
@@ -231,6 +232,17 @@ export function AchievementCabinet({ unlocked, achievementUnlockWeeks = {}, cale
           }}>{t.label}{t.disabled ? " 🔒" : ""}{t.dot ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.gold, marginLeft: 6, verticalAlign: "middle", boxShadow: "0 0 6px rgba(250,204,21,0.6)" }} /> : null}</button>
         ))}
       </div>
+
+      {tab === "cigs" && (
+        <CigPacksTab
+          unlockedPacks={unlockedPacks}
+          unlocked={unlocked}
+          achievementUnlockWeeks={achievementUnlockWeeks}
+          calendarIndex={calendarIndex}
+          seasonNumber={seasonNumber}
+          seasonLength={seasonLength}
+        />
+      )}
 
       {tab === "trophies" && (
         <div>
