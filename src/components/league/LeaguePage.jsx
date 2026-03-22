@@ -4,7 +4,7 @@ import { ACHIEVEMENTS } from "../../data/achievements.js";
 import { LEAGUE_DEFS, NUM_TIERS, TEAM_TRAITS } from "../../data/leagues.js";
 import { getModifier } from "../../data/leagueModifiers.js";
 import { getPosColor } from "../../utils/calc.js";
-import { shortName } from "../../utils/player.js";
+import { displayName } from "../../utils/player.js";
 import { AITeamPanel } from "./AITeamPanel.jsx";
 import { F, C, FONT } from "../../data/tokens";
 
@@ -413,7 +413,7 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
                       {i + 1}
                     </span>
                     <span onClick={() => onPlayerClick?.(s.name, s.teamName)} style={{ color: s.isPlayer ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: s.isPlayer ? "#4ade8044" : "#e2e8f044", textUnderlineOffset: 3 }}>
-                      {mob ? shortName(s.name) : s.name}
+                      {displayName(s.name)}
                     </span>
                     <span onClick={() => onTeamClick?.(s.teamName)} style={{ color: C.textDim, fontSize: mob ? F.xs : F.sm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#64748b44", textUnderlineOffset: 3 }}>
                       {s.teamName}
@@ -444,7 +444,7 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
                       {i + 1}
                     </span>
                     <span onClick={() => onPlayerClick?.(s.name, s.teamName)} style={{ color: s.isPlayer ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: s.isPlayer ? "#4ade8044" : "#e2e8f044", textUnderlineOffset: 3 }}>
-                      {mob ? shortName(s.name) : s.name}
+                      {displayName(s.name)}
                     </span>
                     <span onClick={() => onTeamClick?.(s.teamName)} style={{ color: C.textDim, fontSize: mob ? F.xs : F.sm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#64748b44", textUnderlineOffset: 3 }}>
                       {s.teamName}
@@ -473,7 +473,7 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
                   }}>
                     <span style={{ color: C.slate }}>{i + 1}</span>
                     <span onClick={() => onPlayerClick?.(c.name, c.teamName)} style={{ color: c.isPlayer ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: c.isPlayer ? "#4ade8044" : "#e2e8f044", textUnderlineOffset: 3 }}>
-                      {mob ? shortName(c.name) : c.name}
+                      {displayName(c.name)}
                     </span>
                     <span onClick={() => onTeamClick?.(c.teamName)} style={{ color: C.textDim, fontSize: mob ? F.xs : F.sm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#64748b44", textUnderlineOffset: 3 }}>
                       {c.teamName}
@@ -529,7 +529,7 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
                     }}>{p.position}</span>
                     <div style={{ overflow: "hidden" }}>
                       <div onClick={() => onPlayerClick?.(p.name, p.teamName)} style={{ color: p.isPlayerTeam ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>
-                        {mob ? shortName(p.name) : p.name}
+                        {displayName(p.name)}
                       </div>
                       <div onClick={() => onTeamClick?.(p.teamName)} style={{ fontSize: F.xs, color: C.slate, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>
                         {p.teamName}{p.apps ? ` · ${p.apps} app${p.apps !== 1 ? "s" : ""}` : ""}
@@ -883,7 +883,7 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
                 }}>
                   <span style={{ color: i < 3 ? C.gold : C.slate }}>{i + 1}</span>
                   <div style={{ overflow: "hidden" }}>
-                    <span onClick={() => onPlayerClick?.(p.name, p.teamName)} style={{ color: p.isPlayerTeam ? C.green : C.text, cursor: "pointer" }}>{p.name}</span>
+                    <span onClick={() => onPlayerClick?.(p.name, p.teamName)} style={{ color: p.isPlayerTeam ? C.green : C.text, cursor: "pointer" }}>{displayName(p.name)}</span>
                   </div>
                   <span onClick={() => onTeamClick?.(p.teamName)} style={{ color: C.textDim, fontSize: mob ? F.micro : F.xs, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>
                     {p.teamName}

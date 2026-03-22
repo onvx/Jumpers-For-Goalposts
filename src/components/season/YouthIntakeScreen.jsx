@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ATTRIBUTES } from "../../data/training.js";
 import { getAttrColor, getPosColor } from "../../utils/calc.js";
-import { getNatFlag, shortName } from "../../utils/player.js";
+import { getNatFlag, displayName } from "../../utils/player.js";
 import { F, C, FONT, Z } from "../../data/tokens";
 
 const ARCHETYPE_BADGE = {
@@ -64,7 +64,7 @@ export function YouthIntakeScreen({ intake, onDone, squadSize, onClose, isMobile
             background: "rgba(239,68,68,0.08)", border: "1px solid #ef444433",
             padding: "14px 21px", marginBottom: 23, fontSize: F.xs, color: "#fca5a5", lineHeight: 1.8,
           }}>
-            👋 Retired: {intake.retirees.map(r => `${mob ? shortName(r.name) : r.name} (${r.position}, ${r.age})`).join(", ")}
+            👋 Retired: {intake.retirees.map(r => `${displayName(r.name)} (${r.position}, ${r.age})`).join(", ")}
           </div>
         )}
 
@@ -113,7 +113,7 @@ export function YouthIntakeScreen({ intake, onDone, squadSize, onClose, isMobile
                     display: "flex", alignItems: "center", gap: 6, minWidth: 0,
                   }}>
                     <span style={{ fontSize: mob ? F.md : F.lg, lineHeight: 1, flexShrink: 0 }}>{getNatFlag(player.nationality)}</span>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mob ? shortName(player.name) : player.name}</span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName(player.name)}</span>
                     {ARCHETYPE_BADGE[player.youthArchetype] && !mob && (
                       <span style={{
                         fontSize: F.micro, color: ARCHETYPE_BADGE[player.youthArchetype].color,

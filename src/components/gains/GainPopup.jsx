@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ATTRIBUTES } from "../../data/training.js";
 import { getPosColor, progressToPips } from "../../utils/calc.js";
-import { shortName } from "../../utils/player.js";
+import { displayName } from "../../utils/player.js";
 import { SFX } from "../../utils/sfx.js";
 import { AnimatedPips } from "../ui/AnimatedPips.jsx";
 import { LevelUpPips } from "../ui/LevelUpPips.jsx";
@@ -16,7 +16,7 @@ export function GainPopup({ gains, onDone, onPlayerClick, onAchievementCheck, on
   const [revealedCount, setRevealedCount] = useState(0);
   const [pickedTickets, setPickedTickets] = useState({});
   const mob = window.innerWidth <= 768;
-  const dn = (name) => mob ? shortName(name) : name; // display name — abbreviated on mobile
+  const dn = displayName; // abbreviated on mobile, full on desktop
   const isQuick = cardSpeed === "quick";
   const isSummary = cardSpeed === "summary";
   const doneRef = useRef(false);
@@ -168,7 +168,7 @@ export function GainPopup({ gains, onDone, onPlayerClick, onAchievementCheck, on
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "#fca5a5", fontSize: F.lg, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(252,165,165,0.3)", textUnderlineOffset: 3, display: "inline-flex", alignItems: "center", gap: 6 }}
               onClick={() => onPlayerClick && onPlayerClick(inj.playerName)}
-            >🏥 {inj.playerPosition && <span style={{ background: getPosColor(inj.playerPosition), color: C.bg, padding: "1px 5px", fontSize: F.xs, fontWeight: "bold", textDecoration: "none" }}>{inj.playerPosition}</span>}{inj.playerName}</span>
+            >🏥 {inj.playerPosition && <span style={{ background: getPosColor(inj.playerPosition), color: C.bg, padding: "1px 5px", fontSize: F.xs, fontWeight: "bold", textDecoration: "none" }}>{inj.playerPosition}</span>}{dn(inj.playerName)}</span>
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: C.red, fontSize: F.sm }}>{inj.injury}</span>
               <span style={{ color: C.lightRed, fontSize: F.md, fontWeight: "bold" }}>{inj.weeksOut}w</span>
@@ -240,7 +240,7 @@ export function GainPopup({ gains, onDone, onPlayerClick, onAchievementCheck, on
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: nearlyThere ? "#7dd3fc" : C.textMuted, fontSize: F.md, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(148,163,184,0.2)", textUnderlineOffset: 3, display: "inline-flex", alignItems: "center", gap: 5 }}
               onClick={() => onPlayerClick && onPlayerClick(p.playerName)}
-            >⬆ {p.playerPosition && <span style={{ background: getPosColor(p.playerPosition), color: C.bg, padding: "1px 5px", fontSize: F.micro, fontWeight: "bold", textDecoration: "none" }}>{p.playerPosition}</span>}{p.playerName}</span>
+            >⬆ {p.playerPosition && <span style={{ background: getPosColor(p.playerPosition), color: C.bg, padding: "1px 5px", fontSize: F.micro, fontWeight: "bold", textDecoration: "none" }}>{p.playerPosition}</span>}{dn(p.playerName)}</span>
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: attr?.color || "#fff", fontSize: F.sm }}>{attr?.label} {p.statVal}</span>
               <AnimatedPips oldPips={p.oldPips} newPips={filledPips} nearlyThere={nearlyThere} pipCrossed={p.pipCrossed} />
@@ -307,7 +307,7 @@ export function GainPopup({ gains, onDone, onPlayerClick, onAchievementCheck, on
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ color: "#ccfbf1", fontSize: F.lg, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(204,251,241,0.3)", textUnderlineOffset: 3, display: "inline-flex", alignItems: "center", gap: 6 }}
                 onClick={() => onPlayerClick && onPlayerClick(g.playerName)}
-              >{g.playerPosition && <span style={{ background: getPosColor(g.playerPosition), color: C.bg, padding: "1px 7px", fontSize: F.xs, fontWeight: "bold", textDecoration: "none" }}>{g.playerPosition}</span>}{g.playerName}</span>
+              >{g.playerPosition && <span style={{ background: getPosColor(g.playerPosition), color: C.bg, padding: "1px 7px", fontSize: F.xs, fontWeight: "bold", textDecoration: "none" }}>{g.playerPosition}</span>}{dn(g.playerName)}</span>
               <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ color: attr?.color || "#fff", fontSize: F.md, textShadow: `0 0 8px ${attr?.color || "#fff"}55` }}>{attr?.label}</span>
                 <span style={{ position: "relative", display: "inline-flex", alignItems: "flex-start" }}>
@@ -369,7 +369,7 @@ export function GainPopup({ gains, onDone, onPlayerClick, onAchievementCheck, on
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
             <span style={{ color: C.text, fontSize: F.lg, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(226,232,240,0.2)", textUnderlineOffset: 3, display: "inline-flex", alignItems: "center", gap: 6 }}
               onClick={() => onPlayerClick && onPlayerClick(tb.playerName)}
-            >{tb.playerPosition && <span style={{ background: getPosColor(tb.playerPosition), color: C.bg, padding: "1px 7px", fontSize: F.xs, fontWeight: "bold", textDecoration: "none" }}>{tb.playerPosition}</span>}{tb.playerName}</span>
+            >{tb.playerPosition && <span style={{ background: getPosColor(tb.playerPosition), color: C.bg, padding: "1px 7px", fontSize: F.xs, fontWeight: "bold", textDecoration: "none" }}>{tb.playerPosition}</span>}{dn(tb.playerName)}</span>
             <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ color: attr?.color || "#fff", fontSize: F.md, textShadow: `0 0 8px ${attr?.color || "#fff"}55` }}>{attr?.label}</span>
               <span style={{ position: "relative", display: "inline-flex", alignItems: "flex-start" }}>
@@ -404,7 +404,7 @@ export function GainPopup({ gains, onDone, onPlayerClick, onAchievementCheck, on
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
             <span style={{ color: C.text, fontSize: F.lg, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(226,232,240,0.2)", textUnderlineOffset: 3, display: "inline-flex", alignItems: "center", gap: 6 }}
               onClick={() => onPlayerClick && onPlayerClick(tb.playerName)}
-            >{tb.playerPosition && <span style={{ background: getPosColor(tb.playerPosition), color: C.bg, padding: "1px 7px", fontSize: F.xs, fontWeight: "bold", textDecoration: "none" }}>{tb.playerPosition}</span>}{tb.playerName}</span>
+            >{tb.playerPosition && <span style={{ background: getPosColor(tb.playerPosition), color: C.bg, padding: "1px 7px", fontSize: F.xs, fontWeight: "bold", textDecoration: "none" }}>{tb.playerPosition}</span>}{dn(tb.playerName)}</span>
             <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ color: attr?.color || "#fff", fontSize: F.md, textShadow: `0 0 8px ${attr?.color || "#fff"}55` }}>{attr?.label}</span>
               <span style={{ position: "relative", display: "inline-flex", alignItems: "flex-start" }}>
@@ -496,7 +496,7 @@ export function GainPopup({ gains, onDone, onPlayerClick, onAchievementCheck, on
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
           <span style={{ color: C.text, fontSize: F.lg, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(226,232,240,0.2)", textUnderlineOffset: 3, display: "inline-flex", alignItems: "center", gap: 6 }}
             onClick={() => onPlayerClick && onPlayerClick(g.playerName)}
-          >{g.playerPosition && <span style={{ background: getPosColor(g.playerPosition), color: C.bg, padding: "1px 7px", fontSize: F.xs, fontWeight: "bold", textDecoration: "none" }}>{g.playerPosition}</span>}{g.playerName}</span>
+          >{g.playerPosition && <span style={{ background: getPosColor(g.playerPosition), color: C.bg, padding: "1px 7px", fontSize: F.xs, fontWeight: "bold", textDecoration: "none" }}>{g.playerPosition}</span>}{dn(g.playerName)}</span>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <LevelUpPips oldPips={g.oldPips} accentColor={C.green} />
             <span style={{ color: attr?.color || "#fff", fontSize: F.md, textShadow: `0 0 8px ${attr?.color || "#fff"}55` }}>{attr?.label}</span>

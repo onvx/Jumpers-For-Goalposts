@@ -1,6 +1,7 @@
 import React from "react";
 import { F, C, FONT } from "../../data/tokens";
 import { getOverall, getAttrColor, getPosColor } from "../../utils/calc.js";
+import { displayName } from "../../utils/player.js";
 import { getPlayerValue, getTotalValue } from "../../utils/transfer.js";
 import { ClubBadge } from "../ui/ClubBadge.jsx";
 
@@ -16,7 +17,7 @@ function OfferPlayerChip({ player, mob, onClick, ovrCap = 20 }) {
         background: getPosColor(player.position), color: C.bg,
         padding: "1px 3px", fontSize: F.micro, fontWeight: "bold",
       }}>{player.position}</span>
-      <span onClick={onClick} style={{ color: C.text, cursor: onClick ? "pointer" : undefined }}>{player.name}</span>
+      <span onClick={onClick} style={{ color: C.text, cursor: onClick ? "pointer" : undefined }}>{displayName(player.name)}</span>
       <span style={{ color: getAttrColor(ovr, ovrCap), fontWeight: "bold" }}>{ovr}</span>
     </span>
   );

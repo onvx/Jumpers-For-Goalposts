@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ARC_CATS, ARC_CAT_LABELS } from "../../data/storyArcs.js";
 import { getOverall, getPosColor } from "../../utils/calc.js";
 import { getArcById, getArcsForCat, getValidTargets } from "../../utils/arcs.js";
-import { shortName } from "../../utils/player.js";
+import { displayName } from "../../utils/player.js";
 import { F, C, FONT } from "../../data/tokens";
 
 export function StoryArcsPanel({ storyArcs, setStoryArcs, squad, setSquad, prodigalSon, league, leagueTier, onAchievementCheck, week, seasonNumber }) {
@@ -244,7 +244,7 @@ export function StoryArcsPanel({ storyArcs, setStoryArcs, squad, setSquad, prodi
         <div style={{ fontSize:mob?F.xs:F.sm, color:C.textDim, marginBottom:5 }}>{arc.desc}</div>
         {targetPlayer && (
           <div style={{ fontSize:mob?F.xs:F.sm, color:C.textMuted, marginBottom:5 }}>
-            🎯 {mob ? shortName(targetPlayer.name) : targetPlayer.name} ({targetPlayer.position}) · OVR {getOverall(targetPlayer)}
+            🎯 {displayName(targetPlayer.name)} ({targetPlayer.position}) · OVR {getOverall(targetPlayer)}
             {catState.tracking?.apps != null && ` · ${catState.tracking.apps} apps`}
           </div>
         )}
@@ -276,7 +276,7 @@ export function StoryArcsPanel({ storyArcs, setStoryArcs, squad, setSquad, prodi
               fontFamily:FONT,
             }}>
               <span style={{ background:getPosColor(p.position), color:C.bg, padding:"2px 8px", fontSize:F.xs, fontWeight:"bold", marginRight:7 }}>{p.position}</span>
-              <span style={{ color:C.text, fontSize:mob?F.xs:F.sm }}>{mob ? shortName(p.name) : p.name}</span>
+              <span style={{ color:C.text, fontSize:mob?F.xs:F.sm }}>{displayName(p.name)}</span>
               <span style={{ color:C.textDim, fontSize:mob?F.xs:F.sm, marginLeft:9 }}>OVR {getOverall(p)} · Age {p.age}</span>
             </button>
           ))}

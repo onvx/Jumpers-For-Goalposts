@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { F, C, FONT, Z } from "../../data/tokens";
 import { getOverall, getPosColor } from "../../utils/calc.js";
+import { displayName } from "../../utils/player.js";
 
 export function LegendSelectionScreen({ squad, maxPicks = 5, legendCap, newPrestigeLevel, onDone }) {
   const [selected, setSelected] = useState(new Set());
@@ -106,7 +107,7 @@ export function LegendSelectionScreen({ squad, maxPicks = 5, legendCap, newPrest
               }}>
                 <span style={{ color: "rgba(251,191,36,0.4)", fontSize: 8 }}>{"★"}</span>
                 <span style={{ color: getPosColor(p.position), fontSize: F.xs }}>{p.position}</span>
-                <span>{p.name}</span>
+                <span>{displayName(p.name)}</span>
                 <span style={{ color: C.textDim, fontSize: F.xs }}>OVR {getOverall(p)}</span>
               </div>
             ))}
@@ -327,7 +328,7 @@ export function LegendSelectionScreen({ squad, maxPicks = 5, legendCap, newPrest
                     color: isSelected ? C.amber : C.text,
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     transition: "color 0.2s ease",
-                  }}>{p.name}</span>
+                  }}>{displayName(p.name)}</span>
 
                   {/* Age */}
                   <span style={{

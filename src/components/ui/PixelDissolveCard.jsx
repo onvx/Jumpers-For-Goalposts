@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { F, C, Z } from "../../data/tokens";
 import { ATTRIBUTES } from "../../data/training.js";
 import { getPosColor } from "../../utils/calc.js";
+import { displayName } from "../../utils/player.js";
 import { SFX } from "../../utils/sfx.js";
 
 export function PixelDissolveCard({ gain, onRevealed, index, isNext, onPlayerClick }) {
@@ -64,7 +65,7 @@ export function PixelDissolveCard({ gain, onRevealed, index, isNext, onPlayerCli
       }}>
         <span style={{ color: C.text, fontSize: mob ? F.xs : F.sm, cursor: revealed ? "pointer" : "default", textDecoration: revealed ? "underline" : "none", textDecorationColor: "rgba(226,232,240,0.2)", textUnderlineOffset: 3, display: "inline-flex", alignItems: "center", gap: mob ? 4 : 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, maxWidth: "50%" }}
           onClick={(e) => { if (revealed && onPlayerClick) { e.stopPropagation(); onPlayerClick(gain.playerName); } }}
-        >{gain.playerPosition && <span style={{ background: getPosColor(gain.playerPosition), color: C.bg, padding: "1px 4px", fontSize: F.micro, fontWeight: "bold", textDecoration: "none" }}>{gain.playerPosition}</span>}{gain.playerName}</span>
+        >{gain.playerPosition && <span style={{ background: getPosColor(gain.playerPosition), color: C.bg, padding: "1px 4px", fontSize: F.micro, fontWeight: "bold", textDecoration: "none" }}>{gain.playerPosition}</span>}{displayName(gain.playerName)}</span>
         <span style={{ display: "flex", alignItems: "center", gap: mob ? 6 : 10, flexShrink: 0 }}>
           <span style={{
             color: attr?.color || "#fff", fontSize: mob ? F.micro : F.xs,

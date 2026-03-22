@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { F, C, FONT, Z } from "../../data/tokens";
 import { getOverall, getAttrColor } from "../../utils/calc.js";
+import { displayName } from "../../utils/player.js";
 import { TEAM_TRAITS } from "../../data/leagues.js";
 import { ClubBadge } from "../ui/ClubBadge.jsx";
 import { PositionChip } from "../ui/PositionChip.jsx";
@@ -57,7 +58,7 @@ function PlayerRow({ player, matchGoals, seasonGoals, seasonAssists, onPlayerCli
       <span style={{
         flex: 1, fontSize: F.sm, color: C.text,
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-      }}>{player.name}</span>
+      }}>{displayName(player.name)}</span>
       {mg > 0 && (
         <span style={{ fontSize: F.xs, color: C.amber, flexShrink: 0 }}>
           ⚽{mg > 1 ? mg : ""}

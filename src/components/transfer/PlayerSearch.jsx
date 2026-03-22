@@ -4,7 +4,7 @@ import { ATTRIBUTES } from "../../data/training.js";
 import { LEAGUE_DEFS } from "../../data/leagues.js";
 import { POSITION_TYPES } from "../../data/positions.js";
 import { getOverall, getAttrColor } from "../../utils/calc.js";
-import { getNatFlag, getNatLabel } from "../../utils/player.js";
+import { getNatFlag, getNatLabel, displayName } from "../../utils/player.js";
 import { ClubBadge } from "../ui/ClubBadge.jsx";
 import { PositionChip } from "../ui/PositionChip.jsx";
 
@@ -450,7 +450,7 @@ export function PlayerSearch({
               color: p.isOwnPlayer ? C.green : C.text,
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
-              {p.name}
+              {displayName(p.name)}
             </span>
 
             {/* Nationality flag */}
