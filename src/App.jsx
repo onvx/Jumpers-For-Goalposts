@@ -7418,6 +7418,9 @@ function FootballManager() {
           onRemoveFocus={handleFocusRemove}
           onReplaceFocus={handleFocusReplace}
           ovrCap={ovrCap}
+          formation={formation}
+          slotAssignments={slotAssignments}
+          startingXI={startingXI}
           onDone={(wasAlwaysFast, wasAlwaysNormal) => {
            try {
            // Flush deferred league table update
@@ -8298,6 +8301,9 @@ function FootballManager() {
           onRemoveFocus={handleFocusRemove}
           onReplaceFocus={handleFocusReplace}
           ovrCap={ovrCap}
+          formation={formation}
+          slotAssignments={slotAssignments}
+          startingXI={startingXI}
           onDone={(cupWasAlwaysFast, cupWasAlwaysNormal) => {
             // === DYNASTY CUP MATCH RESULT ===
             if (cupMatchResult.isDynasty) {
