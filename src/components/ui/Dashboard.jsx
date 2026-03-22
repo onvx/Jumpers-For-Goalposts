@@ -3,6 +3,7 @@ import { F, C, FONT, Z, MODAL } from "../../data/tokens";
 import { POS_COLORS } from "../../data/positions.js";
 import { LEAGUE_DEFS, NUM_TIERS } from "../../data/leagues.js";
 import { getEffectiveSlots, detectFormationName } from "../../utils/formation.js";
+import { shortName } from "../../utils/player.js";
 import { getVisibleMessages, getUnreadCount } from "../../utils/messageUtils.js";
 
 export function Dashboard({
@@ -675,19 +676,19 @@ export function Dashboard({
           <div style={{ marginBottom: 16 }}>
             {topScorer ? (
               <div style={{ fontSize: F.xs, color: C.textMuted, lineHeight: 2.2, borderBottom: `1px dotted ${RULE_LIGHT}`, padding: "3px 0" }}>
-                <span onClick={() => onPlayerClick?.(topScorer.name)} style={{ color: C.green, cursor: "pointer" }}>{topScorer.name}</span>{" \u2014 "}{topScorer.goals} goal{topScorer.goals !== 1 ? "s" : ""} in {topScorer.apps} app{topScorer.apps !== 1 ? "s" : ""}
+                <span onClick={() => onPlayerClick?.(topScorer.name)} style={{ color: C.green, cursor: "pointer" }}>{mob ? shortName(topScorer.name) : topScorer.name}</span>{" \u2014 "}{topScorer.goals} goal{topScorer.goals !== 1 ? "s" : ""} in {topScorer.apps} app{topScorer.apps !== 1 ? "s" : ""}
               </div>
             ) : null}
             {bestRated ? (
               <div style={{ fontSize: F.xs, color: C.textMuted, lineHeight: 2.2, borderBottom: `1px dotted ${RULE_LIGHT}`, padding: "3px 0" }}>
-                <span onClick={() => onPlayerClick?.(bestRated.name)} style={{ color: C.amber, cursor: "pointer" }}>{bestRated.name}</span>{" \u2014 "}avg {bestRated.avg.toFixed(1)}
+                <span onClick={() => onPlayerClick?.(bestRated.name)} style={{ color: C.amber, cursor: "pointer" }}>{mob ? shortName(bestRated.name) : bestRated.name}</span>{" \u2014 "}avg {bestRated.avg.toFixed(1)}
               </div>
             ) : null}
             {injuredCount > 0 ? (
               <div style={{ fontSize: F.xs, color: C.red, padding: "3px 0" }}>
                 {injuredPlayers.map((p, i) => (
                   <div key={i} style={{ lineHeight: 2.2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span onClick={() => onPlayerClick?.(p.name)} style={{ cursor: "pointer" }}>🏥 {p.name}</span>
+                    <span onClick={() => onPlayerClick?.(p.name)} style={{ cursor: "pointer" }}>🏥 {mob ? shortName(p.name) : p.name}</span>
                     <span style={{ color: C.textMuted }}>{p.injuryName} ({p.weeksLeft}w)</span>
                   </div>
                 ))}
@@ -711,7 +712,7 @@ export function Dashboard({
                     borderBottom: i < goldenBoot.length - 1 ? `1px dotted ${RULE_LIGHT}` : "none",
                     padding: "2px 0",
                   }}>
-                    <span onClick={() => onPlayerClick?.(s.name)} style={{ cursor: "pointer" }}>{i + 1}. {s.name}</span>
+                    <span onClick={() => onPlayerClick?.(s.name)} style={{ cursor: "pointer" }}>{i + 1}. {mob ? shortName(s.name) : s.name}</span>
                     <span style={{ color: C.text }}>{s.goals}</span>
                   </div>
                 ))}
