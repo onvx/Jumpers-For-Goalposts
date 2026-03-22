@@ -27,7 +27,7 @@ export function AchievementCabinet({ unlocked, unlockedPacks, achievementUnlockW
   const [tab, setTab] = useState("cigs");
   const [filterCat, setFilterCat] = useState(null);
   const handleTabChange = (newTab) => {
-    if (newTab === "achievements" && onViewAchievements) onViewAchievements();
+    if (newTab === "cigs" && onViewAchievements) onViewAchievements();
     setTab(newTab);
   };
   const [ticketPicker, setTicketPicker] = useState(null);

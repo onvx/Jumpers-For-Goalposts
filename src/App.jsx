@@ -281,6 +281,14 @@ function FootballManager() {
     CIG_PACKS.forEach(pack => { if (unlockedPacks.has(pack.id)) pack.achievementIds.forEach(id => ids.add(id)); });
     return ids;
   }, [unlockedPacks]);
+  const achievableIdsRef = useRef(achievableIds);
+  achievableIdsRef.current = achievableIds;
+  // Helper: only unlock an achievement if its pack is unlocked
+  const tryUnlockAchievement = useCallback((id) => {
+    if (!achievableIdsRef.current.has(id)) return;
+    setUnlockedAchievements(prev => { if (prev.has(id)) return prev; const n = new Set(prev); n.add(id); return n; });
+    setAchievementQueue(prev => prev.includes(id) ? prev : [...prev, id]);
+  }, []);
   const [achievementQueue, setAchievementQueue] = useState([]);
   const [packUnlockQueue, setPackUnlockQueue] = useState([]);
   const achievementToastKeyRef = useRef(0);
@@ -565,8 +573,7 @@ function FootballManager() {
   // Impatient — both speed settings maxed
   useEffect(() => {
     if (trainingCardSpeed === "summary" && matchDetail === "highlights" && !unlockedAchievements.has("impatient")) {
-      setUnlockedAchievements(prev => { const n = new Set(prev); n.add("impatient"); return n; });
-      setAchievementQueue(prev => [...prev, "impatient"]);
+      tryUnlockAchievement("impatient");
     }
   }, [trainingCardSpeed, matchDetail]);
 
@@ -1796,8 +1803,7 @@ function FootballManager() {
         });
       } else if (choice === "decline" && msg.trialPlayerData) {
         if (!unlockedAchievements.has("opportunity_cost")) {
-          setUnlockedAchievements(prev => { const n = new Set(prev); n.add("opportunity_cost"); return n; });
-          setAchievementQueue(prev => [...prev, "opportunity_cost"]);
+          tryUnlockAchievement("opportunity_cost");
         }
         const rivals = useGameStore.getState().league?.teams?.filter(t => !t.isPlayer) || [];
         const rival = rivals[rand(0, rivals.length - 1)];
@@ -2070,8 +2076,7 @@ function FootballManager() {
             next.completed = result.completed;
             next[cat] = {...next[cat], completed: true};
             if (result.achievements.length > 0) {
-              setUnlockedAchievements(prev => { const n = new Set(prev); result.achievements.forEach(a => n.add(a)); return n; });
-              setAchievementQueue(prev => { const ex = new Set(prev); const f = result.achievements.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+              result.achievements.forEach(a => tryUnlockAchievement(a));
             }
             setInboxMessages(pm => [...pm, createInboxMessage(
               MSG.arcComplete(arc.name, arc.rewardDesc),
@@ -2102,8 +2107,7 @@ function FootballManager() {
     if (!unlockedAchievements.has("left_on_read")) {
       const unreadCount = getUnreadCount(inboxMessages, calendarIndex);
       if (unreadCount >= 10) {
-        setUnlockedAchievements(prev => { const n = new Set(prev); n.add("left_on_read"); return n; });
-        setAchievementQueue(prev => [...prev, "left_on_read"]);
+        tryUnlockAchievement("left_on_read");
       }
     }
 
@@ -2198,8 +2202,7 @@ function FootballManager() {
               });
               // Xenomorph — Alien player learns a new position
               if (p.nationality === "ALN" && !unlockedAchievements.has("xenomorph")) {
-                setUnlockedAchievements(prev => { const n = new Set(prev); n.add("xenomorph"); return n; });
-                setAchievementQueue(prev => [...prev, "xenomorph"]);
+                tryUnlockAchievement("xenomorph");
               }
             }
             newPlayer.positionTraining = null;
@@ -2256,8 +2259,7 @@ function FootballManager() {
               // Track distinct injury types on player (career-wide, for The Sick Note)
               newPlayer.injuryHistory = { ...(newPlayer.injuryHistory || {}), [inj.name]: true };
               if (Object.keys(newPlayer.injuryHistory).length >= 3 && !unlockedAchievements.has("the_sick_note")) {
-                setUnlockedAchievements(prev => { const n = new Set(prev); n.add("the_sick_note"); return n; });
-                setAchievementQueue(prev => [...prev, "the_sick_note"]);
+                tryUnlockAchievement("the_sick_note");
               }
               const injEntry = { playerName: p.name, playerPosition: p.position, injury: inj.name, weeksOut: inj.weeksOut };
               // Tier 11: Concrete Schoolyard — injury may cost -1 to a non-trained ATTR
@@ -2278,8 +2280,7 @@ function FootballManager() {
                 next[p.name][inj.name] = (next[p.name][inj.name] || 0) + 1;
                 // Check Just A Niggle: same injury type 3+ times
                 if (next[p.name][inj.name] >= 3 && !unlockedAchievements.has("just_a_niggle")) {
-                  setUnlockedAchievements(prev2 => { const n = new Set(prev2); n.add("just_a_niggle"); return n; });
-                  setAchievementQueue(prev2 => [...prev2, "just_a_niggle"]);
+                  tryUnlockAchievement("just_a_niggle");
                 }
                 return next;
               });
@@ -2577,8 +2578,7 @@ function FootballManager() {
     }
 
     if (juicedThisWeek && !unlockedAchievements.has("juiced")) {
-      setUnlockedAchievements(prev => { const n = new Set(prev); n.add("juiced"); return n; });
-      setAchievementQueue(prev => [...prev, "juiced"]);
+      tryUnlockAchievement("juiced");
     }
 
     // === SENTIMENT WEEKLY DRIFT ===
@@ -2729,10 +2729,7 @@ function FootballManager() {
               { calendarIndex, seasonNumber },
             )]);
           } else if (trialAction.type === "no_starts") {
-            if (!unlockedAchievements.has("reality_check")) {
-              setUnlockedAchievements(prev => { const n = new Set(prev); n.add("reality_check"); return n; });
-              setAchievementQueue(prev => [...prev, "reality_check"]);
-            }
+            tryUnlockAchievement("reality_check");
             setSquad(prev => prev.filter(p => p.id !== trialAction.id));
             setStartingXI(prev => prev.filter(id => id !== trialAction.id));
             setBench(prev => prev.filter(id => id !== trialAction.id));
@@ -3174,8 +3171,7 @@ function FootballManager() {
 
     // Sweat Equity — 4+ gains in a double training week
     if (wasDoubleTraining && weekGains.length >= 4 && !unlockedAchievements.has("sweat_equity")) {
-      setUnlockedAchievements(prev => { const n = new Set(prev); n.add("sweat_equity"); return n; });
-      setAchievementQueue(prev => [...prev, "sweat_equity"]);
+      tryUnlockAchievement("sweat_equity");
     }
     if (!useGameStore.getState().isOnHoliday) {
       setTimeout(() => setWeekTransition(false), 1500);
@@ -3203,8 +3199,7 @@ function FootballManager() {
 
     // Ice Bath — player recovers from injury while 'Ice Bath' is playing
     if (weekRecoveries.length > 0 && !unlockedAchievements.has("ice_bath_track") && BGM.getCurrentTrackId() === "ice_bath") {
-      setUnlockedAchievements(prev => { const n = new Set(prev); n.add("ice_bath_track"); return n; });
-      setAchievementQueue(prev => [...prev, "ice_bath_track"]);
+      tryUnlockAchievement("ice_bath_track");
     }
 
     // Relationship tick — passive/focus/decay per week (disabled in Saudi Super League)
@@ -3400,8 +3395,7 @@ function FootballManager() {
         return n;
       });
       if (achievementsToUnlock.length > 0) {
-        setUnlockedAchievements(prev => { const n = new Set(prev); achievementsToUnlock.forEach(a => n.add(a)); return n; });
-        setAchievementQueue(prev => { const ex = new Set(prev); const f = achievementsToUnlock.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+        achievementsToUnlock.forEach(a => tryUnlockAchievement(a));
       }
     }
 
@@ -3742,12 +3736,7 @@ function FootballManager() {
                       if (loaded) {
                         // Achievement: Save Scummer — load a save (delayed check after state is restored)
                         setTimeout(() => {
-                          setUnlockedAchievements(prev => {
-                            if (prev.has("save_scummer")) return prev;
-                            const n = new Set(prev); n.add("save_scummer");
-                            setAchievementQueue(q => [...q, "save_scummer"]);
-                            return n;
-                          });
+                          tryUnlockAchievement("save_scummer");
                         }, 500);
                       } else {
                         setSaveSlotSummaries(prev => { const n = [...prev]; n[slot - 1] = null; return n; });
@@ -4572,10 +4561,7 @@ function FootballManager() {
             setIsOnHoliday(true);
             setInstantMatch(true); // Auto-enable instant match for fast simulation
             // Achievement: Hands Off — first holiday
-            if (!unlockedAchievements.has("hands_off")) {
-              setUnlockedAchievements(prev => { const n = new Set(prev); n.add("hands_off"); return n; });
-              setAchievementQueue(prev => [...prev, "hands_off"]);
-            }
+            tryUnlockAchievement("hands_off");
 
             // Use interval to check state and advance (using refs for fresh values)
             holidayIntervalRef.current = setInterval(() => {
@@ -5260,8 +5246,7 @@ function FootballManager() {
             setReadsThisWeek(prev => {
               const newCount = prev + 1;
               if (newCount >= 5 && !unlockedAchievements.has("paper_round")) {
-                setUnlockedAchievements(p => { const n = new Set(p); n.add("paper_round"); return n; });
-                setAchievementQueue(p => [...p, "paper_round"]);
+                tryUnlockAchievement("paper_round");
               }
               return newCount;
             });
@@ -5289,10 +5274,7 @@ function FootballManager() {
           gameMode={gameMode}
           activeProfileName={profileList.find(p => p.id === activeProfileId)?.name || null}
           onAchievementCheck={(achId) => {
-            if (!unlockedAchievements.has(achId)) {
-              setUnlockedAchievements(prev => { const n = new Set(prev); n.add(achId); return n; });
-              setAchievementQueue(prev => [...prev, achId]);
-            }
+            tryUnlockAchievement(achId);
           }}
         />
       ) : showCup ? (
@@ -5331,8 +5313,7 @@ function FootballManager() {
             if (clubName) setTradedWithClubs(prev => new Set([...prev, clubName]));
             // Deadline Day — trade in final week of transfer window
             if (transferWindowWeeksRemaining <= 1 && transferWindowOpen && !unlockedAchievements.has("deadline_day")) {
-              setUnlockedAchievements(prev => { const n = new Set(prev); n.add("deadline_day"); return n; });
-              setAchievementQueue(prev => [...prev, "deadline_day"]);
+              tryUnlockAchievement("deadline_day");
             }
             // Old Boys Network — traded with every club at 75%+ relationship
             if (!unlockedAchievements.has("old_boys_network") && clubRelationships) {
@@ -5340,8 +5321,7 @@ function FootballManager() {
               if (highRelClubs.length > 0) {
                 const updatedTraded = new Set([...tradedWithClubs, clubName]);
                 if (highRelClubs.every(name => updatedTraded.has(name))) {
-                  setUnlockedAchievements(prev => { const n = new Set(prev); n.add("old_boys_network"); return n; });
-                  setAchievementQueue(prev => [...prev, "old_boys_network"]);
+                  tryUnlockAchievement("old_boys_network");
                 }
               }
             }
@@ -5632,8 +5612,7 @@ function FootballManager() {
                         setTransferOffers([]);
                         // Achievement: Window Shopping — window closes without any trades
                         if (!unlockedAchievements.has("window_shopping") && tradesMadeInWindow === 0) {
-                          setUnlockedAchievements(prev => { const n = new Set(prev); n.add("window_shopping"); return n; });
-                          setAchievementQueue(prev => [...prev, "window_shopping"]);
+                          tryUnlockAchievement("window_shopping");
                         }
                         setTradesMadeInWindow(0); // Reset for next window
                       }
@@ -6883,16 +6862,7 @@ function FootballManager() {
             if (!unlockedAchievements.has("stat_15") && val && val >= 15) newUnlocks.push("stat_15");
             if (!unlockedAchievements.has("stat_20") && val && val >= 20) newUnlocks.push("stat_20");
             if (newUnlocks.length > 0) {
-              setUnlockedAchievements(prev => {
-                const next = new Set(prev);
-                newUnlocks.forEach(id => next.add(id));
-                return next;
-              });
-              setAchievementQueue(prev => {
-                const existing = new Set(prev);
-                const fresh = newUnlocks.filter(id => !existing.has(id));
-                return fresh.length > 0 ? [...prev, ...fresh] : prev;
-              });
+              newUnlocks.forEach(id => tryUnlockAchievement(id));
             }
           }}
           onDone={() => {
@@ -6925,30 +6895,25 @@ function FootballManager() {
                 setRecentOvrLevelUps(levelUps);
                 // Level Up achievement
                 if (!unlockedAchievements.has("level_up")) {
-                  setUnlockedAchievements(prev => { const n = new Set(prev); n.add("level_up"); return n; });
-                  setAchievementQueue(prev => [...prev, "level_up"]);
+                  tryUnlockAchievement("level_up");
                 }
                 // Through The Roof — a player gains +2 OVR in a single week
                 if (!unlockedAchievements.has("through_the_roof") && levelUps.some(l => l.newOvr - l.oldOvr >= 2)) {
-                  setUnlockedAchievements(prev => { const n = new Set(prev); n.add("through_the_roof"); return n; });
-                  setAchievementQueue(prev => [...prev, "through_the_roof"]);
+                  tryUnlockAchievement("through_the_roof");
                 }
                 // 1-Up Addict — 5+ OVR increases in a single week
                 if (levelUps.length >= 5 && !unlockedAchievements.has("1up_addict")) {
-                  setUnlockedAchievements(prev => { const n = new Set(prev); n.add("1up_addict"); return n; });
-                  setAchievementQueue(prev => [...prev, "1up_addict"]);
+                  tryUnlockAchievement("1up_addict");
                 }
                 // Late Bloomer — OVR increase for a player aged 31+
                 if (!unlockedAchievements.has("late_bloomer") && levelUps.some(l => l.age >= 31)) {
-                  setUnlockedAchievements(prev => { const n = new Set(prev); n.add("late_bloomer"); return n; });
-                  setAchievementQueue(prev => [...prev, "late_bloomer"]);
+                  tryUnlockAchievement("late_bloomer");
                 }
                 // Exceeded Expectations — OVR exceeds the player's starting potential
                 if (!unlockedAchievements.has("exceeded_expectations")) {
                   const exceeder = appliedSquad.find(p => !p.isTrial && p.potential && getOverall(p) > p.potential);
                   if (exceeder) {
-                    setUnlockedAchievements(prev => { const n = new Set(prev); n.add("exceeded_expectations"); return n; });
-                    setAchievementQueue(prev => [...prev, "exceeded_expectations"]);
+                    tryUnlockAchievement("exceeded_expectations");
                   }
                 }
               }
@@ -6960,8 +6925,7 @@ function FootballManager() {
                 const f1 = (imps[i].playerName || "").split(" ")[0];
                 const f2 = (imps[i + 1].playerName || "").split(" ")[0];
                 if (f1 && f1 === f2) {
-                  setUnlockedAchievements(prev => { const n = new Set(prev); n.add("deja_vu_training"); return n; });
-                  setAchievementQueue(prev => [...prev, "deja_vu_training"]);
+                  tryUnlockAchievement("deja_vu_training");
                   break;
                 }
               }
@@ -6971,17 +6935,14 @@ function FootballManager() {
               const posLearnedEvents = (gains.progress || []).filter(e => e.type === "positionLearned");
               posLearnedEvents.forEach(pl => {
                 if (!unlockedAchievements.has("shape_shifter")) {
-                  setUnlockedAchievements(prev => { const n = new Set(prev); n.add("shape_shifter"); return n; });
-                  setAchievementQueue(prev => prev.includes("shape_shifter") ? prev : [...prev, "shape_shifter"]);
+                  tryUnlockAchievement("shape_shifter");
                 }
                 const plPlayer = squad.find(p => p.name === pl.playerName);
                 if (!unlockedAchievements.has("new_tricks") && plPlayer && plPlayer.age >= 30) {
-                  setUnlockedAchievements(prev => { const n = new Set(prev); n.add("new_tricks"); return n; });
-                  setAchievementQueue(prev => prev.includes("new_tricks") ? prev : [...prev, "new_tricks"]);
+                  tryUnlockAchievement("new_tricks");
                 }
                 if (!unlockedAchievements.has("sick_as_a_parrot") && pl.learnedPosition === "GK" && pl.playerPosition !== "GK") {
-                  setUnlockedAchievements(prev => { const n = new Set(prev); n.add("sick_as_a_parrot"); return n; });
-                  setAchievementQueue(prev => prev.includes("sick_as_a_parrot") ? prev : [...prev, "sick_as_a_parrot"]);
+                  tryUnlockAchievement("sick_as_a_parrot");
                 }
               });
             }
@@ -7131,10 +7092,7 @@ function FootballManager() {
                 )]);
               } else if (trialAction.type === "no_starts") {
                 // Reality Check achievement — brought in on trial but never started
-                if (!unlockedAchievements.has("reality_check")) {
-                  setUnlockedAchievements(prev => { const n = new Set(prev); n.add("reality_check"); return n; });
-                  setAchievementQueue(prev => [...prev, "reality_check"]);
-                }
+                tryUnlockAchievement("reality_check");
                 setSquad(prev => prev.filter(p => p.id !== trialAction.id));
                 setStartingXI(prev => prev.filter(id => id !== trialAction.id));
                 setBench(prev => prev.filter(id => id !== trialAction.id));
@@ -8001,8 +7959,7 @@ function FootballManager() {
                     // First player to reach this milestone
                     setCareerMilestones(prev => ({ ...prev, [ms.id]: p.name }));
                     if (ms.check(p)) {
-                      setUnlockedAchievements(prev => { const n = new Set(prev); n.add(ms.id); return n; });
-                      setAchievementQueue(prev => [...prev, ms.id]);
+                      tryUnlockAchievement(ms.id);
                     }
                     break; // Only check until first player crosses
                   }
@@ -8116,8 +8073,7 @@ function FootballManager() {
                      next.completed = result.completed;
                      next[cat] = {...next[cat], completed: true};
                      if (result.achievements.length > 0) {
-                       setUnlockedAchievements(prev => { const n = new Set(prev); result.achievements.forEach(a => n.add(a)); return n; });
-                       setAchievementQueue(prev => { const ex = new Set(prev); const f = result.achievements.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+                       result.achievements.forEach(a => tryUnlockAchievement(a));
                      }
                      setInboxMessages(pm => [...pm, createInboxMessage(
                        MSG.arcComplete(arc.name, arc.rewardDesc),
@@ -8233,10 +8189,7 @@ function FootballManager() {
                              { calendarIndex, seasonNumber },
                            ));
                  // Achievement
-                 if (!unlockedAchievements.has("prodigal_son")) {
-                   setUnlockedAchievements(prev => { const n = new Set(prev); n.add("prodigal_son"); return n; });
-                   setAchievementQueue(prev => [...prev, "prodigal_son"]);
-                 }
+                 tryUnlockAchievement("prodigal_son");
                }
 
                if (msgs.length > 0) setInboxMessages(prev => [...prev, ...msgs]);
@@ -8766,12 +8719,7 @@ function FootballManager() {
             }
 
             if (cupAchs.length > 0) {
-              setUnlockedAchievements(prev => {
-                const next = new Set(prev);
-                cupAchs.forEach(id => next.add(id));
-                return next;
-              });
-              setAchievementQueue(prev => { const ex = new Set(prev); const f = cupAchs.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+              cupAchs.forEach(id => tryUnlockAchievement(id));
             }
 
             // Joga Bonito — Brazilian player scores in a cup match
@@ -8783,8 +8731,7 @@ function FootballManager() {
                   e.type === "goal" && e.side === playerSide && e.player && brazilians.includes(e.player)
                 );
                 if (brazilianGoal) {
-                  setUnlockedAchievements(prev => { const n = new Set(prev); n.add("joga_bonito"); return n; });
-                  setAchievementQueue(prev => [...prev, "joga_bonito"]);
+                  tryUnlockAchievement("joga_bonito");
                   // Player unlocks now triggered by pack completion (useEffect above)
                 }
               }
@@ -9033,7 +8980,7 @@ function FootballManager() {
                               MSG.prodigalRedeemed(ps.playerName),
                               { calendarIndex, seasonNumber },
                             ));
-                  if (!unlockedAchievements.has("prodigal_son")) { setUnlockedAchievements(prev => { const n = new Set(prev); n.add("prodigal_son"); return n; }); setAchievementQueue(prev => [...prev, "prodigal_son"]); }
+                  tryUnlockAchievement("prodigal_son");
                 }
                 if (msgs.length > 0) setInboxMessages(prev => [...prev, ...msgs]);
                 setProdigalSon(ps);
@@ -9113,21 +9060,18 @@ function FootballManager() {
               // Check total apps across career (estimate from current season stats)
               // We use their current season apps — could accumulate over seasons later
               if (stats && stats.apps >= 30) {
-                setUnlockedAchievements(prev => { const n = new Set(prev); n.add("testimonial"); return n; });
-                setAchievementQueue(prev => [...prev, "testimonial"]);
+                tryUnlockAchievement("testimonial");
                 break;
               }
             }
           }
           // End Of An Era — 3+ players retiring at end of one season
           if (!unlockedAchievements.has("end_of_an_era") && retirees.length >= 3) {
-            setUnlockedAchievements(prev => { const n = new Set(prev); n.add("end_of_an_era"); return n; });
-            setAchievementQueue(prev => [...prev, "end_of_an_era"]);
+            tryUnlockAchievement("end_of_an_era");
           }
           // Time Dilation — player retires in the Intergalactic Elite
           if (!unlockedAchievements.has("time_dilation") && retirees.length > 0 && summerData.fromTier === 1) {
-            setUnlockedAchievements(prev => { const n = new Set(prev); n.add("time_dilation"); return n; });
-            setAchievementQueue(prev => [...prev, "time_dilation"]);
+            tryUnlockAchievement("time_dilation");
           }
           if (retirees.length > 0) {
             const retireIds = new Set(retirees.map(p => p.id));
@@ -9345,8 +9289,7 @@ function FootballManager() {
               const impressedNames = trialHistory.filter(t => t.impressed).map(t => t.name);
               const recruited = chosen.filter(c => impressedNames.includes(c.name));
               if (recruited.length > 0 && !unlockedAchievements.has("remember_me")) {
-                setUnlockedAchievements(prev => { const n = new Set(prev); n.add("remember_me"); return n; });
-                setAchievementQueue(prev => [...prev, "remember_me"]);
+                tryUnlockAchievement("remember_me");
                 // Send "Signed!" message for each recruited trial player
                 recruited.forEach(r => {
                   const trial = trialHistory.find(t => t.impressed && t.name === r.name);
@@ -9368,8 +9311,7 @@ function FootballManager() {
                 if (inSquad || inHistory) recruitedCount++;
               }
               if (recruitedCount >= 3) {
-                setUnlockedAchievements(prev => { const n = new Set(prev); n.add("scouts_honour"); return n; });
-                setAchievementQueue(prev => [...prev, "scouts_honour"]);
+                tryUnlockAchievement("scouts_honour");
               }
             }
             // Story arc: trial recruited tracking
@@ -9389,19 +9331,16 @@ function FootballManager() {
             }
             // Fresh Blood — signed 3 youth in one intake
             if (chosen.length >= 3 && !unlockedAchievements.has("fresh_blood")) {
-              setUnlockedAchievements(prev => { const n = new Set(prev); n.add("fresh_blood"); return n; });
-              setAchievementQueue(prev => [...prev, "fresh_blood"]);
+              tryUnlockAchievement("fresh_blood");
             }
             // Season 5 milestone
             if (seasonNumber >= 5 && !unlockedAchievements.has("season_5")) {
-              setUnlockedAchievements(prev => { const n = new Set(prev); n.add("season_5"); return n; });
-              setAchievementQueue(prev => [...prev, "season_5"]);
+              tryUnlockAchievement("season_5");
             }
             // Started From The Bottom — win the league at The Federation or above
             if (summerData.moveType === "stayed" && summerData.fromTier <= 5 && summerData.position === 1 && leagueTier <= 5) {
               if (!unlockedAchievements.has("from_the_bottom") && seasonNumber >= 5) {
-                setUnlockedAchievements(prev => { const n = new Set(prev); n.add("from_the_bottom"); return n; });
-                setAchievementQueue(prev => [...prev, "from_the_bottom"]);
+                tryUnlockAchievement("from_the_bottom");
               }
             }
             // Now init the new season
@@ -9489,8 +9428,7 @@ function FootballManager() {
                     if (tier <= 5 && playerCount >= 3 && !unlockedAchievements.has("tots_premier_3")) totsAchs.push("tots_premier_3");
                     if (tier <= 5 && playerCount >= 5 && !unlockedAchievements.has("tots_premier_5")) totsAchs.push("tots_premier_5");
                     if (totsAchs.length > 0) {
-                      setUnlockedAchievements(prev => { const n = new Set(prev); totsAchs.forEach(id => n.add(id)); return n; });
-                      setAchievementQueue(prev => { const ex = new Set(prev); const f = totsAchs.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+                      totsAchs.forEach(id => tryUnlockAchievement(id));
                     }
                   }
                 }
@@ -9703,16 +9641,14 @@ function FootballManager() {
                 const xiValues = Object.values(newXI).filter(Boolean);
                 if (xiValues.length >= 11 && !unlockedAchievements.has("all_timers")) {
                   if (xiValues.every(v => v.avgRating >= 7.0)) {
-                    setUnlockedAchievements(prev2 => { const n = new Set(prev2); n.add("all_timers"); return n; });
-                    setAchievementQueue(prev2 => [...prev2, "all_timers"]);
+                    tryUnlockAchievement("all_timers");
                   }
                 }
                 // Check Brexit: all 11 slots filled with British nationalities
                 const britishCodes = new Set(["ENG", "WAL", "SCO", "NIR"]);
                 if (xiValues.length >= 11 && !unlockedAchievements.has("brexit")) {
                   if (xiValues.every(v => v.nationality && britishCodes.has(v.nationality))) {
-                    setUnlockedAchievements(prev2 => { const n = new Set(prev2); n.add("brexit"); return n; });
-                    setAchievementQueue(prev2 => [...prev2, "brexit"]);
+                    tryUnlockAchievement("brexit");
                   }
                 }
 
@@ -9748,8 +9684,7 @@ function FootballManager() {
                 const aged = prev.map(p => ({ ...p, age: p.age + agingYears }));
                 // Veteran achievement — player reaches 42
                 if (!unlockedAchievements.has("veteran") && aged.some(p => p.age >= 42)) {
-                  setUnlockedAchievements(prev2 => { const n = new Set(prev2); n.add("veteran"); return n; });
-                  setAchievementQueue(prev2 => [...prev2, "veteran"]);
+                  tryUnlockAchievement("veteran");
                 }
                 const newRetiring = checkRetirements(aged, seasonNumber + 1);
                 setRetiringPlayers(newRetiring);
@@ -9840,8 +9775,7 @@ function FootballManager() {
                 if (!unlockedAchievements.has("all_time_top")) {
                   const sortedAllTime = Object.entries(next.scorers).sort((a, b) => b[1] - a[1]);
                   if (sortedAllTime.length > 0 && sortedAllTime[0][0].endsWith(`|${teamName}`)) {
-                    setUnlockedAchievements(prev2 => { const n2 = new Set(prev2); n2.add("all_time_top"); return n2; });
-                    setAchievementQueue(prev2 => [...prev2, "all_time_top"]);
+                    tryUnlockAchievement("all_time_top");
                   }
                 }
                 return next;
