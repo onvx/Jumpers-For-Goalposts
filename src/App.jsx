@@ -8,6 +8,7 @@ import { TIER_WIN_ACHS, ACHIEVEMENTS, LEGENDARY_ACHIEVEMENTS, PRESTIGIOUS_ACHIEV
 import { LEAGUE_DEFS, NUM_TIERS, TEAM_TRAITS, AI_BENCH_POSITIONS } from "./data/leagues.js";
 import { ARC_TICKET_POOL, ARC_CATS, ARC_CAT_LABELS, STORY_ARCS, ARC_NARRATIVES } from "./data/storyArcs.js";
 import { CIG_PACKS, STARTER_PACKS, ACH_TO_PACK } from "./data/cigPacks.js";
+import { checkPackUnlocks } from "./utils/packUnlocks.js";
 import { F, C, FONT, BTN, MODAL, CARD, Z } from "./data/tokens";
 import { TICKET_DEFS } from "./data/tickets.js";
 import { MSG } from "./data/messages.js";
@@ -48,6 +49,7 @@ import { createUnlockablePlayer, checkAchievements } from "./utils/achievements.
 import { generateAITransferOffers, calculateLoanReturn } from "./utils/transfer.js";
 import { createInboxMessage, seedMessageSeq, getMessageSeq, getUnreadCount } from "./utils/messageUtils.js";
 import { AchievementToast } from "./components/achievements/AchievementToast.jsx";
+import { PackUnlockReveal } from "./components/achievements/PackUnlockReveal.jsx";
 import { YouthIntakeScreen } from "./components/season/YouthIntakeScreen.jsx";
 import { SeasonEndReveal } from "./components/season/SeasonEndReveal.jsx";
 import { PrestigeScreen } from "./components/season/PrestigeScreen.jsx";
@@ -280,6 +282,7 @@ function FootballManager() {
     return ids;
   }, [unlockedPacks]);
   const [achievementQueue, setAchievementQueue] = useState([]);
+  const [packUnlockQueue, setPackUnlockQueue] = useState([]);
   const achievementToastKeyRef = useRef(0);
   const [showAchievements, setShowAchievements] = useState(false);
   const [showLegends, setShowLegends] = useState(false);
@@ -318,6 +321,18 @@ function FootballManager() {
     }
     if (changed) { achievementUnlockWeeksRef.current = updated; setAchievementUnlockWeeks(updated); }
   }, [unlockedAchievements, calendarIndex, seasonNumber]);
+
+  // Check for new pack unlocks when achievements or season state changes
+  useEffect(() => {
+    const newPacks = checkPackUnlocks({
+      unlockedPacks, unlockedAchievements, seasonNumber,
+      leagueTier, prestigeLevel, leagueWins: leagueWins || 0,
+    });
+    if (newPacks.length > 0) {
+      setUnlockedPacks(prev => { const n = new Set(prev); newPacks.forEach(id => n.add(id)); return n; });
+      setPackUnlockQueue(prev => [...prev, ...newPacks]);
+    }
+  }, [unlockedAchievements, seasonNumber, leagueTier, prestigeLevel]);
   const seasonCalendar = useGameStore(s => s.seasonCalendar);
   const matchweekIndex = useGameStore(s => s.matchweekIndex);
   const calendarResults = useGameStore(s => s.calendarResults);
@@ -4416,14 +4431,14 @@ function FootballManager() {
             {cup && <button onClick={() => { if (showCup) setCupKey(k => k + 1); clearAll(); setShowCup(true); }} style={navBtn(showCup, cup.playerEliminated ? C.slate : C.gold)}>🏆 CUP{cup.playerEliminated ? " (OUT)" : ""}</button>}
             <button onClick={() => { if (showTransfers) setTransfersKey(k => k + 1); clearAll(); setShowTransfers(true); }} style={navBtn(showTransfers, C.green)}>🤝 TRANSFERS</button>
             <button onClick={() => { if (showLegends) setClubKey(k => k + 1); clearAll(); setShowLegends(true); }} style={navBtn(showLegends, C.purple)}>📜 CLUB</button>
-            <button onClick={() => { if (showAchievements) setCabinetKey(k => k + 1); clearAll(); setShowAchievements(true); }} style={navBtn(showAchievements, C.gold)}>🏅 CABINET{unlockedAchievements.size > lastSeenAchievementCount ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.gold, marginLeft: 6, verticalAlign: "middle", boxShadow: "0 0 6px rgba(250,204,21,0.6)" }} /> : null}</button>
+            <button onClick={() => { if (showAchievements) setCabinetKey(k => k + 1); clearAll(); setShowAchievements(true); }} style={navBtn(showAchievements, C.gold)}>🏪 CORNER SHOP{unlockedAchievements.size > lastSeenAchievementCount ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.gold, marginLeft: 6, verticalAlign: "middle", boxShadow: "0 0 6px rgba(250,204,21,0.6)" }} /> : null}</button>
           </div>
         );
       })()}
 
       {/* Page content */}
       {showAchievements ? (
-        <AchievementCabinet key={cabinetKey} unlocked={unlockedAchievements} achievementUnlockWeeks={achievementUnlockWeeks} calendarIndex={calendarIndex} seasonNumber={seasonNumber} seasonLength={seasonCalendar?.length || 48} squad={squad} clubHistory={clubHistory} currentTier={leagueTier} ovrCap={ovrCap} gameMode={gameMode} isTainted={isTainted}
+        <AchievementCabinet key={cabinetKey} unlocked={unlockedAchievements} unlockedPacks={unlockedPacks} achievementUnlockWeeks={achievementUnlockWeeks} calendarIndex={calendarIndex} seasonNumber={seasonNumber} seasonLength={seasonCalendar?.length || 48} squad={squad} clubHistory={clubHistory} currentTier={leagueTier} ovrCap={ovrCap} gameMode={gameMode} isTainted={isTainted}
           hasUnseenAchievements={unlockedAchievements.size > lastSeenAchievementCount}
           onViewAchievements={() => setLastSeenAchievementCount(unlockedAchievements.size)}
           tickets={tickets} retiringPlayers={retiringPlayers} transferFocus={transferFocus}
@@ -10029,6 +10044,17 @@ function FootballManager() {
         />
       )}
 
+      {packUnlockQueue.length > 0 && (() => {
+        const pack = CIG_PACKS.find(p => p.id === packUnlockQueue[0]);
+        return pack ? (
+          <PackUnlockReveal
+            key={pack.id}
+            pack={pack}
+            isOnHoliday={isOnHoliday}
+            onDone={() => setPackUnlockQueue(prev => prev.slice(1))}
+          />
+        ) : null;
+      })()}
 
       {/* Squad full alert modal */}
       {squadFullAlert && (
