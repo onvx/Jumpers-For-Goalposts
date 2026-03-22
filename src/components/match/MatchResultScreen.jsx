@@ -439,24 +439,20 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
             </button>
 
             {showRatings && result.playerRatings && (() => {
-              // Build slot position map: player name → formation slot position
+              // Build slot position map: player ID → formation slot position
               const slotPosMap = {};
               if (formation && slotAssignments) {
-                // slotAssignments maps formation slot index → player ID
                 slotAssignments.forEach((pid, slotIdx) => {
                   if (!pid || !formation[slotIdx]) return;
-                  const pr = result.playerRatings.find(r => r.id === pid);
-                  if (pr) slotPosMap[pr.name] = formation[slotIdx].pos;
+                  slotPosMap[pid] = formation[slotIdx].pos;
                 });
               } else if (formation && startingXI) {
-                // Fallback: startingXI order maps to formation slots
                 startingXI.forEach((pid, i) => {
                   if (!pid || !formation[i]) return;
-                  const pr = result.playerRatings.find(r => r.id === pid);
-                  if (pr) slotPosMap[pr.name] = formation[i].pos;
+                  slotPosMap[pid] = formation[i].pos;
                 });
               }
-              const getPos = (pr) => slotPosMap[pr.name] || pr.position;
+              const getPos = (pr) => slotPosMap[pr.id] || pr.position;
               const starters = result.playerRatings
                 .filter(pr => !pr.isSub)
                 .sort((a, b) => (POSITION_ORDER[getPos(a)] ?? 99) - (POSITION_ORDER[getPos(b)] ?? 99));
