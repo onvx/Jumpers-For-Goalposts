@@ -5312,7 +5312,7 @@ function FootballManager() {
               if (injured.length === 0) return null;
               return (
                 <span style={{ display: "block", marginTop: 4, fontSize: F.xs, color: "#fca5a5" }}>
-                  {injured.map(p => `${displayName(p.name)} (${p.injury.name}, ${p.injury.weeksLeft}w)`).join(" · ")}
+                  {injured.map(p => `${displayName(p.name, isMobile)} (${p.injury.name}, ${p.injury.weeksLeft}w)`).join(" · ")}
                 </span>
               );
             })()}
@@ -5328,7 +5328,7 @@ function FootballManager() {
           fontFamily: FONT,
         }}>
           <span style={{ fontSize: F.sm, color: C.green }}>
-            🔄 Replacing {displayName(swapTarget.name)} — click a healthy player from another section to swap.
+            🔄 Replacing {displayName(swapTarget.name, isMobile)} — click a healthy player from another section to swap.
           </span>
           <button onClick={() => setSwapTarget(null)} style={{
             background: "none", border: `1px solid ${C.bgInput}`, color: C.textMuted,
@@ -5731,7 +5731,7 @@ function FootballManager() {
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         display: "flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0,
                       }}>
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(p.name)}</span>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(p.name, isMobile)}</span>
                         <span style={{ fontSize: F.xs, color: getPosColor(p.position), opacity: 0.6, fontFamily: FONT, flexShrink: 0 }}>{p.position}</span>
                       </span>
                     ) : (
@@ -6162,7 +6162,7 @@ function FootballManager() {
                 );
               })()}
               <span style={{ fontSize: isMobile ? F.sm : F.md, color: isInjured ? C.lightRed : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(player.name)}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(player.name, isMobile)}</span>
                 <span style={{
                   fontSize: F.xs, color: getPosColor(player.position), opacity: 0.6,
                   fontFamily: FONT, flexShrink: 0,

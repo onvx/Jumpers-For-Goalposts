@@ -451,7 +451,7 @@ export function PlayerSearch({
               color: p.isOwnPlayer ? C.green : C.text,
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
-              {displayName(p.name)}
+              {displayName(p.name, mob)}
             </span>
 
             {/* Nationality flag */}

@@ -818,7 +818,9 @@ export function shortName(name) {
   return `${initials}.${surname}`;
 }
 
-/** Mobile-aware player name: abbreviated on small screens, full on desktop. */
-export function displayName(name) {
-  return window.innerWidth <= 768 ? shortName(name) : (name || "");
+/** Mobile-aware player name: abbreviated on small screens, full on desktop.
+ *  Pass mob from useMobile() to keep reactivity explicit. */
+export function displayName(name, mob) {
+  const mobile = mob !== undefined ? mob : (typeof window !== "undefined" && window.innerWidth <= 768);
+  return mobile ? shortName(name) : (name || "");
 }

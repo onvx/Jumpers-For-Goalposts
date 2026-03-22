@@ -4,8 +4,8 @@ import { getPosColor } from "../../utils/calc.js";
 import { displayName } from "../../utils/player.js";
 import { useMobile } from "../../hooks/useMobile.js";
 
-export function ShortlistPanel({ shortlist, setShortlist, onPlayerClick, onTeamClick, mob }) {
-  useMobile();
+export function ShortlistPanel({ shortlist, setShortlist, onPlayerClick, onTeamClick }) {
+  const mob = useMobile();
   const sorted = [...(shortlist || [])].sort((a, b) => (b.ovr || 0) - (a.ovr || 0));
 
   const handleRemove = (entry) => {
@@ -70,7 +70,7 @@ export function ShortlistPanel({ shortlist, setShortlist, onPlayerClick, onTeamC
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
                 }}
-              >{displayName(entry.name)}</span>
+              >{displayName(entry.name, mob)}</span>
 
               {/* OVR */}
               <span style={{

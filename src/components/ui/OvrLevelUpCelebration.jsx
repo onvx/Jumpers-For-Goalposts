@@ -132,7 +132,7 @@ export function OvrLevelUpCelebration({ levelUps, onDone, isOnHoliday, ovrCap = 
             padding: "5px 12px", fontSize: mob ? F.sm : F.md, fontWeight: "bold",
           }}>{player.position}</span>
           <span style={{ fontSize: mob ? F.md : F.lg, color: C.text }}>
-            {displayName(player.name)}
+            {displayName(player.name, mob)}
           </span>
         </div>
 

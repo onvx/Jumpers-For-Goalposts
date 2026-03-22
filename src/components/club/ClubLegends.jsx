@@ -423,7 +423,7 @@ export function ClubLegends({ clubHistory, teamName, playerSeasonStats, playerRa
                           display: "inline-block",
                         }}>
                           <span style={{ fontSize: F.sm, marginRight: 2 }}>{getNatFlag(player.nationality || inferNationality(player.name))}</span>
-                          {displayName(player.name)}
+                          {displayName(player.name, mob)}
                         </div>
                         <div style={{ fontSize: F.xs, color: C.gold, marginTop: 2 }}>
                           ★ {player.avgRating.toFixed(1)} · S{player.season}

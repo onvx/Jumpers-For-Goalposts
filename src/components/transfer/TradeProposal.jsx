@@ -23,7 +23,7 @@ function PlayerChip({ player, onRemove, mob, ovrCap = 20 }) {
         padding: "2px 5px", fontSize: F.micro, fontWeight: "bold",
       }}>{player.position}</span>
       <span style={{ color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-        {displayName(player.name)}
+        {displayName(player.name, mob)}
       </span>
       <span style={{ color: getAttrColor(ovr, ovrCap), fontSize: F.sm, fontWeight: "bold" }}>{ovr}</span>
       <span
@@ -82,7 +82,7 @@ function SquadList({ players, selectedIds, onToggle, title, titleColor, mob, isU
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>
                 {inTrade && <span style={{ marginRight: 4 }}>↔</span>}
-                {displayName(p.name)}
+                {displayName(p.name, mob)}
               </span>
               <span style={{ textAlign: "center", fontSize: F.sm, color: getAttrColor(ovr, ovrCap), fontWeight: "bold" }}>
                 {ovr}

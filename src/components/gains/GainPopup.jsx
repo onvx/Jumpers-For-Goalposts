@@ -17,7 +17,7 @@ export function GainPopup({ gains, onDone, onPlayerClick, onAchievementCheck, on
   const [revealedCount, setRevealedCount] = useState(0);
   const [pickedTickets, setPickedTickets] = useState({});
   const mob = useMobile();
-  const dn = displayName; // abbreviated on mobile, full on desktop
+  const dn = (name) => displayName(name, mob); // abbreviated on mobile, full on desktop
   const isQuick = cardSpeed === "quick";
   const isSummary = cardSpeed === "summary";
   const doneRef = useRef(false);

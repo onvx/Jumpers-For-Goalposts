@@ -462,7 +462,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
               const renderRow = (pr, i) => {
                 if (!pr.rating && !pr.isSub) return (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 13px" }}>
-                    <span onClick={() => onPlayerClick?.(pr.name)} style={{ color: C.bgInput, fontSize: F.xs, cursor: "pointer" }}>{displayName(pr.name)}</span>
+                    <span onClick={() => onPlayerClick?.(pr.name)} style={{ color: C.bgInput, fontSize: F.xs, cursor: "pointer" }}>{displayName(pr.name, mob)}</span>
                     <span style={{ color: C.bgInput, fontSize: F.xs }}>INJ</span>
                   </div>
                 );
@@ -470,7 +470,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 13px" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ background: getPosColor(getPos(pr)), color: C.bg, padding: "1px 5px", fontSize: F.micro, fontWeight: "bold", opacity: 0.5 }}>{getPos(pr)}</span>
-                      <span onClick={() => onPlayerClick?.(pr.name)} style={{ color: C.slate, fontSize: F.xs, cursor: "pointer" }}>{displayName(pr.name)}</span>
+                      <span onClick={() => onPlayerClick?.(pr.name)} style={{ color: C.slate, fontSize: F.xs, cursor: "pointer" }}>{displayName(pr.name, mob)}</span>
                     </span>
                     <span style={{ color: C.slate, fontSize: F.md, fontWeight: "bold" }}>—</span>
                   </div>
@@ -486,7 +486,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
                   }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ background: getPosColor(getPos(pr)), color: C.bg, padding: "1px 5px", fontSize: F.micro, fontWeight: "bold" }}>{getPos(pr)}</span>
-                      <span onClick={() => onPlayerClick?.(pr.name)} style={{ color: pr.isSub ? C.textMuted : C.text, fontSize: F.xs, cursor: "pointer" }}>{displayName(pr.name)}</span>
+                      <span onClick={() => onPlayerClick?.(pr.name)} style={{ color: pr.isSub ? C.textMuted : C.text, fontSize: F.xs, cursor: "pointer" }}>{displayName(pr.name, mob)}</span>
                       {pr.isSub && pr.minutesPlayed > 0 && <span style={{ color: C.slate, fontSize: F.micro }}>{pr.minutesPlayed}'</span>}
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 4 }}>

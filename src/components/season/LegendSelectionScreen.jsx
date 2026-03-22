@@ -108,7 +108,7 @@ export function LegendSelectionScreen({ squad, maxPicks = 5, legendCap, newPrest
               }}>
                 <span style={{ color: "rgba(251,191,36,0.4)", fontSize: 8 }}>{"★"}</span>
                 <span style={{ color: getPosColor(p.position), fontSize: F.xs }}>{p.position}</span>
-                <span>{displayName(p.name)}</span>
+                <span>{displayName(p.name, mob)}</span>
                 <span style={{ color: C.textDim, fontSize: F.xs }}>OVR {getOverall(p)}</span>
               </div>
             ))}
@@ -329,7 +329,7 @@ export function LegendSelectionScreen({ squad, maxPicks = 5, legendCap, newPrest
                     color: isSelected ? C.amber : C.text,
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     transition: "color 0.2s ease",
-                  }}>{displayName(p.name)}</span>
+                  }}>{displayName(p.name, mob)}</span>
 
                   {/* Age */}
                   <span style={{

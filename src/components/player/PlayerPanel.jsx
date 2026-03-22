@@ -67,7 +67,7 @@ export function PlayerPanel({ player, onAssignTraining, onAssignPositionTraining
                   </span>
                 ))}
               </span>
-              <span style={{ color: C.text, fontSize: mob ? F.xl : F.h3 }}>{displayName(player.name)}</span>
+              <span style={{ color: C.text, fontSize: mob ? F.xl : F.h3 }}>{displayName(player.name, mob)}</span>
               {player.birthName && <span style={{ color: C.textDim, fontSize: F.xs, marginLeft: 6 }}>({player.birthName})</span>}
             </div>
             <div style={{ color: C.textDim, fontSize: mob ? F.xs : F.sm, display: "flex", alignItems: "center", flexWrap: "wrap", gap: mob ? 2 : 0 }}>
@@ -465,7 +465,7 @@ export function PlayerPanel({ player, onAssignTraining, onAssignPositionTraining
               </div>
               <div style={{ fontSize: mob ? F.md : F.lg, color: C.text, marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}>
                 <span style={{ background: getPosColor(player.position), color: C.bg, padding: "3px 9px", fontSize: F.sm, fontWeight: "bold" }}>{player.position}</span>
-                {displayName(player.name)}
+                {displayName(player.name, mob)}
               </div>
               <div style={{ fontSize: F.xs, color: C.textDim, marginBottom: 23, lineHeight: 1.8 }}>
                 This cannot be undone.

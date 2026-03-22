@@ -66,7 +66,7 @@ export function PixelDissolveCard({ gain, onRevealed, index, isNext, onPlayerCli
       }}>
         <span style={{ color: C.text, fontSize: mob ? F.xs : F.sm, cursor: revealed ? "pointer" : "default", textDecoration: revealed ? "underline" : "none", textDecorationColor: "rgba(226,232,240,0.2)", textUnderlineOffset: 3, display: "inline-flex", alignItems: "center", gap: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, maxWidth: "50%" }}
           onClick={(e) => { if (revealed && onPlayerClick) { e.stopPropagation(); onPlayerClick(gain.playerName); } }}
-        >{gain.playerPosition && <span style={{ background: getPosColor(gain.playerPosition), color: C.bg, padding: "4px 8px", fontSize: F.sm, fontWeight: "bold", textDecoration: "none", borderRadius: 3 }}>{gain.playerPosition}</span>}{displayName(gain.playerName)}</span>
+        >{gain.playerPosition && <span style={{ background: getPosColor(gain.playerPosition), color: C.bg, padding: "4px 8px", fontSize: F.sm, fontWeight: "bold", textDecoration: "none", borderRadius: 3 }}>{gain.playerPosition}</span>}{displayName(gain.playerName, mob)}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginLeft: 8 }}>
           <span style={{
             color: attr?.color || "#fff", fontSize: mob ? F.micro : F.xs,

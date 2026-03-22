@@ -245,7 +245,7 @@ export function StoryArcsPanel({ storyArcs, setStoryArcs, squad, setSquad, prodi
         <div style={{ fontSize:mob?F.xs:F.sm, color:C.textDim, marginBottom:5 }}>{arc.desc}</div>
         {targetPlayer && (
           <div style={{ fontSize:mob?F.xs:F.sm, color:C.textMuted, marginBottom:5 }}>
-            🎯 {displayName(targetPlayer.name)} ({targetPlayer.position}) · OVR {getOverall(targetPlayer)}
+            🎯 {displayName(targetPlayer.name, mob)} ({targetPlayer.position}) · OVR {getOverall(targetPlayer)}
             {catState.tracking?.apps != null && ` · ${catState.tracking.apps} apps`}
           </div>
         )}
@@ -277,7 +277,7 @@ export function StoryArcsPanel({ storyArcs, setStoryArcs, squad, setSquad, prodi
               fontFamily:FONT,
             }}>
               <span style={{ background:getPosColor(p.position), color:C.bg, padding:"2px 8px", fontSize:F.xs, fontWeight:"bold", marginRight:7 }}>{p.position}</span>
-              <span style={{ color:C.text, fontSize:mob?F.xs:F.sm }}>{displayName(p.name)}</span>
+              <span style={{ color:C.text, fontSize:mob?F.xs:F.sm }}>{displayName(p.name, mob)}</span>
               <span style={{ color:C.textDim, fontSize:mob?F.xs:F.sm, marginLeft:9 }}>OVR {getOverall(p)} · Age {p.age}</span>
             </button>
           ))}
