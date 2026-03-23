@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ACHIEVEMENTS } from "../../data/achievements.js";
-import { ACH_TO_PACK, CIG_PACKS } from "../../data/cigPacks.js";
 import { SFX } from "../../utils/sfx.js";
 import { F, C, FONT, Z } from "../../data/tokens";
 import { useMobile } from "../../hooks/useMobile.js";
@@ -15,13 +14,6 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
   useEffect(() => {
     setTimeout(() => setVisible(true), 50);
     if (!muteSound) SFX.achievement();
-    // Inject cigBurn keyframe if not already present
-    if (!document.getElementById("cig-toast-styles")) {
-      const style = document.createElement("style");
-      style.id = "cig-toast-styles";
-      style.textContent = `@keyframes cigBurn { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }`;
-      document.head.appendChild(style);
-    }
   }, [muteSound]);
 
   const dismiss = () => {
@@ -47,11 +39,6 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
   const ach = ACHIEVEMENTS.find(a => a.id === achievement);
   if (!ach) { setTimeout(onDone, 100); return null; }
 
-  // Look up pack color for the filter-end strip
-  const packId = ACH_TO_PACK[achievement];
-  const pack = packId ? CIG_PACKS.find(p => p.id === packId) : null;
-  const stripColor = pack?.color || C.gold;
-
   return (
     <div
       onClick={dismiss}
@@ -65,45 +52,23 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
         transition: swipeOffset !== 0 ? "opacity 0.4s ease" : "transform 0.4s ease, opacity 0.4s ease",
         opacity: visible ? 1 : 0, cursor: "pointer",
         width: mob ? "calc(100% - 24px)" : "auto",
-        maxWidth: mob ? "none" : 520,
+        maxWidth: mob ? "none" : 480,
       }}
     >
-      {/* Cigarette — pixel art style: flat colors, sharp edges */}
       <div style={{
-        display: "flex", alignItems: "stretch",
-        border: `2px solid ${C.gold}`,
-        minHeight: mob ? 52 : 60,
+        background: "linear-gradient(135deg, #0f172a 0%, #1a1a3e 100%)",
+        border: "1px solid #1e293b",
+        borderLeft: `4px solid ${C.gold}`,
+        padding: mob ? "14px 12px" : "16px 20px",
+        borderRadius: 6,
+        boxShadow: "0 0 24px rgba(250,204,21,0.15)",
+        display: "flex", alignItems: "center", gap: mob ? 10 : 14,
       }}>
-        {/* Filter — flat orange/tan */}
-        <div style={{
-          width: mob ? 72 : 90,
-          backgroundColor: "#e8a33e",
-          flexShrink: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <span style={{ fontSize: mob ? F.h2 : F.h1 }}>{ach.icon}</span>
-        </div>
-
-        {/* Pack color band */}
-        <div style={{ width: mob ? 5 : 6, backgroundColor: stripColor, flexShrink: 0 }} />
-
-        {/* Paper body — white, dark text */}
-        <div style={{
-          flex: 1,
-          backgroundColor: "#ffffff",
-          padding: mob ? "8px 12px" : "10px 16px",
-          display: "flex", alignItems: "center",
-        }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: mob ? F.sm : F.md, color: "#0f0f23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: "bold" }}>{ach.name}</div>
-            <div style={{ fontSize: mob ? F.micro : F.xs, color: "#0f0f23", marginTop: 2, opacity: 0.6 }}>{ach.desc}</div>
-          </div>
-        </div>
-
-        {/* Burning tip — flat orange + grey ash */}
-        <div style={{ display: "flex", flexShrink: 0 }}>
-          <div style={{ width: mob ? 8 : 10, backgroundColor: "#f97316" }} />
-          <div style={{ width: mob ? 10 : 14, backgroundColor: "#6b7280" }} />
+        <span style={{ fontSize: mob ? F.lg : F.h3, flexShrink: 0 }}>{ach.icon}</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: mob ? F.micro : F.xs, color: C.gold, letterSpacing: mob ? 1 : 2, marginBottom: 4 }}>CIG UNLOCKED</div>
+          <div style={{ fontSize: mob ? F.sm : F.md, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ach.name}</div>
+          <div style={{ fontSize: mob ? F.micro : F.xs, color: C.textMuted, marginTop: 2 }}>{ach.desc}</div>
         </div>
       </div>
     </div>
