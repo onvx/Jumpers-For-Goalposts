@@ -77,14 +77,17 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
         boxShadow: `0 0 24px rgba(250,204,21,0.2), 0 4px 16px rgba(0,0,0,0.4)`,
         minHeight: mob ? 56 : 64,
       }}>
-        {/* Filter tip — cork/tan with icon */}
+        {/* Filter tip — cork/tan with speckle texture + icon */}
         <div style={{
           width: mob ? 80 : 100,
           backgroundColor: "#d4a574",
+          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.35) 1px, transparent 1px), radial-gradient(circle, rgba(139,93,55,0.25) 1px, transparent 1px)",
+          backgroundSize: "6px 6px, 8px 8px",
+          backgroundPosition: "0 0, 3px 3px",
           flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          <span style={{ fontSize: mob ? F.md : F.lg }}>{ach.icon}</span>
+          <span style={{ fontSize: mob ? F.xl : F.h3 }}>{ach.icon}</span>
         </div>
 
         {/* Pack color strip — menthol/popper band */}
