@@ -77,17 +77,26 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
         boxShadow: `0 0 24px rgba(250,204,21,0.2), 0 4px 16px rgba(0,0,0,0.4)`,
         minHeight: mob ? 56 : 64,
       }}>
-        {/* Filter tip — cork/tan with speckle texture + icon */}
+        {/* Filter tip — cork/tan with sporadic speckle texture + icon */}
         <div style={{
           width: mob ? 80 : 100,
-          backgroundColor: "#d4a574",
-          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.35) 1px, transparent 1px), radial-gradient(circle, rgba(139,93,55,0.25) 1px, transparent 1px)",
-          backgroundSize: "6px 6px, 8px 8px",
-          backgroundPosition: "0 0, 3px 3px",
+          backgroundColor: "#c89560",
+          backgroundImage: [
+            "radial-gradient(ellipse 2px 1px at 15% 20%, rgba(218,175,100,0.8) 0%, transparent 100%)",
+            "radial-gradient(ellipse 1px 2px at 72% 35%, rgba(230,190,120,0.7) 0%, transparent 100%)",
+            "radial-gradient(ellipse 3px 1px at 40% 70%, rgba(210,165,90,0.6) 0%, transparent 100%)",
+            "radial-gradient(ellipse 1px 1px at 85% 80%, rgba(240,200,130,0.7) 0%, transparent 100%)",
+            "radial-gradient(ellipse 2px 2px at 25% 55%, rgba(225,185,110,0.5) 0%, transparent 100%)",
+            "radial-gradient(ellipse 1px 3px at 60% 15%, rgba(215,170,95,0.6) 0%, transparent 100%)",
+            "radial-gradient(ellipse 2px 1px at 50% 90%, rgba(235,195,125,0.7) 0%, transparent 100%)",
+            "radial-gradient(ellipse 1px 1px at 10% 45%, rgba(220,180,105,0.5) 0%, transparent 100%)",
+            "radial-gradient(ellipse 2px 2px at 90% 60%, rgba(210,160,85,0.6) 0%, transparent 100%)",
+            "radial-gradient(ellipse 1px 2px at 35% 30%, rgba(240,205,135,0.7) 0%, transparent 100%)",
+          ].join(", "),
           flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          <span style={{ fontSize: mob ? F.xl : F.h3 }}>{ach.icon}</span>
+          <span style={{ fontSize: mob ? F.h2 : F.h1 }}>{ach.icon}</span>
         </div>
 
         {/* Pack color strip — menthol/popper band */}
