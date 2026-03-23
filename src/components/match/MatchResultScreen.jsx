@@ -446,10 +446,14 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
           // Aggregate events per player from the live feed so far
           const live = {};
           const initLive = (name) => { if (!live[name]) live[name] = { goalMinutes: [], assistMinutes: [], card: null, cardMinute: null, subOff: null, subOn: null }; return live[name]; };
+          const opponentGoalMinutes = []; // for GK rating
           shownEvents.forEach(ev => {
             if (ev.type === "goal" && ev.side === playerSide) {
               if (ev.player) initLive(ev.player).goalMinutes.push(ev.minute);
               if (ev.assister) initLive(ev.assister).assistMinutes.push(ev.minute);
+            }
+            if (ev.type === "goal" && ev.side !== playerSide) {
+              opponentGoalMinutes.push(ev.minute);
             }
             if ((ev.type === "card" || ev.type === "red_card") && ev.cardPlayer) {
               const isPlayer = ev.side ? ev.side === playerSide : (result.isPlayerHome ? ev.cardTeamName === homeTeam.name : ev.cardTeamName === awayTeam.name);
@@ -461,31 +465,29 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
             }
           });
 
-          // Build slot position map: player ID → formation slot position
-          // Compute a live rating that progresses toward the final value as minutes tick,
-          // with immediate spikes from goals/assists/cards.
-          // Anchored at 6.2 (Sofascore-style neutral baseline), ease-in-out curve.
-          // Live rating: base converges fully to the final value by 90' (no dampening),
-          // with decaying event spikes that fade over ~20 mins as the base catches up.
-          // No jump at full time — by 89' the base is already essentially the final rating.
-          const computeLiveRating = (pr, ev) => {
+          const computeLiveRating = (pr, ev, isGK) => {
             if (!pr.rating) return null;
             if (pr.isSub && ev.subOn == null) return null; // not on pitch yet
+            if (ev.subOff != null) return pr.rating; // match done — frozen at final
             const startMin = ev.subOn ?? 0;
-            const endMin = ev.subOff ?? minute;
-            const minutesActive = Math.max(1, Math.min(90, endMin - startMin));
+            // Subs: show "—" for first 4 minutes after coming on
+            if (ev.subOn != null && (minute - ev.subOn) < 4) return null;
+            const minutesActive = Math.max(1, Math.min(90, minute - startMin));
             const t = minutesActive / 90;
             // Ease-in-out, fully converges to pr.rating at t=1
             const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-            let r = 6.2 + (pr.rating - 6.2) * ease;
-            // Decaying spikes: peak at event minute, fade to 0 over 20 mins.
-            // As they fade the base progression catches up (final already bakes them in).
-            const decay = (evMin) => Math.max(0, 1 - (minute - evMin) / 20);
-            ev.goalMinutes.forEach(m => r += 1.2 * decay(m));
-            ev.assistMinutes.forEach(m => r += 0.6 * decay(m));
-            // Cards: persistent drag for the rest of the match
+            let r = 6.5 + (pr.rating - 6.5) * ease;
+            // Decaying spikes fade over 30 mins — glow lingers, base catches up underneath
+            const decay = (evMin) => Math.max(0, 1 - (minute - evMin) / 30);
+            ev.goalMinutes?.forEach(m => r += 1.2 * decay(m));
+            ev.assistMinutes?.forEach(m => r += 0.6 * decay(m));
+            // Cards: persistent drag
             if (ev.card === "yellow") r -= 0.4;
             if (ev.card === "red") r -= 2.0;
+            // GK: each goal conceded is a spike down; clean sheet means base drifts higher
+            if (isGK) {
+              opponentGoalMinutes.forEach(m => r -= 0.9 * decay(m));
+            }
             return Math.max(1.0, Math.min(9.9, r));
           };
 
@@ -507,18 +509,31 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
             .sort((a, b) => (POSITION_ORDER[getPos(a)] ?? 99) - (POSITION_ORDER[getPos(b)] ?? 99));
           const subs = result.playerRatings.filter(pr => pr.isSub);
 
+          // Pre-compute all live ratings to find the current MotM leader
+          const allLiveRatings = result.playerRatings.map(pr => {
+            const ev = live[pr.name] || {};
+            const isGK = (slotPosMap[pr.id] || pr.position) === "GK";
+            const r = finished ? pr.rating : computeLiveRating(pr, ev, isGK);
+            return { name: pr.name, rating: r };
+          }).filter(x => x.rating != null);
+          const motmLeader = !finished && allLiveRatings.length > 0
+            ? allLiveRatings.reduce((a, b) => a.rating > b.rating ? a : b).name
+            : null;
+
           const renderRow = (pr, i) => {
             const ev = live[pr.name] || {};
             const subOff = ev.subOff;
             const subOn = ev.subOn;
             const dimmed = subOff != null;
+            const isGK = (slotPosMap[pr.id] || pr.position) === "GK";
+            const isLeader = pr.name === motmLeader;
             if (!pr.rating && !pr.isSub) return (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 13px" }}>
                 <span onClick={() => onPlayerClick?.(pr.name)} style={{ color: C.bgInput, fontSize: F.xs, cursor: "pointer" }}>{displayName(pr.name, mob)}</span>
                 <span style={{ color: C.bgInput, fontSize: F.xs }}>INJ</span>
               </div>
             );
-            const displayRating = finished ? pr.rating : computeLiveRating(pr, ev);
+            const displayRating = finished ? pr.rating : computeLiveRating(pr, ev, isGK);
             const rColor = !displayRating ? C.textDim
               : displayRating >= 8 ? C.green : displayRating >= 7 ? "#84cc16" : displayRating >= 6 ? "#eab308" : displayRating >= 5 ? "#f97316" : C.red;
             return (
@@ -526,7 +541,8 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
                 display: "flex", justifyContent: "space-between", alignItems: "center",
                 padding: "7px 13px",
                 opacity: dimmed ? 0.5 : 1,
-                background: displayRating >= 8 ? "rgba(74,222,128,0.05)" : "transparent",
+                background: isLeader ? "rgba(250,204,21,0.07)" : displayRating >= 8 ? "rgba(74,222,128,0.05)" : "transparent",
+                borderLeft: isLeader ? `2px solid rgba(250,204,21,0.5)` : "2px solid transparent",
               }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ background: getPosColor(getPos(pr)), color: C.bg, padding: "1px 5px", fontSize: F.micro, fontWeight: "bold", opacity: pr.isSub && subOn == null ? 0.4 : 1 }}>{getPos(pr)}</span>
