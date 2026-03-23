@@ -68,70 +68,42 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
         maxWidth: mob ? "none" : 520,
       }}
     >
-      {/* Cigarette shape */}
+      {/* Cigarette — pixel art style: flat colors, sharp edges */}
       <div style={{
         display: "flex", alignItems: "stretch",
-        borderRadius: 6,
-        overflow: "hidden",
-        border: `1px solid ${C.gold}`,
-        boxShadow: `0 0 24px rgba(250,204,21,0.2), 0 4px 16px rgba(0,0,0,0.4)`,
-        minHeight: mob ? 56 : 64,
+        border: `2px solid ${C.gold}`,
+        minHeight: mob ? 52 : 60,
       }}>
-        {/* Filter tip — cork/tan with sporadic speckle texture + icon */}
+        {/* Filter — flat orange/tan */}
         <div style={{
-          width: mob ? 80 : 100,
-          backgroundColor: "#c89560",
-          backgroundImage: [
-            "radial-gradient(ellipse 2px 1px at 15% 20%, rgba(218,175,100,0.8) 0%, transparent 100%)",
-            "radial-gradient(ellipse 1px 2px at 72% 35%, rgba(230,190,120,0.7) 0%, transparent 100%)",
-            "radial-gradient(ellipse 3px 1px at 40% 70%, rgba(210,165,90,0.6) 0%, transparent 100%)",
-            "radial-gradient(ellipse 1px 1px at 85% 80%, rgba(240,200,130,0.7) 0%, transparent 100%)",
-            "radial-gradient(ellipse 2px 2px at 25% 55%, rgba(225,185,110,0.5) 0%, transparent 100%)",
-            "radial-gradient(ellipse 1px 3px at 60% 15%, rgba(215,170,95,0.6) 0%, transparent 100%)",
-            "radial-gradient(ellipse 2px 1px at 50% 90%, rgba(235,195,125,0.7) 0%, transparent 100%)",
-            "radial-gradient(ellipse 1px 1px at 10% 45%, rgba(220,180,105,0.5) 0%, transparent 100%)",
-            "radial-gradient(ellipse 2px 2px at 90% 60%, rgba(210,160,85,0.6) 0%, transparent 100%)",
-            "radial-gradient(ellipse 1px 2px at 35% 30%, rgba(240,205,135,0.7) 0%, transparent 100%)",
-          ].join(", "),
+          width: mob ? 72 : 90,
+          backgroundColor: "#e8a33e",
           flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <span style={{ fontSize: mob ? F.h2 : F.h1 }}>{ach.icon}</span>
         </div>
 
-        {/* Pack color strip — menthol/popper band */}
-        <div style={{
-          width: mob ? 5 : 7,
-          backgroundColor: stripColor,
-          flexShrink: 0,
-        }} />
+        {/* Pack color band */}
+        <div style={{ width: mob ? 5 : 6, backgroundColor: stripColor, flexShrink: 0 }} />
 
-        {/* Paper body — off-white with dark text */}
+        {/* Paper body — white, dark text */}
         <div style={{
           flex: 1,
-          backgroundColor: "#f0ead6",
-          padding: mob ? "10px 12px" : "12px 16px",
+          backgroundColor: "#ffffff",
+          padding: mob ? "8px 12px" : "10px 16px",
           display: "flex", alignItems: "center",
         }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: mob ? F.sm : F.md, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: "bold" }}>{ach.name}</div>
-            <div style={{ fontSize: mob ? F.micro : F.xs, color: "#1e293b", marginTop: 2, opacity: 0.7 }}>{ach.desc}</div>
+            <div style={{ fontSize: mob ? F.sm : F.md, color: "#0f0f23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: "bold" }}>{ach.name}</div>
+            <div style={{ fontSize: mob ? F.micro : F.xs, color: "#0f0f23", marginTop: 2, opacity: 0.6 }}>{ach.desc}</div>
           </div>
         </div>
 
-        {/* Burning end — ember to ash */}
-        <div style={{
-          width: mob ? 18 : 24,
-          flexShrink: 0,
-          background: "linear-gradient(90deg, #f0ead6 0%, #8b7355 15%, #f97316 40%, #ef4444 65%, #4b4b4b 85%, #6b7280 100%)",
-          position: "relative",
-          overflow: "hidden",
-        }}>
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "radial-gradient(circle at 50% 50%, rgba(251,146,60,0.8) 0%, rgba(239,68,68,0.5) 40%, transparent 70%)",
-            animation: "cigBurn 1.5s ease-in-out infinite",
-          }} />
+        {/* Burning tip — flat orange + grey ash */}
+        <div style={{ display: "flex", flexShrink: 0 }}>
+          <div style={{ width: mob ? 8 : 10, backgroundColor: "#f97316" }} />
+          <div style={{ width: mob ? 10 : 14, backgroundColor: "#6b7280" }} />
         </div>
       </div>
     </div>
