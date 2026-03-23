@@ -79,7 +79,7 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
       }}>
         {/* Filter tip — cork/tan with icon */}
         <div style={{
-          width: mob ? 42 : 52,
+          width: mob ? 80 : 100,
           backgroundColor: "#d4a574",
           flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -90,7 +90,7 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
         {/* Pack color strip — menthol/popper band */}
         <div style={{
           width: mob ? 5 : 7,
-          background: `linear-gradient(180deg, ${stripColor} 0%, ${stripColor}cc 100%)`,
+          backgroundColor: stripColor,
           flexShrink: 0,
         }} />
 
@@ -102,8 +102,8 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
           display: "flex", alignItems: "center",
         }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: mob ? F.sm : F.md, color: "#0f0f23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: "bold" }}>{ach.name}</div>
-            <div style={{ fontSize: mob ? F.micro : F.xs, color: "#475569", marginTop: 2 }}>{ach.desc}</div>
+            <div style={{ fontSize: mob ? F.sm : F.md, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: "bold" }}>{ach.name}</div>
+            <div style={{ fontSize: mob ? F.micro : F.xs, color: "#1e293b", marginTop: 2, opacity: 0.7 }}>{ach.desc}</div>
           </div>
         </div>
 
