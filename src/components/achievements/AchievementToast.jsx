@@ -76,9 +76,16 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
         boxShadow: `0 0 20px ${stripColor}25, 0 4px 16px rgba(0,0,0,0.4)`,
         minHeight: mob ? 56 : 64,
       }}>
-        {/* Filter end — pack color strip */}
+        {/* Filter tip — the held end, ~20% from edge */}
         <div style={{
-          width: mob ? 10 : 14,
+          width: mob ? 12 : 16,
+          background: `linear-gradient(135deg, #1e293b 0%, #0f172a 100%)`,
+          flexShrink: 0,
+        }} />
+
+        {/* Pack color strip — inset like a menthol/popper band */}
+        <div style={{
+          width: mob ? 6 : 8,
           background: `linear-gradient(180deg, ${stripColor} 0%, ${stripColor}cc 100%)`,
           flexShrink: 0,
         }} />
