@@ -1,4 +1,5 @@
 import * as Tone from "tone";
+import { pickRandom } from "./calc.js";
 
 // Sound effects using Tone.js synthesis
 export const SFX = {
@@ -575,7 +576,7 @@ export const BGM = {
     // If in context override (e.g. Corner Shop), pick a random reserved track
     if (this._contextOverride) {
       const reserved = [...this.reservedTracks];
-      const pick = reserved[Math.floor(Math.random() * reserved.length)];
+      const pick = pickRandom(reserved);
       const track = BGM_TRACKS.find(t => t.id === pick);
       if (track) { this.audio.src = `./${track.file}`; this.audio.play().catch(() => {}); }
       return;

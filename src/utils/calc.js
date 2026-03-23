@@ -5,6 +5,10 @@ export function rand(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+export function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 // Position-weighted OVR. Weights sum to 1.00 per position.
 // Only GK shooting is zero — every other attr contributes at least a small amount
 // so training any attribute always has some OVR payoff for the player.

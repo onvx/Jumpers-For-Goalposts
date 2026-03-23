@@ -1,4 +1,4 @@
-import { getOverall } from "./calc.js";
+import { getOverall, pickRandom } from "./calc.js";
 import { POSITION_TYPES } from "../data/positions.js";
 
 /**
@@ -134,7 +134,7 @@ export function generateAITransferOffers(clubRelationships, squad, allLeagueStat
       .filter(p => !usedPlayerIds.has(p.id))
       .sort((a, b) => getOverall(a) - getOverall(b));
     if (userSquadSorted.length === 0) continue;
-    const aiWants = [userSquadSorted[Math.floor(Math.random() * Math.min(5, userSquadSorted.length))]];
+    const aiWants = [pickRandom(userSquadSorted.slice(0, 5))];
 
     // AI offers: Random player from their squad (similar value)
     const targetValue = getPlayerValue(aiWants[0]);
@@ -145,7 +145,7 @@ export function generateAITransferOffers(clubRelationships, squad, allLeagueStat
 
     if (aiSquadFiltered.length === 0) continue;
 
-    const aiOffers = [aiSquadFiltered[Math.floor(Math.random() * aiSquadFiltered.length)]];
+    const aiOffers = [pickRandom(aiSquadFiltered)];
     usedPlayerIds.add(aiWants[0].id);
 
     offers.push({
@@ -270,15 +270,14 @@ export function getManagerQuote(ratio) {
     angry:      ["You're having a laugh, aren't you?", "Don't insult me with that.", "Absolutely not. Get out of my office."],
     waiting:    ["Put something on the table.", "I'm listening...", "Make me an offer I can't refuse."],
   };
-  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-  if (ratio === 0) return { mood: "waiting", quote: pick(quotes.waiting), quoteColor: "#475569", acceptable: false };
-  if (ratio >= 1.3) return { mood: "ecstatic", quote: pick(quotes.ecstatic), quoteColor: "#4ade80", acceptable: true };
-  if (ratio >= 1.05) return { mood: "happy", quote: pick(quotes.happy), quoteColor: "#4ade80", acceptable: true };
-  if (ratio >= 0.95) return { mood: "willing", quote: pick(quotes.willing), quoteColor: "#facc15", acceptable: true };
-  if (ratio >= 0.85) return { mood: "skeptical", quote: pick(quotes.skeptical), quoteColor: "#f59e0b", acceptable: false };
-  if (ratio >= 0.70) return { mood: "dismissive", quote: pick(quotes.dismissive), quoteColor: "#ef4444", acceptable: false };
-  return { mood: "angry", quote: pick(quotes.angry), quoteColor: "#ef4444", acceptable: false };
+  if (ratio === 0) return { mood: "waiting", quote: pickRandom(quotes.waiting), quoteColor: "#475569", acceptable: false };
+  if (ratio >= 1.3) return { mood: "ecstatic", quote: pickRandom(quotes.ecstatic), quoteColor: "#4ade80", acceptable: true };
+  if (ratio >= 1.05) return { mood: "happy", quote: pickRandom(quotes.happy), quoteColor: "#4ade80", acceptable: true };
+  if (ratio >= 0.95) return { mood: "willing", quote: pickRandom(quotes.willing), quoteColor: "#facc15", acceptable: true };
+  if (ratio >= 0.85) return { mood: "skeptical", quote: pickRandom(quotes.skeptical), quoteColor: "#f59e0b", acceptable: false };
+  if (ratio >= 0.70) return { mood: "dismissive", quote: pickRandom(quotes.dismissive), quoteColor: "#ef4444", acceptable: false };
+  return { mood: "angry", quote: pickRandom(quotes.angry), quoteColor: "#ef4444", acceptable: false };
 }
 
 /**

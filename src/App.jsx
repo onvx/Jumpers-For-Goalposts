@@ -13,7 +13,7 @@ import { F, C, FONT, BTN, MODAL, CARD, Z } from "./data/tokens";
 import { TICKET_DEFS } from "./data/tickets.js";
 import { MSG } from "./data/messages.js";
 import { getModifier } from "./data/leagueModifiers.js";
-import { rand, getOverall, getAttrColor, getPosColor, progressToPips, getTrainingProgress, getOOPPenalty, getPositionTrainingWeeks } from "./utils/calc.js";
+import { rand, getOverall, getAttrColor, getPosColor, progressToPips, getTrainingProgress, getOOPPenalty, getPositionTrainingWeeks, pickRandom } from "./utils/calc.js";
 import { detectFormationName, assignPlayersToSlots, getFormationPositions, getEffectiveSlots, getTeamOOPMultiplier } from "./utils/formation.js";
 import { pickNationality, pickAINationality, generateNameForNation, getNatFlag, getNatLabel, inferNationality, generatePlayer, generateSquad, generatePrestigeSquad, autoSelectXI, autoSelectBench, generateAITeam, checkRetirements, generateYouthPlayer, generateYouthIntake, generateTrialPlayer, generateProdigalPlayer, evolveAISquad, generateSquadPhilosophy, generateFreeAgent, getOvrCap, displayName } from "./utils/player.js";
 import { getArcById, getArcsForCat, getValidTargets, checkArcCond, applyArcFx, applyFinalReward, processArcCompletion, precomputeArcEffects, initStoryArcs, getStepNarrative, getFocusNarrative, resolveSeasonEndArcs } from "./utils/arcs.js";
@@ -134,17 +134,20 @@ const NEWSPAPER_TEMPLATES = [
 const REPORTER_FIRST = ["Barry","Colin","Keith","Derek","Malcolm","Terry","Graham","Nigel","Clive","Trevor","Maurice","Dennis","Gordon","Stanley","Frank","Arthur","Les","Norman","Brian","Geoff"];
 const REPORTER_LAST = ["Finch","Partridge","Whittle","Platt","Skinner","Baines","Trotter","Coppell","Duckworth","Bramley","Stokes","Rowntree","Clegg","Hargreaves","Nuttall","Fenton","Craven","Dobson","Pilling","Seddon"];
 function generateReporterName() {
-  return `${REPORTER_FIRST[Math.floor(Math.random() * REPORTER_FIRST.length)]} ${REPORTER_LAST[Math.floor(Math.random() * REPORTER_LAST.length)]}`;
+  return `${pickRandom(REPORTER_FIRST)} ${pickRandom(REPORTER_LAST)}`;
 }
 function generateNewspaperName(teamName) {
   // For multi-word names, pick one word to keep it punchy
   const words = teamName.trim().split(/\s+/);
   const short = words.length >= 2
-    ? words[Math.floor(Math.random() * words.length)]
+    ? pickRandom(words)
     : teamName;
-  const tpl = NEWSPAPER_TEMPLATES[Math.floor(Math.random() * NEWSPAPER_TEMPLATES.length)];
+  const tpl = pickRandom(NEWSPAPER_TEMPLATES);
   return tpl(short);
 }
+const DEFAULT_SEASON_LENGTH = 48;
+const DEFAULT_FIXTURE_COUNT = 18;
+
 function FootballManager() {
   const teamName = useGameStore(s => s.teamName);
   const newspaperName = useGameStore(s => s.newspaperName);
@@ -330,7 +333,7 @@ function FootballManager() {
     const updated = { ...prev };
     let changed = false;
     for (const id of unlockedAchievements) {
-      if (!(id in updated)) { updated[id] = { season: seasonNumber, week: calendarIndex, seasonLen: seasonCalendar?.length || 48 }; changed = true; }
+      if (!(id in updated)) { updated[id] = { season: seasonNumber, week: calendarIndex, seasonLen: seasonCalendar?.length || DEFAULT_SEASON_LENGTH }; changed = true; }
     }
     if (changed) { achievementUnlockWeeksRef.current = updated; setAchievementUnlockWeeks(updated); }
   }, [unlockedAchievements, calendarIndex, seasonNumber]);
@@ -378,7 +381,7 @@ function FootballManager() {
       setTickets(prev => {
         const newTickets = [...prev];
         for (let i = 0; i < ticketsToAdd; i++) {
-          const type = pool[Math.floor(Math.random() * pool.length)];
+          const type = pickRandom(pool);
           newTickets.push({ id: `t_pack_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, type });
         }
         return newTickets;
@@ -1482,7 +1485,7 @@ function FootballManager() {
         const sfo = newLeague.singleFixtureOpponents;
         const sfMod = getModifier(leagueTier);
         const sfTourney = sfMod.miniTournament ? "5v5 Mini-Tournament" : "Dynasty Cup knockout phase";
-        const sfMDs = newLeague.fixtures?.length || 18;
+        const sfMDs = newLeague.fixtures?.length || DEFAULT_FIXTURE_COUNT;
         const sfNames = sfo.map(o => o.name).join(" and ");
         setInboxMessages(prev => [...prev, createInboxMessage(
           MSG.singleFixture(sfTourney, sfMDs, sfNames, leagueTier),
@@ -1915,7 +1918,7 @@ function FootballManager() {
     if (summerPhase) return; // all summer phases block advanceWeek; use advanceSummer() instead
 
     // Season end — calendar exhausted, or (no calendar) matchweekIndex past all fixtures
-    const totalFix = league.fixtures?.length || 18;
+    const totalFix = league.fixtures?.length || DEFAULT_FIXTURE_COUNT;
     const calendarDone = useGameStore.getState().seasonCalendar && useGameStore.getState().calendarIndex >= useGameStore.getState().seasonCalendar.length;
     const noCalendarFallback = !useGameStore.getState().seasonCalendar && matchweekIndex >= totalFix;
     if (calendarDone || noCalendarFallback) {
@@ -2482,7 +2485,7 @@ function FootballManager() {
       const opt = step?.[cs.focus.choice];
       if (!opt?.fx) return;
       const fx = opt.fx;
-      const intendedAttrBoost = !!(fx.stats || fx.mode || fx.target || fx.prodigal || fx.squad || fx.top3);
+      const intendedAttrBoost = !!(fx.stats || fx.mode);
       // Check target player exists before claiming boost was intended
       const targetExists = fx.target ? newSquad.some(p => p.id === cs.tracking?.targetId) : true;
       const prodigalExists = fx.prodigal ? newSquad.some(p => p.id === prodigalSon?.playerId) : true;
@@ -2594,7 +2597,7 @@ function FootballManager() {
       let boardDelta = curBoard > 55 ? -0.5 : curBoard < 45 ? 0.5 : 0;
       if (consecutiveWins >= 3) fanDelta += 2;
       // Board: league position bonus/penalty after halfway point
-      const _totalMDs = useGameStore.getState().league?.fixtures?.length || 18;
+      const _totalMDs = useGameStore.getState().league?.fixtures?.length || DEFAULT_FIXTURE_COUNT;
       if (useGameStore.getState().matchweekIndex > _totalMDs / 2) {
         const _sortedT = [...(useGameStore.getState().league?.table || [])].sort(
           (a, b) => b.points - a.points || (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst)
@@ -2621,7 +2624,7 @@ function FootballManager() {
       const _wk = useGameStore.getState().calendarIndex;
       if (newBoard > 75 && _wk > 0 && _wk % 8 === 0) {
         const _picks = ["random_attr", "double_session", "relation_boost", "transfer_insider"];
-        const _pick = _picks[Math.floor(Math.random() * _picks.length)];
+        const _pick = pickRandom(_picks);
         setTickets(prev => [...prev, { id: `ticket_board_${Date.now()}`, type: _pick }]);
         setInboxMessages(prev => [...prev, createInboxMessage(
           MSG.boardReward(TICKET_DEFS[_pick]?.name || "gift"),
@@ -2994,9 +2997,9 @@ function FootballManager() {
                 // MotM boost
                 const _holElig = _holAutoFive;
                 if (_holElig.length > 0) {
-                  const _holMotm = _holElig[Math.floor(Math.random() * _holElig.length)];
+                  const _holMotm = pickRandom(_holElig);
                   const _holAttrs = ["pace","shooting","passing","dribbling","defending","physical","goalkeeping"];
-                  const _holAttr = _holAttrs[Math.floor(Math.random() * _holAttrs.length)];
+                  const _holAttr = pickRandom(_holAttrs);
                   const _holNewVal = Math.min(_holMotm.legendCap || ovrCap, (_holMotm.attrs[_holAttr] || 1) + 1);
                   setSquad(prev => prev.map(p => p.id === _holMotm.id ? { ...p, attrs: { ...p.attrs, [_holAttr]: _holNewVal } } : p));
                   setInboxMessages(prev => [...prev, createInboxMessage(
@@ -3124,8 +3127,8 @@ function FootballManager() {
             // Only predict draws or player wins (AI already gets 3 pts from own wins)
             let _holPred;
             for (let _try = 0; _try < 20; _try++) {
-              const h = _ps[Math.floor(Math.random() * _ps.length)];
-              const a = _ps[Math.floor(Math.random() * _ps.length)];
+              const h = pickRandom(_ps);
+              const a = pickRandom(_ps);
               const aiWins = _holPlHome ? a > h : h > a;
               if (!aiWins) { _holPred = { home: h, away: a }; break; }
             }
@@ -3167,7 +3170,7 @@ function FootballManager() {
     // Holiday mode: auto-pick a random ticket from capped arc choices
     if (useGameStore.getState().isOnHoliday && cappedArcTickets.length > 0) {
       cappedArcTickets.forEach(ct => {
-        const pick = ct.choices[Math.floor(Math.random() * ct.choices.length)];
+        const pick = pickRandom(ct.choices);
         setTickets(prev => [...prev, { id: `t_arc_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, type: pick }]);
       });
     }
@@ -3340,7 +3343,7 @@ function FootballManager() {
 
         // Check if reward was fully capped
         const ffxSE = arc.finalFx;
-        const intendedBoostSE = !!(ffxSE.targetWeakest || ffxSE.squadStats || ffxSE.squadAll);
+        const intendedBoostSE = !!(ffxSE.targetWeakest || ffxSE.squadStats || ffxSE.squadAll || ffxSE.prodigalBoost);
         const targetExistsSE = ffxSE.targetWeakest ? newSquad.some(p => p.id === targetId) : true;
         let gainCountSE = 0;
         newSquad.forEach(p => {
@@ -3439,7 +3442,7 @@ function FootballManager() {
           const res = applyFinalReward(arc, newSquad, targetId, prodigalId, {}, ovrCap);
           newSquad = res.squad;
           const ffxGP = arc.finalFx;
-          const intendedBoostGP = !!(ffxGP.targetWeakest || ffxGP.squadStats || ffxGP.squadAll);
+          const intendedBoostGP = !!(ffxGP.targetWeakest || ffxGP.squadStats || ffxGP.squadAll || ffxGP.prodigalBoost);
           const targetExistsGP = ffxGP.targetWeakest ? newSquad.some(p => p.id === targetId) : true;
           let gainCountGP = 0;
           newSquad.forEach(p => {
@@ -3453,7 +3456,7 @@ function FootballManager() {
           });
           if (intendedBoostGP && targetExistsGP && gainCountGP === 0) {
             const _atp = ["double_session", "miracle_cream", "twelfth_man", "relation_boost", "transfer_insider", "youth_coup", "rewind", "random_attr"];
-            const pick = _atp[Math.floor(Math.random() * _atp.length)];
+            const pick = pickRandom(_atp);
             setTickets(prev => [...prev, { id: `t_arc_gp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, type: pick }]);
           }
           setArcStepQueue(q => [...q, {
@@ -3500,7 +3503,7 @@ function FootballManager() {
                 let remaining = Math.abs(delta);
                 const newAttrs = { ...p.attrs };
                 while (remaining > 0) {
-                  const attr = attrKeys[Math.floor(Math.random() * attrKeys.length)];
+                  const attr = pickRandom(attrKeys);
                   const current = newAttrs[attr] || 0;
                   const pCap = p.legendCap || ovrCap;
                   if (delta > 0 && current < pCap) {
@@ -3595,7 +3598,7 @@ function FootballManager() {
       const newSquad = useGameStore.getState().squad.map(p => {  // Use ref for fresh data, not stale state!
         const pick = chosen.find(c => c.id === p.id);
         if (!pick) return p;
-        const attr = attrKeys[Math.floor(Math.random() * attrKeys.length)];
+        const attr = pickRandom(attrKeys);
         const amt = Math.floor(Math.random() * 3) + 1;
         const oldVal = p.attrs[attr] || 0;
         const newVal = Math.min(p.legendCap || ovrCap, oldVal + amt);
@@ -4477,7 +4480,7 @@ function FootballManager() {
 
       {/* Page content */}
       {showAchievements ? (
-        <AchievementCabinet key={cabinetKey} unlocked={unlockedAchievements} unlockedPacks={unlockedPacks} achievementUnlockWeeks={achievementUnlockWeeks} calendarIndex={calendarIndex} seasonNumber={seasonNumber} seasonLength={seasonCalendar?.length || 48} squad={squad} clubHistory={clubHistory} currentTier={leagueTier} ovrCap={ovrCap} gameMode={gameMode} isTainted={isTainted}
+        <AchievementCabinet key={cabinetKey} unlocked={unlockedAchievements} unlockedPacks={unlockedPacks} achievementUnlockWeeks={achievementUnlockWeeks} calendarIndex={calendarIndex} seasonNumber={seasonNumber} seasonLength={seasonCalendar?.length || DEFAULT_SEASON_LENGTH} squad={squad} clubHistory={clubHistory} currentTier={leagueTier} ovrCap={ovrCap} gameMode={gameMode} isTainted={isTainted}
           hasUnseenAchievements={unlockedAchievements.size > lastSeenAchievementCount}
           onViewAchievements={() => setLastSeenAchievementCount(unlockedAchievements.size)}
           tickets={tickets} retiringPlayers={retiringPlayers} transferFocus={transferFocus}
@@ -4691,9 +4694,9 @@ function FootballManager() {
                         if (playerWon) {
                           const eligible = freshSquad.filter(p => currentXI.includes(p.id));
                           if (eligible.length > 0) {
-                            const motm = eligible[Math.floor(Math.random() * eligible.length)];
+                            const motm = pickRandom(eligible);
                             const attrs = ["pace","shooting","passing","dribbling","defending","physical","goalkeeping"];
-                            const attr = attrs[Math.floor(Math.random() * attrs.length)];
+                            const attr = pickRandom(attrs);
                             const ovrCap = getOvrCap(prestigeLevel);
                             const newVal = Math.min(motm.legendCap || ovrCap, (motm.attrs[attr] || 1) + 1);
                             setSquad(prev => prev.map(p => p.id === motm.id ? { ...p, attrs: { ...p.attrs, [attr]: newVal } } : p));
@@ -4918,7 +4921,7 @@ function FootballManager() {
                         setLeague(updatedLeague);
                         // Holiday: Dynasty Cup bracket setup at end of league
                         {
-                          const holTotalFix = updatedLeague.fixtures?.length || 18;
+                          const holTotalFix = updatedLeague.fixtures?.length || DEFAULT_FIXTURE_COUNT;
                           const holCompletedMDs = capturedMWIdx + 1;
                           const holDynMod = getModifier(leagueTier);
                           if (holDynMod.knockoutAtEnd && holCompletedMDs === holTotalFix) {
@@ -4951,7 +4954,7 @@ function FootballManager() {
                         {
                           const holMiniMod = getModifier(leagueTier);
                           if (holMiniMod.miniTournament) {
-                            const holMiniTotal = updatedLeague.fixtures?.length || 18;
+                            const holMiniTotal = updatedLeague.fixtures?.length || DEFAULT_FIXTURE_COUNT;
                             const holMiniCompleted = capturedMWIdx + 1;
                             if (holMiniCompleted === holMiniTotal) {
                               const holMiniSorted = sortStandings(updatedLeague.table);
@@ -7369,8 +7372,8 @@ function FootballManager() {
                   // Only predict draws or player wins (AI already gets 3 pts from own wins)
                   let _pred2;
                   for (let _try = 0; _try < 20; _try++) {
-                    const h = _ps2[Math.floor(Math.random() * _ps2.length)];
-                    const a = _ps2[Math.floor(Math.random() * _ps2.length)];
+                    const h = pickRandom(_ps2);
+                    const a = pickRandom(_ps2);
                     const aiWins = _plHome2 ? a > h : h > a;
                     if (!aiWins) { _pred2 = { home: h, away: a }; break; }
                   }
@@ -7584,7 +7587,7 @@ function FootballManager() {
               }
             }
 
-            const totalFixtures = league.fixtures?.length || 18;
+            const totalFixtures = league.fixtures?.length || DEFAULT_FIXTURE_COUNT;
             const halfwayMark = Math.floor(totalFixtures / 2);
             const completedMDs = (matchResult._playedMatchweekIndex ?? (matchweekIndex - 1)) + 1;
             const leagueMod = getModifier(leagueTier);
@@ -7678,7 +7681,7 @@ function FootballManager() {
               consecutiveWins: playerWon ? consecutiveWins + 1 : 0,
               prevStartingXI, motmTracker, stScoredConsecutive: stScored ? stScoredConsecutive + 1 : 0,
               playerRatingTracker, beatenTeams,
-              halfwayPosition: completedMDs === Math.floor((league.fixtures?.length || 18) / 2) ? null : halfwayPosition,
+              halfwayPosition: completedMDs === Math.floor((league.fixtures?.length || DEFAULT_FIXTURE_COUNT) / 2) ? null : halfwayPosition,
               seasonHomeUnbeaten: (isHome && playerLost) ? false : seasonHomeUnbeaten,
               seasonAwayWins: (!isHome && playerWon) ? seasonAwayWins + 1 : seasonAwayWins,
               seasonAwayGames: !isHome ? seasonAwayGames + 1 : seasonAwayGames,
@@ -8376,9 +8379,9 @@ function FootballManager() {
                 if (playerWon) {
                   const eligible = useGameStore.getState().squad.filter(p => startingXI.includes(p.id));
                   if (eligible.length > 0) {
-                    const motm = eligible[Math.floor(Math.random() * eligible.length)];
+                    const motm = pickRandom(eligible);
                     const attrs = ["pace","shooting","passing","dribbling","defending","physical","goalkeeping"];
-                    const attr = attrs[Math.floor(Math.random() * attrs.length)];
+                    const attr = pickRandom(attrs);
                     const newVal = Math.min(motm.legendCap || ovrCap, (motm.attrs[attr] || 1) + 1);
                     setSquad(prev => prev.map(p => p.id === motm.id ? { ...p, attrs: { ...p.attrs, [attr]: newVal } } : p));
                     setInboxMessages(prev => [...prev, createInboxMessage(
@@ -8553,9 +8556,9 @@ function FootballManager() {
                 if (playerWonFinal) {
                   const eligible = useGameStore.getState().squad.filter(p => (fiveASideSquad || []).includes(p.id));
                   if (eligible.length > 0) {
-                    const motm = eligible[Math.floor(Math.random() * eligible.length)];
+                    const motm = pickRandom(eligible);
                     const attrs = ["pace","shooting","passing","dribbling","defending","physical","goalkeeping"];
-                    const attr = attrs[Math.floor(Math.random() * attrs.length)];
+                    const attr = pickRandom(attrs);
                     const newVal = Math.min(motm.legendCap || ovrCap, (motm.attrs[attr] || 1) + 1);
                     setSquad(prev => prev.map(p => p.id === motm.id ? { ...p, attrs: { ...p.attrs, [attr]: newVal } } : p));
                     setInboxMessages(prev => [...prev, createInboxMessage(
@@ -9369,7 +9372,7 @@ function FootballManager() {
               try {
                 const nameHash = (name) => { let h = 0; for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0; return (Math.abs(h) % 100) / 100; };
                 const totsCandidates = [];
-                const mwCount = league?.fixtures?.length || 18;
+                const mwCount = league?.fixtures?.length || DEFAULT_FIXTURE_COUNT;
                 // Player squad
                 if (playerSeasonStats && archiveSquad) {
                   archiveSquad.forEach(p => {
@@ -9857,7 +9860,7 @@ function FootballManager() {
                 const sfo = newLeague2.singleFixtureOpponents;
                 const sfMod = getModifier(newTier);
                 const sfTourney = sfMod.miniTournament ? "5v5 Mini-Tournament" : "Dynasty Cup knockout phase";
-                const sfMDs = newLeague2.fixtures?.length || 18;
+                const sfMDs = newLeague2.fixtures?.length || DEFAULT_FIXTURE_COUNT;
                 const sfNames = sfo.map(o => o.name).join(" and ");
                 setInboxMessages(prev => [...prev, createInboxMessage(
                   MSG.singleFixtureNewSeason(sfTourney, sfMDs, sfNames, newTier, nextSeason),

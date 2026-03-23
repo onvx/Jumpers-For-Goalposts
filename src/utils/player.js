@@ -3,7 +3,7 @@ import { LEAGUE_DEFS } from "../data/leagues.js";
 import { STARTING_XI_POSITIONS, EXTRA_POOL, POSITION_TYPES, POSITION_ORDER, ALL_POSITIONS } from "../data/positions.js";
 import { ATTRIBUTES } from "../data/training.js";
 import { AI_BENCH_POSITIONS, TRAIT_SQUAD_STYLE } from "../data/leagues.js";
-import { rand, getOverall } from "./calc.js";
+import { rand, getOverall, pickRandom } from "./calc.js";
 
 // Prestige OVR scaling — caps and offsets for each prestige level
 export function getOvrCap(prestigeLevel = 0) {
@@ -377,7 +377,7 @@ export function generateAITeam(name, color, strength, trait, tier, extraCount = 
   });
   // Extra depth players for teams with large target squad sizes
   for (let e = 0; e < extraCount; e++) {
-    const pos = ALL_POSITIONS[Math.floor(Math.random() * ALL_POSITIONS.length)];
+    const pos = pickRandom(ALL_POSITIONS);
     const attrs = {};
     const type = POSITION_TYPES[pos];
     const pMin = Math.max(1, benchMin + (Math.random() < 0.5 ? -1 : 0));
@@ -400,7 +400,7 @@ export function generateAITeam(name, color, strength, trait, tier, extraCount = 
 // random variation means two teams with the same trait still differ.
 export function generateSquadPhilosophy(trait) {
   const base = TRAIT_SQUAD_STYLE[trait] || { baseSize: 19, baseYouthRate: 0.5 };
-  const sizeVariation = [-2, -1, 0, 0, 1, 2][Math.floor(Math.random() * 6)];
+  const sizeVariation = pickRandom([-2, -1, 0, 0, 1, 2]);
   return {
     targetSize: Math.max(14, Math.min(25, base.baseSize + sizeVariation)),
     youthRate: +(Math.max(0.15, Math.min(0.9, base.baseYouthRate + (Math.random() * 0.2 - 0.1)))).toFixed(2),
@@ -419,7 +419,7 @@ function pickWeightedPosition(weights) {
     r -= w;
     if (r <= 0) {
       const pool = positionsByType[type];
-      return pool[Math.floor(Math.random() * pool.length)];
+      return pickRandom(pool);
     }
   }
   return "CM";

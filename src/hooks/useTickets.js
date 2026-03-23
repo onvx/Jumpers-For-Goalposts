@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { ATTRIBUTES } from "../data/training.js";
-import { getOverall } from "../utils/calc.js";
+import { getOverall, pickRandom } from "../utils/calc.js";
 import { generateFreeAgent, generateNameForNation } from "../utils/player.js";
 import { useGameStore } from "../store/gameStore.js";
 import { createInboxMessage } from "../utils/messageUtils.js";
@@ -42,7 +42,7 @@ export function useTickets({
     if (!player) return;
     const boostable = ATTRIBUTES.filter(a => player.attrs[a.key] < ovrCap);
     if (!boostable.length) return;
-    const attr = boostable[Math.floor(Math.random() * boostable.length)];
+    const attr = pickRandom(boostable);
     const oldVal = player.attrs[attr.key];
     const newVal = oldVal + 1;
     setSquad(prev => prev.map(p => {
@@ -63,7 +63,7 @@ export function useTickets({
 
   const useTicketRelationBoost = useCallback((ticketId) => {
     if (transferFocus.length === 0) return;
-    const club = transferFocus[Math.floor(Math.random() * transferFocus.length)];
+    const club = pickRandom(transferFocus);
     setClubRelationships(prev => {
       const entry = prev[club] || { pct: 0, tier: leagueTier };
       return { ...prev, [club]: { ...entry, pct: Math.min(100, entry.pct + 20) } };
