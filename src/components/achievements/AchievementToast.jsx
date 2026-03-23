@@ -80,9 +80,7 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
         {/* Filter tip — cork/tan with icon */}
         <div style={{
           width: mob ? 42 : 52,
-          background: "linear-gradient(180deg, #d4a574 0%, #c49360 50%, #d4a574 100%)",
-          backgroundImage: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3) 1px, transparent 1px), radial-gradient(circle at 70% 60%, rgba(255,255,255,0.2) 1px, transparent 1px), radial-gradient(circle at 50% 80%, rgba(255,255,255,0.25) 1px, transparent 1px)",
-          backgroundSize: "8px 8px, 6px 6px, 10px 10px",
+          backgroundColor: "#d4a574",
           flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
@@ -99,8 +97,7 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
         {/* Paper body — off-white with dark text */}
         <div style={{
           flex: 1,
-          background: "linear-gradient(180deg, #f0ead6 0%, #e8e0cc 50%, #f0ead6 100%)",
-          backgroundImage: "repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(0,0,0,0.02) 4px, rgba(0,0,0,0.02) 5px)",
+          backgroundColor: "#f0ead6",
           padding: mob ? "10px 12px" : "12px 16px",
           display: "flex", alignItems: "center",
         }}>
