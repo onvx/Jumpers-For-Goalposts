@@ -1,5 +1,6 @@
 import { C } from "./tokens.js";
 import { LEAGUE_DEFS } from "./leagues.js";
+import { pickRandom } from "../utils/calc.js";
 
 /**
  * Inbox message templates.
@@ -10,12 +11,6 @@ import { LEAGUE_DEFS } from "./leagues.js";
  * Usage:  createInboxMessage(MSG.welcome(), { calendarIndex, seasonNumber })
  *   or:  createInboxMessage({ ...MSG.trialOffer(p, w) }, timeCtx)
  */
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // ---------------------------------------------------------------------------
 // SYSTEM
@@ -684,7 +679,7 @@ const randomAttrBoost = (playerName, attrKey) => {
     id: `msg_ticket_attr_${Date.now()}`,
     icon: "\uD83C\uDFB2", // 🎲
     title: `${playerName}: Training Note`,
-    body: pick(flavorLines),
+    body: pickRandom(flavorLines),
     color: C.green,
   };
 };
@@ -699,7 +694,7 @@ const relationBoost = (clubName) => {
     id: `msg_ticket_relation_${Date.now()}`,
     icon: "\uD83E\uDD1D", // 🤝
     title: `${clubName}: Relations Improved`,
-    body: pick(flavorLines),
+    body: pickRandom(flavorLines),
     color: C.blue,
   };
 };
@@ -714,7 +709,7 @@ const miracleHealed = (playerName) => {
     id: `msg_ticket_cream_${Date.now()}`,
     icon: "\uD83E\uDDF4", // 🧴
     title: `${playerName}: Miracle Recovery`,
-    body: pick(flavorLines),
+    body: pickRandom(flavorLines),
     color: "#22d3ee",
   };
 };
@@ -729,7 +724,7 @@ const twelfthMan = (legendName, clubName) => {
     id: `msg_ticket_12th_${Date.now()}`,
     icon: "\uD83D\uDCE3", // 📣
     title: `12th Man: ${legendName} Rallies The Fans`,
-    body: pick(flavorLines),
+    body: pickRandom(flavorLines),
     color: "#f97316",
   };
 };

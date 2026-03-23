@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { LEAGUE_DEFS } from "../../data/leagues.js";
 import { SFX } from "../../utils/sfx.js";
 import { F, C, FONT, Z } from "../../data/tokens";
+import { pickRandom } from "../../utils/calc.js";
 import { useMobile } from "../../hooks/useMobile.js";
 
 export function SeasonEndReveal({ info, onDone }) {
@@ -33,7 +34,7 @@ export function SeasonEndReveal({ info, onDone }) {
           x: Math.random() * 100,
           delay: Math.random() * (isInvincible ? 5 : 3),
           duration: 2.5 + Math.random() * 2,
-          color: colors[Math.floor(Math.random() * colors.length)],
+          color: pickRandom(colors),
           size: 3 + Math.random() * (isInvincible ? 7 : 5),
           wobble: Math.random() * 30 - 15,
           type: Math.random() > 0.5 ? "rect" : "circle",
