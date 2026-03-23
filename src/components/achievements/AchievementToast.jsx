@@ -73,7 +73,8 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
         display: "flex", alignItems: "stretch",
         borderRadius: 6,
         overflow: "hidden",
-        boxShadow: `0 0 20px ${stripColor}25, 0 4px 16px rgba(0,0,0,0.4)`,
+        border: `1px solid ${C.gold}`,
+        boxShadow: `0 0 24px rgba(250,204,21,0.2), 0 4px 16px rgba(0,0,0,0.4)`,
         minHeight: mob ? 56 : 64,
       }}>
         {/* Filter tip — the held end, ~20% from edge */}
