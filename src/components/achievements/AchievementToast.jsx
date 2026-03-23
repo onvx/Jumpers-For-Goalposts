@@ -93,7 +93,7 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
         {/* Body — dark background with pack-tinted gradient */}
         <div style={{
           flex: 1,
-          background: `linear-gradient(135deg, #0f172a 0%, #1a1a3e 100%)`,
+          background: `linear-gradient(135deg, #1e293b 0%, #2a2a4e 100%)`,
           padding: mob ? "12px 12px" : "14px 16px",
           display: "flex", alignItems: "center", gap: mob ? 8 : 12,
           position: "relative",
@@ -108,13 +108,6 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
             <div style={{ fontSize: mob ? F.micro : F.xs, color: C.textMuted, marginTop: 2 }}>{ach.desc}</div>
           </div>
 
-          {/* Pack icon badge */}
-          {pack && (
-            <span style={{
-              fontSize: mob ? F.sm : F.md, flexShrink: 0,
-              opacity: 0.7,
-            }}>{pack.icon}</span>
-          )}
         </div>
 
         {/* Burning end — ember glow */}
