@@ -83,24 +83,22 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
           flexShrink: 0,
         }} />
 
-        {/* Paper body — main content area */}
+        {/* Body — dark background with pack-tinted gradient */}
         <div style={{
           flex: 1,
-          background: "linear-gradient(90deg, #f5f0e8 0%, #ede8dd 60%, #e8e0d0 100%)",
-          padding: mob ? "10px 12px" : "12px 16px",
+          background: `linear-gradient(135deg, #0f172a 0%, #1a1a3e 100%)`,
+          padding: mob ? "12px 12px" : "14px 16px",
           display: "flex", alignItems: "center", gap: mob ? 8 : 12,
           position: "relative",
-          // Subtle paper texture
-          backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.015) 3px, rgba(0,0,0,0.015) 4px)",
         }}>
           {/* Achievement icon */}
-          <span style={{ fontSize: mob ? F.md : F.lg, flexShrink: 0 }}>{ach.icon}</span>
+          <span style={{ fontSize: mob ? F.lg : F.h3, flexShrink: 0 }}>{ach.icon}</span>
 
           {/* Text content */}
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: mob ? F.micro : F.xs, color: stripColor, letterSpacing: mob ? 1 : 2, marginBottom: 2, fontWeight: "bold" }}>CIG UNLOCKED</div>
-            <div style={{ fontSize: mob ? F.xs : F.sm, color: "#1a1a2e", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: "bold" }}>{ach.name}</div>
-            <div style={{ fontSize: mob ? F.micro : F.xs, color: "#64748b", marginTop: 1 }}>{ach.desc}</div>
+            <div style={{ fontSize: mob ? F.micro : F.xs, color: stripColor, letterSpacing: mob ? 1 : 2, marginBottom: 3, fontWeight: "bold" }}>CIG UNLOCKED</div>
+            <div style={{ fontSize: mob ? F.sm : F.md, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ach.name}</div>
+            <div style={{ fontSize: mob ? F.micro : F.xs, color: C.textMuted, marginTop: 2 }}>{ach.desc}</div>
           </div>
 
           {/* Pack icon badge */}
