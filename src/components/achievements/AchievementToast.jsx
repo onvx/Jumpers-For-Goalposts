@@ -46,12 +46,14 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       style={{
-        position: "fixed", top: mob ? "calc(10px + env(safe-area-inset-top, 0px))" : 20, left: "50%",
-        transform: `translateX(-50%) translateY(${visible ? swipeOffset : -80}px)`,
+        position: "fixed",
+        top: mob ? `calc(8px + env(safe-area-inset-top, 0px))` : 20,
+        left: mob ? 8 : "50%",
+        transform: mob ? `translateY(${visible ? swipeOffset : -80}px)` : `translateX(-50%) translateY(${visible ? swipeOffset : -80}px)`,
         zIndex: Z.modal, fontFamily: FONT,
         transition: swipeOffset !== 0 ? "opacity 0.4s ease" : "transform 0.4s ease, opacity 0.4s ease",
         opacity: visible ? 1 : 0, cursor: "pointer",
-        width: mob ? "calc(100% - 24px)" : "auto",
+        width: mob ? "calc(100% - 16px)" : "auto",
         maxWidth: mob ? "none" : 480,
       }}
     >
