@@ -77,57 +77,51 @@ export function AchievementToast({ achievement, onDone, muteSound }) {
         boxShadow: `0 0 24px rgba(250,204,21,0.2), 0 4px 16px rgba(0,0,0,0.4)`,
         minHeight: mob ? 56 : 64,
       }}>
-        {/* Filter tip — icon + held end */}
+        {/* Filter tip — cork/tan with icon */}
         <div style={{
-          width: mob ? 38 : 46,
-          background: `linear-gradient(135deg, #1e293b 0%, #0f172a 100%)`,
+          width: mob ? 42 : 52,
+          background: "linear-gradient(180deg, #d4a574 0%, #c49360 50%, #d4a574 100%)",
+          backgroundImage: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3) 1px, transparent 1px), radial-gradient(circle at 70% 60%, rgba(255,255,255,0.2) 1px, transparent 1px), radial-gradient(circle at 50% 80%, rgba(255,255,255,0.25) 1px, transparent 1px)",
+          backgroundSize: "8px 8px, 6px 6px, 10px 10px",
           flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          <span style={{ fontSize: mob ? F.lg : F.h3 }}>{ach.icon}</span>
+          <span style={{ fontSize: mob ? F.md : F.lg }}>{ach.icon}</span>
         </div>
 
-        {/* Pack color strip — inset like a menthol/popper band */}
+        {/* Pack color strip — menthol/popper band */}
         <div style={{
-          width: mob ? 6 : 8,
+          width: mob ? 5 : 7,
           background: `linear-gradient(180deg, ${stripColor} 0%, ${stripColor}cc 100%)`,
           flexShrink: 0,
         }} />
 
-        {/* Body — dark background */}
+        {/* Paper body — off-white with dark text */}
         <div style={{
           flex: 1,
-          background: `linear-gradient(135deg, #1e293b 0%, #2a2a4e 100%)`,
-          padding: mob ? "12px 12px" : "14px 16px",
+          background: "linear-gradient(180deg, #f0ead6 0%, #e8e0cc 50%, #f0ead6 100%)",
+          backgroundImage: "repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(0,0,0,0.02) 4px, rgba(0,0,0,0.02) 5px)",
+          padding: mob ? "10px 12px" : "12px 16px",
           display: "flex", alignItems: "center",
-          position: "relative",
         }}>
-          {/* Text content */}
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: mob ? F.sm : F.md, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ach.name}</div>
-            <div style={{ fontSize: mob ? F.micro : F.xs, color: C.textMuted, marginTop: 2 }}>{ach.desc}</div>
+            <div style={{ fontSize: mob ? F.sm : F.md, color: "#0f0f23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: "bold" }}>{ach.name}</div>
+            <div style={{ fontSize: mob ? F.micro : F.xs, color: "#475569", marginTop: 2 }}>{ach.desc}</div>
           </div>
-
         </div>
 
-        {/* Burning end — ember glow */}
+        {/* Burning end — ember to ash */}
         <div style={{
-          width: mob ? 16 : 22,
+          width: mob ? 18 : 24,
           flexShrink: 0,
-          background: "linear-gradient(90deg, #e8e0d0 0%, #d4a574 20%, #f97316 50%, #ef4444 80%, #991b1b 100%)",
+          background: "linear-gradient(90deg, #f0ead6 0%, #8b7355 15%, #f97316 40%, #ef4444 65%, #4b4b4b 85%, #6b7280 100%)",
           position: "relative",
           overflow: "hidden",
         }}>
-          {/* Animated ember glow */}
           <div style={{
             position: "absolute", inset: 0,
-            background: "radial-gradient(circle at 70% 50%, rgba(251,146,60,0.9) 0%, rgba(239,68,68,0.6) 40%, transparent 70%)",
+            background: "radial-gradient(circle at 50% 50%, rgba(251,146,60,0.8) 0%, rgba(239,68,68,0.5) 40%, transparent 70%)",
             animation: "cigBurn 1.5s ease-in-out infinite",
-          }} />
-          {/* Ash tip */}
-          <div style={{
-            position: "absolute", right: 0, top: 0, bottom: 0, width: 4,
-            background: "linear-gradient(180deg, #9ca3af 0%, #6b7280 50%, #9ca3af 100%)",
           }} />
         </div>
       </div>
