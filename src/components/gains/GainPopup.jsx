@@ -553,7 +553,7 @@ export function GainPopup({ gains, onDone, onPlayerClick, onAchievementCheck, on
           {totalAll} event{totalAll !== 1 ? "s" : ""} this week
         </div>
 
-        <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
+        <div className="no-scrollbar" style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
         {totalAll > 0 ? (
           <>
             {/* SUMMARY MODE: compact text list, no cards */}
