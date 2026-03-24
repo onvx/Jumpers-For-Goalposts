@@ -51,7 +51,11 @@ These fix structural issues identified by headless simulation that would undermi
 
 **Data**: T8 matches: 44% are exactly 1-goal affairs. T11 draw rate: 43.5%.
 
-**Fix**: Investigate the `poissonGoals` implementation (Knuth's algorithm, cap at 8). The cap shouldn't cause this — it only matters at high xG. More likely: the xG values themselves are too tightly clustered at low tiers due to the `XG_FLOOR: 0.3` and trait multiplier compression. Consider: (a) adding small random noise to xG before Poisson sampling, (b) widening the xG floor/intercept spread for weaker teams, or (c) using a slightly over-dispersed distribution (negative binomial) at low xG.
+**Fix (primary)**: Add small random noise to xG before Poisson sampling at low xG values. Before calling `poissonGoals(xG)`, apply: `if (xG < 1.5) xG += (Math.random() - 0.5) * 0.4`. This adds ±0.2 noise, widening the distribution without changing the mean. The noise is proportional — at xG 0.9, a ±0.2 swing is significant; at xG 2.5, the condition doesn't fire.
+
+**Fallback**: If noise alone doesn't reach target, widen `XG_FLOOR` from 0.3 to 0.4 and increase `XG_MULTIPLIER` from 0.16 to 0.20 to spread weaker teams' xG further apart.
+
+**Success criteria**: Variance/mean ratio >= 0.9 at xG ~0.9 (currently 0.67). T11 draw rate below 35% (currently 43.5%). Rerun Poisson sim after changes.
 
 ### 0D. Add late-game urgency modifier
 
@@ -80,7 +84,11 @@ These fix structural issues identified by headless simulation that would undermi
 
 **Problem** (flagged by Bandon, confirmed by Trask): `playerRatingTracker` is keyed by `player.name` while the new `playerMatchLog` is keyed by `player.id`. Name-based keys break when players are renamed (the game has a rename ticket) and collide when two players share a name.
 
-**Fix**: Migrate `playerRatingTracker` to be keyed by `player.id`. Update all read/write sites (match post-processing, form multiplier, MOTM tracking). Add save migration to re-key existing entries by matching name to current squad. This must happen before Phase 2 (form multiplier reads this data).
+**Fix**: Two changes:
+1. Migrate `playerRatingTracker` to be keyed by `player.id`. Update all read/write sites (match post-processing, form multiplier, MOTM tracking). Add save migration to re-key existing entries by matching name to current squad.
+2. Extend `simulateMatch` to key `result.scorers` and `result.assisters` by `"side|playerId"` instead of `"side|playerName"`. Modify `pickScorer`/`pickAssister` in match.js to return `{ name, id }`. Display-facing event text keeps names; structured data uses IDs. Update all call sites that read scorer/assister data (match post-processing in App.jsx, MatchResultScreen, playerSeasonStats updates).
+
+Both must happen before Phase 2 (form multiplier and match XP read this data).
 
 ### Testing Phase 0
 - Rerun match engine sim: MOTM should shift toward goalscorers/assisters
@@ -200,7 +208,7 @@ Pace and Physical are **training-only**.
 
 **Level-up handling** (addressing Trask's flag): Apply match XP as a standalone level-up check after match XP application — same `while (progress >= 1.0)` pattern as the training loop. This runs in the match post-processing callback, not inside the training loop. Level-ups from match XP should be included in `weekGains` for GainPopup display.
 
-**Bandon's ID consistency note**: Match XP reads scorer/assister data from `result.scorers["side|name"]` which is name-based (match engine output). Look up player by name to find their ID, then update their `statProgress` via ID. This is fine — the name→ID lookup is within a single match context where names are unambiguous.
+**Scorer/assister identity** (addressing Bandon's second blocker): The match engine currently keys scorers as `"side|playerName"` which collides when two players on the same team share a name (8 collisions per tier-season from sim data). Fix: as part of Phase 0F, extend `simulateMatch` to include player ID in scorer/assister tracking — change `pickScorer` to return `{ name, id }` and key as `"side|playerId"`. The display-facing scorer text in match events keeps the name for UI, but the structured `result.scorers` and `result.assisters` objects use ID keys. Match XP and match log then read `result.scorers["side|playerId"]` directly — no name→ID lookup needed, no collision risk.
 
 ### Testing Phase 2
 - In-form players (7.5+ avg) train ~50% faster than base
