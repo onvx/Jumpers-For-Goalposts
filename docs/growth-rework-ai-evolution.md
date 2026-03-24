@@ -51,7 +51,7 @@ These fix structural issues identified by headless simulation that would undermi
 
 **Data**: T8 matches: 44% are exactly 1-goal affairs. T11 draw rate: 43.5%.
 
-**Fix (primary)**: Add small random noise to xG before Poisson sampling at low xG values. Before calling `poissonGoals(xG)`, apply: `if (xG < 1.5) xG += (Math.random() - 0.5) * 0.4`. This adds ±0.2 noise, widening the distribution without changing the mean. The noise is proportional — at xG 0.9, a ±0.2 swing is significant; at xG 2.5, the condition doesn't fire.
+**Fix (primary)**: Add small random noise to xG before Poisson sampling at low xG values. Before calling `poissonGoals(xG)`, apply: `if (xG < 1.5) xG += (Math.random() - 0.5) * 0.4`. Clamp result to `Math.max(0.1, xG)` to prevent negative/zero inputs to Poisson. This adds ±0.2 noise, widening the distribution without changing the mean. The noise is proportional — at xG 0.9, a ±0.2 swing is significant; at xG 2.5, the condition doesn't fire.
 
 **Fallback**: If noise alone doesn't reach target, widen `XG_FLOOR` from 0.3 to 0.4 and increase `XG_MULTIPLIER` from 0.16 to 0.20 to spread weaker teams' xG further apart.
 
@@ -84,11 +84,9 @@ These fix structural issues identified by headless simulation that would undermi
 
 **Problem** (flagged by Bandon, confirmed by Trask): `playerRatingTracker` is keyed by `player.name` while the new `playerMatchLog` is keyed by `player.id`. Name-based keys break when players are renamed (the game has a rename ticket) and collide when two players share a name.
 
-**Fix**: Two changes:
-1. Migrate `playerRatingTracker` to be keyed by `player.id`. Update all read/write sites (match post-processing, form multiplier, MOTM tracking). Add save migration to re-key existing entries by matching name to current squad.
-2. Extend `simulateMatch` to key `result.scorers` and `result.assisters` by `"side|playerId"` instead of `"side|playerName"`. Modify `pickScorer`/`pickAssister` in match.js to return `{ name, id }`. Display-facing event text keeps names; structured data uses IDs. Update all call sites that read scorer/assister data (match post-processing in App.jsx, MatchResultScreen, playerSeasonStats updates).
+**Fix**: Migrate `playerRatingTracker` to be keyed by `player.id`. Update all read/write sites (match post-processing, form multiplier, MOTM tracking). Add save migration to re-key existing entries by matching name to current squad. Must happen before Phase 2 (form multiplier reads this data).
 
-Both must happen before Phase 2 (form multiplier and match XP read this data).
+**Note**: Scorer/assister key migration is handled separately in 0H via parallel fields — 0F only covers `playerRatingTracker`.
 
 ### 0G. Trait system rework
 
