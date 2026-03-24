@@ -981,9 +981,11 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
     }
   }
 
-  // Half-time score — use the known 1H goal counts directly (matches two-phase generation)
-  const htHome = homeGoals1H;
-  const htAway = awayGoals1H;
+  // Half-time score — recount from surviving goal events after VAR/red card removals
+  let htHome = 0, htAway = 0;
+  for (const e of goalEvents) {
+    if (e.minute <= 45) { if (e.side === "home") htHome++; else htAway++; }
+  }
 
   // Player substitution stats
   const playerTeamName = playerTeamRef?.name;
