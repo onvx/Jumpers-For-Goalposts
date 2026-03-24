@@ -13,15 +13,17 @@ const MATCH = {
   XG_FLOOR: 0.3,
   XG_ABS_FLOOR: 0.2,
 
-  // Trait multipliers [own, opp] applied to expected goals
-  TRAIT_DOMINANT:    [1.1, 0.9],
-  TRAIT_STARS:       [0.9, 0.85],
+  // Trait multipliers [own, opp] applied to expected goals (base xG modifiers)
+  TRAIT_DOMINANT:    [1.1, 0.93],
+  TRAIT_STARS:       [0.95, 0.9],
   TRAIT_FREE_SCORE:  [0.7, 0.85],  // base values; each gets + random * variance
   TRAIT_FREE_SCORE_VAR: [0.6, 0.3],
-  TRAIT_DEFENSIVE:   [0.8, 0.75],
-  TRAIT_PHYSICAL:    [0.85, 0.85],
-  TRAIT_METHODICAL:  [0.9, 0.9],
-  TRAIT_FLAIR:       [1.05, 0.95],
+  TRAIT_FREE_SCORE_FLOOR: 1.0,     // free scoring teams always create chances
+  TRAIT_DEFENSIVE:   [0.75, 0.7],
+  TRAIT_PHYSICAL:    [0.9, 0.9],
+  TRAIT_METHODICAL:  [0.85, 0.82],
+  TRAIT_FLAIR:       [1.05, 0.98],
+  TRAIT_SET_PIECE_BONUS: 0.15,     // flat xG bonus from dead balls
 
   // Injured starter penalty
   INJURY_PENALTY: 0.08,
@@ -36,10 +38,18 @@ const MATCH = {
   // Poisson goal cap
   POISSON_CAP: 12,
 
-  // Trait-specific goal limits
-  PHYSICAL_MAX_MARGIN: 2,
-  METHODICAL_MAX_MARGIN: 1,
-  GRITTY_COMEBACK_CHANCE: 0.4,
+  // Second-half mechanics (two-phase xG system)
+  TRAILING_URGENCY_BOOST_2H: 0.10,     // +10% xG for any team trailing at half time
+  GRITTY_TRAILING_BOOST_2H: 0.25,      // additional +25% xG for gritty teams when trailing
+  PHYSICAL_OWN_BOOST_2H: 0.15,         // +15% own xG in 2nd half (fatigue)
+  PHYSICAL_OPP_NERF_2H: 0.10,          // -10% opponent xG in 2nd half
+  METHODICAL_LEADING_OPP_NERF_2H: 0.15, // -15% opponent xG when leading (game management)
+  METHODICAL_LEADING_CHANCE: 0.20,      // 20% chance the game management triggers
+  DEFENSIVE_CLEAN_SHEET_GOAL_CHANCE: 0.30, // 30% bonus goal if both teams scoreless
+  STARS_CONFIDENCE_BOOST_2H: 0.15,      // +15% xG in 2nd half if scored in 1st
+  FLAIR_CHAOS_CHANCE: 0.15,             // 15% chance of open, high-scoring 2nd half
+  FLAIR_CHAOS_OWN_BOOST: 0.5,          // xG added to own in chaos game
+  FLAIR_CHAOS_OPP_BOOST: 0.3,          // xG added to opp in chaos game
   OUTFIELD_GK_EXTRA_CHANCE: 0.5,
 
   // Goal minute selection
@@ -49,9 +59,9 @@ const MATCH = {
   STARS_MID_MIN: 55,
   STARS_MID_MAX: 75,
 
-  // Scorer weights by position type
-  SCORER_FWD: 4,
-  SCORER_MID: 2,
+  // Scorer weights by position type — reduced from 4/2 to spread goals more naturally
+  SCORER_FWD: 3,
+  SCORER_MID: 1.5,
   SCORER_DEF: 0.5,
   SCORER_GK: 0.1,
   STARS_FWD_BOOST: 4,
@@ -75,15 +85,15 @@ const MATCH = {
   RED_GOAL_REMOVAL: 0.5,
   RED_BONUS_GOAL: 0.3,
 
-  // Player ratings
+  // Player ratings — OVR weight halved, event bonuses boosted so performance > baseline quality
   RATE_BASE: 5.5,
-  RATE_OVR_SCALE: 2.0,
+  RATE_OVR_SCALE: 1.0,
   RATE_NOISE: 1.2,
   RATE_INJURY: 1.0,
-  RATE_GOAL: 1.0,
-  RATE_ASSIST: 0.6,
-  RATE_CS: 0.8,
-  RATE_CS_SUB: 0.4,
+  RATE_GOAL: 1.5,
+  RATE_ASSIST: 1.0,
+  RATE_CS: 1.2,
+  RATE_CS_SUB: 0.6,
   RATE_WIN: 0.3,
   RATE_LOSS: 0.3,
   RATE_MIN: 4.0,
@@ -130,21 +140,27 @@ const MATCH = {
 };
 
 export function getTeamStrength(team, startingXI) {
+  let starters;
   if (team.isPlayer && startingXI) {
-    const starters = team.squad.filter(p => startingXI.includes(p.id));
-    if (starters.length === 0) return 5;
-    return starters.reduce((sum, p) => {
-      let avg = getOverall(p);
-      if (p.injury) avg *= MATCH.INJURED_EFFECTIVENESS; // Injured players contribute 60% effectiveness
-      return sum + avg;
-    }, 0) / starters.length;
+    starters = team.squad.filter(p => startingXI.includes(p.id));
+  } else {
+    starters = team.squad.filter(p => !p.isBench);
   }
-  // AI teams: only use starters (non-bench) for strength calc
-  const starters = team.squad.filter(p => !p.isBench);
   if (starters.length === 0) return 5;
-  return starters.reduce((sum, p) => {
-    return sum + getOverall(p);
-  }, 0) / starters.length;
+
+  // Weighted average: top 3 players contribute 40%, rest contribute 60%.
+  // This makes individual star players matter — a lone star moves the needle.
+  const ovrs = starters.map(p => {
+    let ovr = getOverall(p);
+    if (team.isPlayer && p.injury) ovr *= MATCH.INJURED_EFFECTIVENESS;
+    return ovr;
+  }).sort((a, b) => b - a);
+
+  const top3 = ovrs.slice(0, 3);
+  const rest = ovrs.slice(3);
+  const top3Avg = top3.reduce((s, v) => s + v, 0) / top3.length;
+  const restAvg = rest.length > 0 ? rest.reduce((s, v) => s + v, 0) / rest.length : top3Avg;
+  return top3Avg * 0.4 + restAvg * 0.6;
 }
 
 export function generateFixtures(teamCount) {
@@ -222,24 +238,25 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
   let homeExpected = Math.max(MATCH.XG_FLOOR, MATCH.XG_INTERCEPT + (homeStr - awayStr) * MATCH.XG_MULTIPLIER + homeAdv);
   let awayExpected = Math.max(MATCH.XG_FLOOR, MATCH.XG_INTERCEPT + (awayStr - homeStr) * MATCH.XG_MULTIPLIER);
 
-  // Apply trait modifiers to expected goals
+  // Apply base trait xG modifiers (pre-Poisson, affects both halves equally)
   const applyTraitToExpectedGoals = (team, ownExpected, oppExpected) => {
     const t = team.trait;
     if (!t) return [ownExpected, oppExpected];
-    if (t === "dominant") return [ownExpected * MATCH.TRAIT_DOMINANT[0], oppExpected * MATCH.TRAIT_DOMINANT[1]];       // Possession control
-    if (t === "stars") return [ownExpected * MATCH.TRAIT_STARS[0], oppExpected * MATCH.TRAIT_STARS[1]];          // Counter: lower volume, but clinical (star effect handles the rest)
-    if (t === "free_scoring") {                                                 // Youth-style variance
+    if (t === "dominant") return [ownExpected * MATCH.TRAIT_DOMINANT[0], oppExpected * MATCH.TRAIT_DOMINANT[1]];
+    if (t === "stars") return [ownExpected * MATCH.TRAIT_STARS[0], oppExpected * MATCH.TRAIT_STARS[1]];
+    if (t === "free_scoring") {
       const variance = MATCH.TRAIT_FREE_SCORE[0] + Math.random() * MATCH.TRAIT_FREE_SCORE_VAR[0];
-      return [ownExpected * variance, oppExpected * (MATCH.TRAIT_FREE_SCORE[1] + Math.random() * MATCH.TRAIT_FREE_SCORE_VAR[1])];
+      const own = Math.max(MATCH.TRAIT_FREE_SCORE_FLOOR, ownExpected * variance);
+      return [own, oppExpected * (MATCH.TRAIT_FREE_SCORE[1] + Math.random() * MATCH.TRAIT_FREE_SCORE_VAR[1])];
     }
-    if (t === "defensive") return [ownExpected * MATCH.TRAIT_DEFENSIVE[0], oppExpected * MATCH.TRAIT_DEFENSIVE[1]];      // Park the bus
-    if (t === "physical") return [ownExpected * MATCH.TRAIT_PHYSICAL[0], oppExpected * MATCH.TRAIT_PHYSICAL[1]];      // Low scoring both ways
-    if (t === "methodical") return [ownExpected * MATCH.TRAIT_METHODICAL[0], oppExpected * MATCH.TRAIT_METHODICAL[1]];      // Tight controlled games
-    if (t === "flair") return [ownExpected * MATCH.TRAIT_FLAIR[0], oppExpected * MATCH.TRAIT_FLAIR[1]];         // Slight edge from won set pieces
+    if (t === "defensive") return [ownExpected * MATCH.TRAIT_DEFENSIVE[0], oppExpected * MATCH.TRAIT_DEFENSIVE[1]];
+    if (t === "physical") return [ownExpected * MATCH.TRAIT_PHYSICAL[0], oppExpected * MATCH.TRAIT_PHYSICAL[1]];
+    if (t === "methodical") return [ownExpected * MATCH.TRAIT_METHODICAL[0], oppExpected * MATCH.TRAIT_METHODICAL[1]];
+    if (t === "flair") return [ownExpected * MATCH.TRAIT_FLAIR[0], oppExpected * MATCH.TRAIT_FLAIR[1]];
+    if (t === "set_piece") return [ownExpected + MATCH.TRAIT_SET_PIECE_BONUS, oppExpected * 0.95];
     return [ownExpected, oppExpected];
   };
 
-  // Each team's trait adjusts both its own expected goals and the opponent's.
   // Apply home trait first, then away trait on top (order matters for stacking effects).
   let [homeXG] = applyTraitToExpectedGoals(homeTeam, homeExpected, awayExpected);
   let [awayXG, homeAdjFromAway] = applyTraitToExpectedGoals(awayTeam, awayExpected, homeXG);
@@ -305,29 +322,56 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
     awayExpected = Math.max(MATCH.XG_ABS_FLOOR, awayExpected * modifiers.awayXGMult);
   }
 
-  // Knuth's algorithm for sampling from a Poisson distribution.
-  // Generates the number of goals scored given an expected-goals value.
-  // Capped at 12 to allow rare blowouts (9-0, 10-1 etc.) while still preventing runaway loops.
+  // Poisson sampler — CDF-based inverse transform. Capped at 12.
   const poissonGoals = (expected) => {
-    let goals = 0, p = Math.exp(-expected), s = p, u = Math.random();
-    while (u > s && goals < MATCH.POISSON_CAP) { goals++; p *= expected / goals; s += p; }
+    const clamped = Math.max(0.1, expected);
+    let goals = 0, p = Math.exp(-clamped), s = p, u = Math.random();
+    while (u > s && goals < MATCH.POISSON_CAP) { goals++; p *= clamped / goals; s += p; }
     return goals;
   };
 
-  let homeGoals = poissonGoals(homeExpected);
-  let awayGoals = poissonGoals(awayExpected);
+  // === TWO-PHASE GOAL GENERATION ===
+  // First half: base xG / 2. Second half: modified by trait mechanics and match state.
+  const homeGoals1H = poissonGoals(homeExpected / 2);
+  const awayGoals1H = poissonGoals(awayExpected / 2);
 
-  // Physical: cap losing margin to max PHYSICAL_MAX_MARGIN goals
-  if (homeTeam.trait === "physical" && awayGoals - homeGoals > MATCH.PHYSICAL_MAX_MARGIN) homeGoals = awayGoals - MATCH.PHYSICAL_MAX_MARGIN;
-  if (awayTeam.trait === "physical" && homeGoals - awayGoals > MATCH.PHYSICAL_MAX_MARGIN) awayGoals = homeGoals - MATCH.PHYSICAL_MAX_MARGIN;
+  // Second-half xG starts from the same base, then trait-specific modifiers apply
+  let home2HxG = homeExpected / 2;
+  let away2HxG = awayExpected / 2;
 
-  // Methodical: cap winning margin to METHODICAL_MAX_MARGIN goal
-  if (homeTeam.trait === "methodical" && homeGoals - awayGoals > MATCH.METHODICAL_MAX_MARGIN) homeGoals = awayGoals + MATCH.METHODICAL_MAX_MARGIN;
-  if (awayTeam.trait === "methodical" && awayGoals - homeGoals > MATCH.METHODICAL_MAX_MARGIN) awayGoals = homeGoals + MATCH.METHODICAL_MAX_MARGIN;
+  // Universal trailing urgency: any team behind at half time pushes harder in the 2nd half
+  if (homeGoals1H < awayGoals1H) home2HxG *= (1 + MATCH.TRAILING_URGENCY_BOOST_2H);
+  if (awayGoals1H < homeGoals1H) away2HxG *= (1 + MATCH.TRAILING_URGENCY_BOOST_2H);
 
-  // Gritty: if losing, GRITTY_COMEBACK_CHANCE to pull one back + goals tend to be late
-  if (homeTeam.trait === "gritty" && homeGoals < awayGoals && Math.random() < MATCH.GRITTY_COMEBACK_CHANCE) homeGoals++;
-  if (awayTeam.trait === "gritty" && awayGoals < homeGoals && Math.random() < MATCH.GRITTY_COMEBACK_CHANCE) awayGoals++;
+  // Gritty: additional trailing boost on top of universal urgency (comeback specialists)
+  if (homeTeam.trait === "gritty" && homeGoals1H < awayGoals1H) home2HxG *= (1 + MATCH.GRITTY_TRAILING_BOOST_2H);
+  if (awayTeam.trait === "gritty" && awayGoals1H < homeGoals1H) away2HxG *= (1 + MATCH.GRITTY_TRAILING_BOOST_2H);
+
+  // Physical: fatigue effect — physical team stronger in 2nd half, opponent weaker
+  if (homeTeam.trait === "physical") { home2HxG *= (1 + MATCH.PHYSICAL_OWN_BOOST_2H); away2HxG *= (1 - MATCH.PHYSICAL_OPP_NERF_2H); }
+  if (awayTeam.trait === "physical") { away2HxG *= (1 + MATCH.PHYSICAL_OWN_BOOST_2H); home2HxG *= (1 - MATCH.PHYSICAL_OPP_NERF_2H); }
+
+  // Methodical: game management — if leading, chance to suppress opponent in 2nd half
+  if (homeTeam.trait === "methodical" && homeGoals1H > awayGoals1H && Math.random() < MATCH.METHODICAL_LEADING_CHANCE) away2HxG *= (1 - MATCH.METHODICAL_LEADING_OPP_NERF_2H);
+  if (awayTeam.trait === "methodical" && awayGoals1H > homeGoals1H && Math.random() < MATCH.METHODICAL_LEADING_CHANCE) home2HxG *= (1 - MATCH.METHODICAL_LEADING_OPP_NERF_2H);
+
+  // Stars: confidence boost — if star team scored in 1st half, boosted in 2nd
+  if (homeTeam.trait === "stars" && homeGoals1H > 0) home2HxG *= (1 + MATCH.STARS_CONFIDENCE_BOOST_2H);
+  if (awayTeam.trait === "stars" && awayGoals1H > 0) away2HxG *= (1 + MATCH.STARS_CONFIDENCE_BOOST_2H);
+
+  // Flair: chaos game — chance of an open, high-scoring second half
+  if (homeTeam.trait === "flair" && Math.random() < MATCH.FLAIR_CHAOS_CHANCE) { home2HxG += MATCH.FLAIR_CHAOS_OWN_BOOST / 2; away2HxG += MATCH.FLAIR_CHAOS_OPP_BOOST / 2; }
+  if (awayTeam.trait === "flair" && Math.random() < MATCH.FLAIR_CHAOS_CHANCE) { away2HxG += MATCH.FLAIR_CHAOS_OWN_BOOST / 2; home2HxG += MATCH.FLAIR_CHAOS_OPP_BOOST / 2; }
+
+  const homeGoals2H = poissonGoals(Math.max(0.1, home2HxG));
+  const awayGoals2H = poissonGoals(Math.max(0.1, away2HxG));
+
+  let homeGoals = homeGoals1H + homeGoals2H;
+  let awayGoals = awayGoals1H + awayGoals2H;
+
+  // Defensive: clean sheet bonus goal — if both scoreless, 30% chance of a scrappy set-piece goal
+  if (homeTeam.trait === "defensive" && homeGoals === 0 && awayGoals === 0 && Math.random() < MATCH.DEFENSIVE_CLEAN_SHEET_GOAL_CHANCE) homeGoals++;
+  if (awayTeam.trait === "defensive" && awayGoals === 0 && homeGoals === 0 && Math.random() < MATCH.DEFENSIVE_CLEAN_SHEET_GOAL_CHANCE) awayGoals++;
 
   // Detect outfield player in goal (no GK in starting XI)
   let outfieldInGoal = false;
