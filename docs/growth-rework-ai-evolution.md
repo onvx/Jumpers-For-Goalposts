@@ -90,13 +90,58 @@ These fix structural issues identified by headless simulation that would undermi
 
 Both must happen before Phase 2 (form multiplier and match XP read this data).
 
+### 0G. Trait system rework
+
+**File**: `src/utils/match.js` (MATCH constants + simulateMatch)
+
+**Problem**: Headless audit (50k matches, full round-robin) revealed structural issues across all traits. Post-Poisson hard margin caps compress goal distributions. Gritty's unconditional comeback goal creates 44% draw rates. Defensive is unviable (ranked last). Methodical produces 0% blowouts. The Poisson function itself is perfect — all distortion comes from trait mechanics applied after it.
+
+**Structural changes (all traits):**
+
+1. **Remove all post-Poisson hard margin caps.** Delete `METHODICAL_MAX_MARGIN` and `PHYSICAL_MAX_MARGIN`. Trait effects applied BEFORE Poisson via xG modifiers only, or through probabilistic second-half effects.
+
+2. **Two-phase xG generation.** Split match into first-half and second-half Poisson sampling. First half: base xG / 2. Second half: modified xG / 2 based on first-half state and trait effects. This enables gritty (trailing urgency), physical (fatigue), methodical (game management), and the late-game urgency fix (0D).
+
+3. **Reduce scorer concentration.** `SCORER_FWD` from 4 to 3, `SCORER_MID` from 2 to 1.5. Currently 63-76% of goals go to the top scorer across ALL traits. Keep `STARS_FWD_BOOST` for stars specifically.
+
+**Per-trait changes:**
+
+| Trait | xG [own, opp] | Special mechanic | Intent |
+|-------|--------------|-----------------|--------|
+| **Dominant** | [1.1, 0.93] (was 0.9 opp) | None needed | Best overall. Slight opp nerf reduction. |
+| **Gritty** | [1.0, 1.0] | Trailing team gets +25% xG in 2nd half. Late goal timing (75-90') kept. Remove unconditional comeback goal. | Never say die. Come back via second-half urgency, not a coin flip. |
+| **Methodical** | [0.85, 0.82] (was 0.9/0.9) | If leading at half time, 20% chance opponent xG reduced 15% in 2nd half (game management). Remove margin cap. | Tight, controlled. Closes out leads. Blowouts rare but possible. |
+| **Defensive** | [0.75, 0.7] (was 0.8/0.75) | If opponent scores 0 goals AND defensive team scores 0, 30% chance of +1 goal (set piece from deep block). | Park the bus. Hard to score against. Viable win condition via clean sheet + scrappy goal. |
+| **Stars** | [0.95, 0.9] (was 0.9/0.85) | Keep `STARS_FWD_BOOST: 4`. If star scores in 1st half, team gets 15% xG boost in 2nd half (confidence). | One player carries. Low-volume, high-stakes. |
+| **Physical** | [0.9, 0.9] (was 0.85/0.85) | Physical team +15% xG in 2nd half, opponent -10% (fatigue). Remove margin cap. Keep card generation. | Grind opponents down. Second half is theirs. Cards are the risk. |
+| **Flair** | [1.05, 0.98] (was 0.95 opp) | 15% chance of chaos game: +0.5 own xG, +0.3 opp xG in 2nd half. Keep card generation. | Unpredictable. Occasional 4-3 thrillers. |
+| **Free scoring** | Variance model kept [0.7+rand*0.6, 0.85+rand*0.3] | Add minimum own xG floor of 1.0 (always create chances). | Naive and aggressive. Most goals per match, both directions. |
+| **Set piece** | [1.0, 0.95] | +0.15 bonus xG per match (dead ball threat). Keep corner/FK commentary. | Reliable, consistent, boring-but-effective. |
+
+**Sim-validated outcomes (5k matches, old vs new):**
+- Gritty mirror draw rate: 42% → 28% (fixed)
+- Methodical 2+ goal margins: 0% → 26% (fixed)
+- Defensive mirror draws: 33% → 24% (clean sheet goal creates winners)
+- Overall player vs AI win rate: 35.8% → 35.9% (unchanged — same difficulty, better variety)
+
+### 0H. Scorer/assister ID keys (addendum to 0F)
+
+Rather than changing the existing `result.scorers` format (which has ~12 consumer call sites), add parallel ID-keyed fields:
+```
+result.scorersByID = {"home|playerId": count}   // new — growth systems use this
+result.assistersByID = {"home|playerId": count}  // new
+result.scorers = {"home|playerName": count}      // unchanged — existing consumers untouched
+```
+Zero breakage. New growth systems (match XP, match log, breakouts) exclusively read the `ByID` fields. Existing code migrated incrementally later.
+
 ### Testing Phase 0
 - Rerun match engine sim: MOTM should shift toward goalscorers/assisters
 - Rerun lone-star sim: star player win rate should increase meaningfully (target 40%+ for OVR 14 star)
-- Rerun Poisson check: variance/mean ratio should be 0.9+ at low xG
+- Rerun trait audit: gritty draws < 30%, methodical 2+ margins > 20%, defensive not last in power ranking
 - Rerun momentum sim: 76-90' response rate should be 48%+
 - Generate 5,000 names: collision rate <5%
 - Rename a player → verify ratings/form still track correctly via ID
+- Rerun trait-rework-comparison: overall player win rate within 1% of current
 
 ---
 
@@ -370,7 +415,7 @@ All new code uses `setX(prev => ...)` or `useGameStore.getState()`. No new useCa
 
 | File | Changes |
 |------|---------|
-| `src/utils/match.js` | Rating rebalance, team strength weighting, Poisson fix, late-game urgency, card scaling |
+| `src/utils/match.js` | Rating rebalance, team strength weighting, two-phase xG, late-game urgency, trait rework (all 9 traits), scorer ID keys, card scaling |
 | `src/utils/calc.js` | levelFactor nerf, beyondPotentialMult |
 | `src/store/gameStore.js` | playerMatchLog, breakoutsThisSeason, prevStartingXI, playerRatingTracker ID migration |
 | `src/App.jsx` | Match log, form mult, match XP, breakouts, AI within-season, trajectory, rotation, save/load |
