@@ -220,6 +220,7 @@ function FootballManager() {
   const isOnHoliday = useGameStore(s => s.isOnHoliday);
   const holidayStartMatchweekRef = useRef(null); // Track starting matchweek
   const holidayWeeksWithoutMatchRef = useRef(0); // Safety counter
+  const holidayOvrSnapshotRef = useRef(null); // OVR snapshot at holiday start for summary
   const [ovrLevelUps, setOvrLevelUps] = useState(null); // [{ name, position, oldOvr, newOvr }]
   const [recentOvrLevelUps, setRecentOvrLevelUps] = useState(null); // persists until next advance week
   const ovrHistory = useGameStore(s => s.ovrHistory);
@@ -4789,6 +4790,11 @@ function FootballManager() {
             holidayTargetRef.current = targetMD;
             holidayStartMatchweekRef.current = useGameStore.getState().matchweekIndex;
             holidayWeeksWithoutMatchRef.current = 0;
+            // Snapshot squad OVR for holiday summary
+            const snapSquad = useGameStore.getState().squad;
+            const ovrSnap = {};
+            snapSquad.forEach(p => { ovrSnap[p.id] = { name: p.name, position: p.position, ovr: getOverall(p) }; });
+            holidayOvrSnapshotRef.current = ovrSnap;
             setIsOnHoliday(true);
             setInstantMatch(true); // Auto-enable instant match for fast simulation
             // Achievement: Hands Off — first holiday
@@ -4811,6 +4817,38 @@ function FootballManager() {
                 // Navigate to Home tab
                 setShowAchievements(false); setShowTable(false); setShowCalendar(false);
                 setShowCup(false); setShowTransfers(false); setShowLegends(false); setShowSquad(false);
+
+                // Generate holiday training summary
+                try {
+                  const snap = holidayOvrSnapshotRef.current;
+                  if (snap) {
+                    const currentSquad = useGameStore.getState().squad;
+                    const ovrChanges = [];
+                    const injured = [];
+                    for (const p of currentSquad) {
+                      const old = snap[p.id];
+                      if (old) {
+                        const newOvr = getOverall(p);
+                        if (newOvr > old.ovr) ovrChanges.push({ name: p.name, from: old.ovr, to: newOvr });
+                      }
+                      if (p.injuredWeeks > 0) injured.push(p.name);
+                    }
+                    const startMW = holidayStartMatchweekRef.current || 0;
+                    const endMW = useGameStore.getState().matchweekIndex;
+                    const span = endMW - startMW;
+                    const parts = [];
+                    if (ovrChanges.length > 0) parts.push(`\u2B06\uFE0F OVR Up: ${ovrChanges.map(c => `${c.name} ${c.from}\u2192${c.to}`).join(", ")}`);
+                    if (injured.length > 0) parts.push(`\uD83C\uDFE5 Injured: ${injured.join(", ")}`);
+                    if (span > 0) parts.push(`Your squad trained across ${span} matchweek${span !== 1 ? "s" : ""} while you were away.`);
+                    if (parts.length > 0) {
+                      setInboxMessages(prev => [...prev, createInboxMessage(
+                        MSG.holidaySummary(parts.join("\n\n")),
+                        { calendarIndex: useGameStore.getState().calendarIndex, seasonNumber: useGameStore.getState().seasonNumber },
+                      )]);
+                    }
+                    holidayOvrSnapshotRef.current = null;
+                  }
+                } catch (err) { console.error("Holiday summary error:", err); }
               };
 
               // Stop if target reached (matchweekIndex is number of completed matches)
