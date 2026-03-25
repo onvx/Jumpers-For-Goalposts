@@ -220,7 +220,44 @@ function FootballManager() {
   const isOnHoliday = useGameStore(s => s.isOnHoliday);
   const holidayStartMatchweekRef = useRef(null); // Track starting matchweek
   const holidayWeeksWithoutMatchRef = useRef(0); // Safety counter
-  const holidayOvrSnapshotRef = useRef(null); // OVR snapshot at holiday start for summary
+  const holidayOvrSnapshotRef = useRef(null); // OVR + injury snapshot at holiday start for summary
+
+  const generateHolidaySummary = () => {
+    try {
+      const snap = holidayOvrSnapshotRef.current;
+      if (!snap) return;
+      const currentSquad = useGameStore.getState().squad;
+      const ovrChanges = [];
+      const newInjuries = [];
+      for (const p of currentSquad) {
+        const old = snap[p.id];
+        if (old) {
+          const newOvr = getOverall(p);
+          if (newOvr > old.ovr) ovrChanges.push({ name: p.name, from: old.ovr, to: newOvr });
+          // Only report injuries that started during the holiday
+          if (p.injury && !old.wasInjured) newInjuries.push(p.name);
+        } else if (p.injury) {
+          // New signing injured during holiday
+          newInjuries.push(p.name);
+        }
+      }
+      const startMW = holidayStartMatchweekRef.current || 0;
+      const endMW = useGameStore.getState().matchweekIndex;
+      const span = endMW - startMW;
+      const parts = [];
+      if (ovrChanges.length > 0) parts.push(`\u2B06\uFE0F OVR Up: ${ovrChanges.map(c => `${c.name} ${c.from}\u2192${c.to}`).join(", ")}`);
+      if (newInjuries.length > 0) parts.push(`\uD83C\uDFE5 Injured: ${newInjuries.join(", ")}`);
+      if (span > 0) parts.push(`Your squad trained across ${span} matchweek${span !== 1 ? "s" : ""} while you were away.`);
+      if (parts.length > 0) {
+        setInboxMessages(prev => [...prev, createInboxMessage(
+          MSG.holidaySummary(parts.join("\n\n")),
+          { calendarIndex: useGameStore.getState().calendarIndex, seasonNumber: useGameStore.getState().seasonNumber },
+        )]);
+      }
+      holidayOvrSnapshotRef.current = null;
+    } catch (err) { console.error("Holiday summary error:", err); }
+  };
+
   const [ovrLevelUps, setOvrLevelUps] = useState(null); // [{ name, position, oldOvr, newOvr }]
   const [recentOvrLevelUps, setRecentOvrLevelUps] = useState(null); // persists until next advance week
   const ovrHistory = useGameStore(s => s.ovrHistory);
@@ -4790,10 +4827,10 @@ function FootballManager() {
             holidayTargetRef.current = targetMD;
             holidayStartMatchweekRef.current = useGameStore.getState().matchweekIndex;
             holidayWeeksWithoutMatchRef.current = 0;
-            // Snapshot squad OVR for holiday summary
+            // Snapshot squad OVR + injury state for holiday summary
             const snapSquad = useGameStore.getState().squad;
             const ovrSnap = {};
-            snapSquad.forEach(p => { ovrSnap[p.id] = { name: p.name, position: p.position, ovr: getOverall(p) }; });
+            snapSquad.forEach(p => { ovrSnap[p.id] = { name: p.name, ovr: getOverall(p), wasInjured: !!p.injury }; });
             holidayOvrSnapshotRef.current = ovrSnap;
             setIsOnHoliday(true);
             setInstantMatch(true); // Auto-enable instant match for fast simulation
@@ -4818,37 +4855,7 @@ function FootballManager() {
                 setShowAchievements(false); setShowTable(false); setShowCalendar(false);
                 setShowCup(false); setShowTransfers(false); setShowLegends(false); setShowSquad(false);
 
-                // Generate holiday training summary
-                try {
-                  const snap = holidayOvrSnapshotRef.current;
-                  if (snap) {
-                    const currentSquad = useGameStore.getState().squad;
-                    const ovrChanges = [];
-                    const injured = [];
-                    for (const p of currentSquad) {
-                      const old = snap[p.id];
-                      if (old) {
-                        const newOvr = getOverall(p);
-                        if (newOvr > old.ovr) ovrChanges.push({ name: p.name, from: old.ovr, to: newOvr });
-                      }
-                      if (p.injuredWeeks > 0) injured.push(p.name);
-                    }
-                    const startMW = holidayStartMatchweekRef.current || 0;
-                    const endMW = useGameStore.getState().matchweekIndex;
-                    const span = endMW - startMW;
-                    const parts = [];
-                    if (ovrChanges.length > 0) parts.push(`\u2B06\uFE0F OVR Up: ${ovrChanges.map(c => `${c.name} ${c.from}\u2192${c.to}`).join(", ")}`);
-                    if (injured.length > 0) parts.push(`\uD83C\uDFE5 Injured: ${injured.join(", ")}`);
-                    if (span > 0) parts.push(`Your squad trained across ${span} matchweek${span !== 1 ? "s" : ""} while you were away.`);
-                    if (parts.length > 0) {
-                      setInboxMessages(prev => [...prev, createInboxMessage(
-                        MSG.holidaySummary(parts.join("\n\n")),
-                        { calendarIndex: useGameStore.getState().calendarIndex, seasonNumber: useGameStore.getState().seasonNumber },
-                      )]);
-                    }
-                    holidayOvrSnapshotRef.current = null;
-                  }
-                } catch (err) { console.error("Holiday summary error:", err); }
+                generateHolidaySummary();
               };
 
               // Stop if target reached (matchweekIndex is number of completed matches)
@@ -10411,6 +10418,7 @@ function FootballManager() {
               clearInterval(holidayIntervalRef.current);
               holidayIntervalRef.current = null;
             }
+            generateHolidaySummary();
             holidayTargetRef.current = null;
             setIsOnHoliday(false);
             setInstantMatch(false); // Restore normal match speed

@@ -992,7 +992,7 @@ export const MSG = {
   poachEvent,
   // Holiday
   holidaySummary: (body) => ({
-    id: `msg_holiday_summary_${Date.now()}`,
+    id: `msg_train_holiday_${Date.now()}`,
     icon: "\u2708\uFE0F", // ✈️
     title: "Holiday Training Summary",
     body,
