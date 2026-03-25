@@ -9498,6 +9498,7 @@ function FootballManager() {
             setPlayerRatingTracker({});
             setPlayerRatingNames({});
             setBreakoutsThisSeason(new Map());
+            setPrevStartingXI(null);
             setMotmTracker({});
             // Sentiment partial carry-over on prestige reset
             setFanSentiment(Math.round(useGameStore.getState().fanSentiment * 0.5 + 25));
@@ -10108,6 +10109,7 @@ function FootballManager() {
               setPlayerRatingTracker({});
               setPlayerRatingNames({});
               setBreakoutsThisSeason(new Map());
+              setPrevStartingXI(null);
               setPlayerSeasonStats({});
               // Reset appearance counters for the new season
               setSquad(prev => prev.map(p => ({ ...p, seasonStarts: 0, seasonSubApps: 0, ...(p.isLegend ? { legendAppearances: 0 } : {}) })));
