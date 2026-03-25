@@ -878,11 +878,12 @@ function FootballManager() {
           (als.teams || []).forEach(t => backfillAISquad(t.squad));
         });
       }
-      // Backfill squadPhilosophy on roster configs
+      // Backfill squadPhilosophy + trajectory on roster configs
       if (s.leagueRosters) {
         for (let t = 1; t <= NUM_TIERS; t++) {
           (s.leagueRosters[t] || []).forEach(cfg => {
             if (!cfg.squadPhilosophy) cfg.squadPhilosophy = generateSquadPhilosophy(cfg.trait);
+            if (cfg.trajectory === undefined) cfg.trajectory = 0;
           });
         }
       }
@@ -3300,7 +3301,37 @@ function FootballManager() {
       return next;
     });
 
-    // Trial player — compute action but defer squad changes to avoid re-triggering this useEffect
+    // Within-season AI progression (current tier only — other tiers evolve between seasons)
+    if (league?.teams) {
+      setLeague(prev => {
+        if (!prev?.teams) return prev;
+        const newTeams = prev.teams.map(t => {
+          if (t.isPlayer || !t.squad) return t;
+          const newSquad = t.squad.map(p => {
+            if (!p.attrs) return p;
+            const ovr = getOverall(p);
+            const keys = ATTRIBUTES.map(a => a.key);
+            const newAttrs = { ...p.attrs };
+            let changed = false;
+            if ((p.age || 25) <= 28 && (p.potential || 0) > ovr) {
+              if (Math.random() < 0.20) {
+                const k = pickRandom(keys);
+                if (newAttrs[k] < (p.potential || ovrCap)) { newAttrs[k] = Math.min(ovrCap, newAttrs[k] + 1); changed = true; }
+              }
+            } else if ((p.age || 30) >= 32) {
+              if (Math.random() < 0.10) {
+                const k = Math.random() < 0.5 ? (Math.random() < 0.5 ? "pace" : "physical") : pickRandom(keys);
+                if (newAttrs[k] > 1) { newAttrs[k]--; changed = true; }
+              }
+            }
+            return changed ? { ...p, attrs: newAttrs } : p;
+          });
+          return { ...t, squad: newSquad };
+        });
+        return { ...prev, teams: newTeams };
+      });
+    }
+
     // Trial player — compute action but defer squad changes to avoid re-triggering this useEffect
     pendingTrialAction.current = null;
     if (trialPlayer) {
@@ -9922,13 +9953,36 @@ function FootballManager() {
               Object.values(allLeagueStates).forEach(als => {
                 (als.teams || []).forEach(t => { if (t.squad) squadMap.set(t.name, t.squad); });
               });
+              // Update AI team trajectories based on season performance
+              for (let t = 1; t <= NUM_TIERS; t++) {
+                const tierTable = t === newTier ? league?.table
+                  : allLeagueStates[t]?.table;
+                if (!tierTable || !rosters[t]) continue;
+                const tierTeams = t === newTier ? league?.teams
+                  : allLeagueStates[t]?.teams;
+                if (!tierTeams) continue;
+                const sorted = sortStandings(tierTable);
+                const strengthSorted = [...(rosters[t] || [])].sort((a, b) => (b.strength || 0) - (a.strength || 0));
+                for (const cfg of rosters[t]) {
+                  const actualPos = sorted.findIndex(r => tierTeams[r.teamIndex]?.name === cfg.name) + 1;
+                  const expectedPos = strengthSorted.findIndex(c => c.name === cfg.name) + 1;
+                  if (actualPos === 0 || expectedPos === 0) continue;
+                  const diff = expectedPos - actualPos; // positive = overperformed
+                  let traj = cfg.trajectory || 0;
+                  if (diff >= 3) traj = Math.min(4, traj + 1);
+                  else if (diff <= -3) traj = Math.max(-4, traj - 1);
+                  else { if (traj > 0) traj = Math.max(0, traj - 0.5); else if (traj < 0) traj = Math.min(0, traj + 0.5); }
+                  cfg.trajectory = Math.round(traj * 10) / 10;
+                }
+              }
+
               const evolvedSquads = new Map();
               for (let t = 1; t <= NUM_TIERS; t++) {
                 for (const cfg of (rosters[t] || [])) {
                   const sq = squadMap.get(cfg.name);
                   if (!sq) continue;
                   if (!cfg.squadPhilosophy) cfg.squadPhilosophy = generateSquadPhilosophy(cfg.trait);
-                  evolvedSquads.set(cfg.name, evolveAISquad(sq, t, cfg.trait, cfg.squadPhilosophy, prestigeLevel));
+                  evolvedSquads.set(cfg.name, evolveAISquad(sq, t, cfg.trait, cfg.squadPhilosophy, prestigeLevel, cfg.trajectory || 0));
                 }
               }
 

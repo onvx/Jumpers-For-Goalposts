@@ -39,6 +39,7 @@ export function initLeagueRosters() {
     rosters[t] = (LEAGUE_DEFS[t]?.teams || []).map(c => ({
       ...c,
       squadPhilosophy: generateSquadPhilosophy(c.trait),
+      trajectory: 0,
     }));
   }
   return normalizeRosters(rosters);
