@@ -42,9 +42,12 @@ export function checkBreakouts(squad, playerMatchLog, breakoutsThisSeason, ovrCa
     for (const trigger of shuffled) {
       try {
         if (trigger.check(log, i, ctx)) {
-          // BREAKOUT! Determine gains — filter to uncapped attrs first
+          // BREAKOUT! Determine gains — filter to uncapped attrs, fallback to any uncapped
           const primaryAttrs = BREAKOUT_ATTRS[type] || ["technique", "mental", "passing"];
-          const rewardable = primaryAttrs.filter(attr => (p.attrs[attr] || 0) < ovrCap);
+          let rewardable = primaryAttrs.filter(attr => (p.attrs[attr] || 0) < ovrCap);
+          if (rewardable.length === 0) {
+            rewardable = Object.keys(p.attrs).filter(attr => (p.attrs[attr] || 0) < ovrCap);
+          }
           const selected = [...rewardable].sort(() => Math.random() - 0.5).slice(0, 2);
           const attrGains = {};
           for (const attr of selected) {
