@@ -3745,7 +3745,7 @@ function FootballManager() {
           goals, assists,
           rating: rEntry?.rating || 0,
           motm: matchResult.motmName === rEntry?.name,
-          cleanSheet: isCleanSheet,
+          cleanSheet: isCleanSheet && (rEntry?.minutesPlayed || 0) >= 60,
           cup: isCup,
           away: !isPlayerHome,
           oppStrength,
@@ -3797,8 +3797,8 @@ function FootballManager() {
       if (goals > 0) addXP("shooting", baseXP * Math.min(goals, 3));
       // Assisted → passing
       if (assists > 0) addXP("passing", baseXP * Math.min(assists, 3));
-      // Clean sheet (DEF/GK only) → defending
-      if (isCleanSheet && (type === "GK" || type === "DEF")) addXP("defending", baseXP * 1.5);
+      // Clean sheet (DEF/GK only, 60+ min) → defending
+      if (isCleanSheet && (rEntry?.minutesPlayed || 0) >= 60 && (type === "GK" || type === "DEF")) addXP("defending", baseXP * 1.5);
       // High rating (7.5+) → technique
       if (rating >= 7.5) addXP("technique", baseXP * ((rating - 7.0) / 1.5));
       // Any appearance → mental (scaled by rating)
