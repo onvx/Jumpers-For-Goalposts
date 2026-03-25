@@ -702,19 +702,31 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
         subMinutes[teamName][onName] = evt.minute;
       }
     }
-    // For goal events, check if scorer was subbed off
+    // For goal events, check if scorer or assister was subbed off
     if (evt.type === "goal" && evt.player) {
       const team = evt.side === "home" ? homeTeam : awayTeam;
       const offSet = subbedOffByTeam[team.name];
-      if (offSet && offSet.has(evt.player)) {
-        // Re-pick scorer from players still on pitch
+      if (offSet) {
         const starters = getPlayingSquad(team).map(p => p.name).filter(n => !offSet.has(n));
         const subs = subbedOnByTeam[team.name] || [];
         const available = [...starters, ...subs];
-        if (available.length > 0) {
-          const newScorer = available[rand(0, available.length - 1)];
-          evt.player = newScorer;
-          evt.text = `⚽ GOAL! ${newScorer} scores for ${team.name}!`;
+        let changed = false;
+        // Re-pick scorer if subbed off
+        if (offSet.has(evt.player) && available.length > 0) {
+          evt.player = available[rand(0, available.length - 1)];
+          changed = true;
+        }
+        // Re-pick assister if subbed off
+        if (evt.assister && offSet.has(evt.assister)) {
+          const assistCandidates = available.filter(n => n !== evt.player);
+          evt.assister = assistCandidates.length > 0 ? assistCandidates[rand(0, assistCandidates.length - 1)] : undefined;
+          changed = true;
+        }
+        // Rebuild text from fields to avoid substring corruption (e.g. player name inside team name)
+        if (changed) {
+          evt.text = evt.assister
+            ? `⚽ GOAL! ${evt.player} scores for ${team.name}! (Assist: ${evt.assister})`
+            : `⚽ GOAL! ${evt.player} scores for ${team.name}!`;
         }
       }
     }
