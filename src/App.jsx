@@ -4763,8 +4763,6 @@ function FootballManager() {
       {/* Page content */}
       {showAchievements ? (
         <AchievementCabinet key={cabinetKey} unlocked={unlockedAchievements} unlockedPacks={unlockedPacks} achievementUnlockWeeks={achievementUnlockWeeks} calendarIndex={calendarIndex} seasonNumber={seasonNumber} seasonLength={seasonCalendar?.length || DEFAULT_SEASON_LENGTH} squad={squad} clubHistory={clubHistory} currentTier={leagueTier} ovrCap={ovrCap} gameMode={gameMode} isTainted={isTainted}
-          hasUnseenAchievements={unlockedAchievements.size > lastSeenAchievementCount}
-          onViewAchievements={() => setLastSeenAchievementCount(unlockedAchievements.size)}
           tickets={tickets} retiringPlayers={retiringPlayers} transferFocus={transferFocus}
           doubleTrainingWeek={doubleTrainingWeek} twelfthManActive={twelfthManActive}
           youthCoupActive={youthCoupActive} pendingFreeAgent={pendingFreeAgent}
