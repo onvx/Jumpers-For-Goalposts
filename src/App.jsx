@@ -2373,13 +2373,21 @@ function FootballManager() {
               const matchesPlayed = useGameStore.getState().matchweekIndex || 1;
               const appearanceRate = Math.min(1, effectiveApps / Math.max(1, matchesPlayed));
               const rawProgress = getTrainingProgress(current, trainingAge, p.potential, overall, appearanceRate, playerCap);
+              // Form multiplier: recent match performance affects training speed
+              const _formRatings = (useGameStore.getState().playerRatingTracker[p.id] || []).slice(-3);
+              const _formAvg = _formRatings.length > 0 ? _formRatings.reduce((s, r) => s + r, 0) / _formRatings.length : 0;
+              const formMult = _formRatings.length === 0 ? 0.8
+                : _formAvg >= 7.5 ? 1.5
+                : _formAvg >= 6.5 ? 1.0
+                : _formAvg >= 5.5 ? 0.8
+                : 0.6;
               // Story arc training bonuses
               const arcBonuses = storyArcs?.bonuses || {};
               let arcMult = 1 + (arcBonuses.trainSpeedMult || 0);
               if (attrKey === "mental" && arcBonuses.mentalTrainMult) arcMult += arcBonuses.mentalTrainMult;
               const doubleMult = useGameStore.getState().doubleTrainingWeek ? 2 : 1;
               const dojoMult = mod.trainingSpeedMult || 1;
-              const progressGain = rawProgress * focusMultiplier * arcMult * doubleMult * dojoMult;
+              const progressGain = rawProgress * focusMultiplier * arcMult * doubleMult * dojoMult * formMult;
 
               const oldProgress = newPlayer.statProgress[attrKey] || 0;
               let newProgress = oldProgress + progressGain;
@@ -2393,7 +2401,7 @@ function FootballManager() {
                   levelUps++;
                 }
                 if (newPlayer.attrs[attrKey] >= playerCap) newProgress = 0; // at cap, no overflow
-                newPlayer.gains[attrKey] = levelUps;
+                newPlayer.gains[attrKey] = (newPlayer.gains[attrKey] || 0) + levelUps;
                 newPlayer.statProgress[attrKey] = Math.max(0, newProgress);
                 const priorPips = progressToPips(oldProgress);
                 weekGains.push({
@@ -3686,12 +3694,14 @@ function FootballManager() {
       }
     }
 
+    // Build appeared set (starters + subs who played) — shared by match log and match XP
+    const appeared = new Set(xiIds);
+    if (matchResult.playerRatings) {
+      matchResult.playerRatings.forEach(pr => { if (pr.isSub && pr.minutesPlayed > 0 && pr.id) appeared.add(pr.id); });
+    }
+
     setPlayerMatchLog(prev => {
       const next = { ...prev };
-      const appeared = new Set(xiIds);
-      if (matchResult.playerRatings) {
-        matchResult.playerRatings.forEach(pr => { if (pr.isSub && pr.minutesPlayed > 0 && pr.id) appeared.add(pr.id); });
-      }
       for (const pid of appeared) {
         const rEntry = matchResult.playerRatings?.find(r => r.id === pid);
         const goals = matchResult.scorersByID?.[`${side}|${pid}`] || 0;
@@ -3714,6 +3724,55 @@ function FootballManager() {
       }
       return next;
     });
+
+    // Match XP: performance-based passive attr growth for players who appeared
+    // Pace and Physical are training-only — not affected by match XP.
+    const _ovrCap = getOvrCap(useGameStore.getState().prestigeLevel || 0);
+    setSquad(prev => prev.map(p => {
+      if (!appeared.has(p.id)) return p;
+      const playerCap = p.legendCap || _ovrCap;
+      const rEntry = matchResult.playerRatings?.find(r => r.id === p.id);
+      const rating = rEntry?.rating || 6.0;
+      const goals = matchResult.scorersByID?.[`${side}|${p.id}`] || 0;
+      const assists = matchResult.assistersByID?.[`${side}|${p.id}`] || 0;
+      const type = POSITION_TYPES[p.position];
+      const baseXP = 0.08;
+
+      const newProgress = { ...(p.statProgress || {}) };
+      let gainedLevelUp = false;
+      const newAttrs = { ...p.attrs };
+      const newGains = { ...(p.gains || {}) };
+
+      const addXP = (attr, amount) => {
+        if (newAttrs[attr] >= playerCap) return;
+        newProgress[attr] = (newProgress[attr] || 0) + amount;
+        if (newProgress[attr] >= 1.0) {
+          while (newProgress[attr] >= 1.0 && newAttrs[attr] < playerCap) {
+            newProgress[attr] -= 1.0;
+            newAttrs[attr]++;
+            newGains[attr] = (newGains[attr] || 0) + 1;
+            gainedLevelUp = true;
+          }
+          if (newAttrs[attr] >= playerCap) newProgress[attr] = 0;
+        }
+      };
+
+      // Scored → shooting
+      if (goals > 0) addXP("shooting", baseXP * Math.min(goals, 3));
+      // Assisted → passing
+      if (assists > 0) addXP("passing", baseXP * Math.min(assists, 3));
+      // Clean sheet (DEF/GK only) → defending
+      if (isCleanSheet && (type === "GK" || type === "DEF")) addXP("defending", baseXP * 1.5);
+      // High rating (7.5+) → technique
+      if (rating >= 7.5) addXP("technique", baseXP * ((rating - 7.0) / 1.5));
+      // Any appearance → mental (scaled by rating)
+      addXP("mental", baseXP * 0.5 * (rating / 7.0));
+
+      if (gainedLevelUp || Object.keys(newProgress).some(k => newProgress[k] !== (p.statProgress?.[k] || 0))) {
+        return { ...p, attrs: newAttrs, statProgress: newProgress, gains: newGains };
+      }
+      return p;
+    }));
   };
 
   const AUTO_TRAINING = {
