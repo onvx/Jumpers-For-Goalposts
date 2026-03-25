@@ -2401,7 +2401,7 @@ function FootballManager() {
                   levelUps++;
                 }
                 if (newPlayer.attrs[attrKey] >= playerCap) newProgress = 0; // at cap, no overflow
-                newPlayer.gains[attrKey] = levelUps;
+                newPlayer.gains[attrKey] = (newPlayer.gains[attrKey] || 0) + levelUps;
                 newPlayer.statProgress[attrKey] = Math.max(0, newProgress);
                 const priorPips = progressToPips(oldProgress);
                 weekGains.push({
