@@ -14,7 +14,7 @@ const BREAKOUT_ATTRS = {
  * Check if any player triggered a breakout after a match.
  * @param {Array} squad - player squad
  * @param {Object} playerMatchLog - { playerId: [MatchLogEntry...] }
- * @param {Set} breakoutsThisSeason - player IDs who already broke out this season
+ * @param {Map} breakoutsThisSeason - { playerId => count } — max 2 per player per season
  * @param {number} ovrCap - current OVR cap
  * @returns {Array<{ playerId, playerName, playerPosition, trigger, attrGains, potentialGain }>}
  */
