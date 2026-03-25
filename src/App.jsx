@@ -3745,7 +3745,7 @@ function FootballManager() {
           goals, assists,
           rating: rEntry?.rating || 0,
           motm: matchResult.motmName === rEntry?.name,
-          cleanSheet: isCleanSheet && (!rEntry?.isSub || (rEntry?.minutesPlayed || 0) >= 60),
+          cleanSheet: isCleanSheet && (rEntry?.minutesPlayed || 0) >= 60,
           cup: isCup,
           away: !isPlayerHome,
           oppStrength,
@@ -3798,9 +3798,7 @@ function FootballManager() {
       // Assisted → passing
       if (assists > 0) addXP("passing", baseXP * Math.min(assists, 3));
       // Clean sheet (DEF/GK only, 60+ min) → defending
-      const rEntryXP = matchResult.playerRatings?.find(r => r.id === p.id);
-      const qualifiesCS = isCleanSheet && (!rEntryXP?.isSub || (rEntryXP?.minutesPlayed || 0) >= 60);
-      if (qualifiesCS && (type === "GK" || type === "DEF")) addXP("defending", baseXP * 1.5);
+      if (isCleanSheet && (rEntry?.minutesPlayed || 0) >= 60 && (type === "GK" || type === "DEF")) addXP("defending", baseXP * 1.5);
       // High rating (7.5+) → technique
       if (rating >= 7.5) addXP("technique", baseXP * ((rating - 7.0) / 1.5));
       // Any appearance → mental (scaled by rating)

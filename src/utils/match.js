@@ -685,7 +685,8 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
   // Post-process: enforce sub consistency — subbed-off players can't appear after they leave
   const subbedOffByTeam = {}; // teamName -> Set of player names removed
   const subbedOnByTeam = {};  // teamName -> array of player names added
-  const subMinutes = {};       // teamName -> { playerName: minuteCameOn }
+  const subMinutes = {};       // teamName -> { subOnPlayer: minuteCameOn }
+  const offMinutes = {};       // teamName -> { starterOffPlayer: minuteLeft }
   for (const evt of events) {
     if (evt.type === "sub") {
       // Parse "🔄 Substitution for TeamName: OnPlayer replaces OffPlayer"
@@ -700,6 +701,8 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
         subbedOnByTeam[teamName].push(onName);
         if (!subMinutes[teamName]) subMinutes[teamName] = {};
         subMinutes[teamName][onName] = evt.minute;
+        if (!offMinutes[teamName]) offMinutes[teamName] = {};
+        offMinutes[teamName][offName] = evt.minute;
       }
     }
     // For goal events, check if scorer or assister was subbed off
@@ -883,9 +886,13 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
       return Math.round(Math.max(MATCH.RATE_MIN, Math.min(MATCH.RATE_MAX, base + noise)) * 10) / 10;
     };
 
+    const teamOffMinutes = offMinutes[team.name] || {};
     const starterRatings = team.squad
       .filter(p => playerStartingXI.includes(p.id))
-      .map(p => ({ id: p.id, name: p.name, position: p.position, rating: calcRating(p, false), isSub: false }));
+      .map(p => {
+        const offMin = teamOffMinutes[p.name];
+        return { id: p.id, name: p.name, position: p.position, rating: calcRating(p, false), isSub: false, minutesPlayed: offMin !== undefined ? offMin : 90 };
+      });
 
     const teamSubMinutes = subMinutes[team.name] || {};
     const benchRatings = (playerBench || [])
