@@ -3670,6 +3670,7 @@ function FootballManager() {
     const oppGoals = isPlayerHome ? matchResult.awayGoals : matchResult.homeGoals;
     const playerGoals = isPlayerHome ? matchResult.homeGoals : matchResult.awayGoals;
     const isCleanSheet = oppGoals === 0;
+    const teamWon = playerGoals > oppGoals;
 
     // Winning goal scorer — the goal that gave the decisive lead (oppGoals + 1)
     let winningGoalScorer = null;
@@ -3719,6 +3720,7 @@ function FootballManager() {
           oppStrength,
           winningGoal: winningGoalScorer != null && rEntry?.name === winningGoalScorer,
           vsLeader,
+          teamWon,
           season: useGameStore.getState().seasonNumber,
           calendarIndex: useGameStore.getState().calendarIndex,
         };

@@ -72,6 +72,12 @@ export const BREAKOUT_TRIGGERS = {
         return log.slice(i - 5, i + 1).filter(m => m.winningGoal).length >= 3;
       },
     },
+    {
+      id: "fwd_cup_hero",
+      label: "Cup Fever",
+      narrative: "scored a brace in a cup match — lives for the big occasion",
+      check: (log, i) => log[i]?.cup && log[i]?.goals >= 2,
+    },
   ],
 
   MID: [
@@ -117,6 +123,12 @@ export const BREAKOUT_TRIGGERS = {
         if (i < 5) return false;
         return log.slice(i - 5, i + 1).filter(m => m.goals > 0).length >= 3;
       },
+    },
+    {
+      id: "mid_big_game",
+      label: "Big Game Player",
+      narrative: "created a goal against the league leaders — turns up when it counts",
+      check: (log, i) => log[i]?.vsLeader && log[i]?.assists >= 1 && log[i]?.teamWon,
     },
   ],
 
@@ -167,6 +179,12 @@ export const BREAKOUT_TRIGGERS = {
         return log.slice(i - 4, i + 1).filter(m => m.goals > 0).length >= 2;
       },
     },
+    {
+      id: "def_away_masterclass",
+      label: "Masterclass",
+      narrative: "MOTM with a clean sheet away from home — a defensive masterclass on the road",
+      check: (log, i) => log[i]?.motm && log[i]?.cleanSheet && log[i]?.away && log[i]?.teamWon,
+    },
   ],
 
   GK: [
@@ -203,6 +221,12 @@ export const BREAKOUT_TRIGGERS = {
       label: "The Neuer Role",
       narrative: "the goalkeeper scored — something tells you it won't be his last",
       check: (log, i) => log[i]?.goals >= 1,
+    },
+    {
+      id: "gk_away_hero",
+      label: "Away Day Hero",
+      narrative: "named MOTM in an away win — carried the team on the road",
+      check: (log, i) => log[i]?.motm && log[i]?.away && log[i]?.teamWon,
     },
   ],
 
