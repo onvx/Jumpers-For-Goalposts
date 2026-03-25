@@ -427,13 +427,13 @@ function pickWeightedPosition(weights) {
 
 // Generate a single AI replacement player for a given position and tier.
 // Youth (17-21) arrive with below-tier stats; signings (23-28) are tier-appropriate.
-function generateAIReplacement(position, tier, isYouth, prestigeLevel = 0) {
+function generateAIReplacement(position, tier, isYouth, prestigeLevel = 0, trajectory = 0) {
   const offset = getPrestigeOffset(prestigeLevel);
   const ovrCap = getOvrCap(prestigeLevel);
   const def = LEAGUE_DEFS[tier] || LEAGUE_DEFS[11];
   const age = isYouth ? rand(17, 21) : rand(23, 28);
   const ovrAdj = isYouth ? -2.5 : 0;
-  const center = (def.ovrMin + offset + def.ovrMax + offset) / 2 + ovrAdj;
+  const center = (def.ovrMin + offset + def.ovrMax + offset) / 2 + ovrAdj + trajectory * 0.3;
   const pMin = Math.max(1, Math.round(center - 1.5));
   const pMax = Math.min(ovrCap, Math.round(center + 1.5));
   const attrs = {};
@@ -459,7 +459,7 @@ function generateAIReplacement(position, tier, isYouth, prestigeLevel = 0) {
 // Evolve an AI team's squad for a new season: age players, retire old ones,
 // recruit replacements driven by the team's trait and squad philosophy.
 // Not 1:1 — teams aim toward their targetSize, creating natural variation.
-export function evolveAISquad(squad, tier, trait, philosophy, prestigeLevel = 0) {
+export function evolveAISquad(squad, tier, trait, philosophy, prestigeLevel = 0, trajectory = 0, eventsOut = null) {
   // 1. Age everyone +1, backfill missing age/id from old saves
   const aged = squad.map(p => ({
     ...p,
@@ -475,11 +475,13 @@ export function evolveAISquad(squad, tier, trait, philosophy, prestigeLevel = 0)
     if (!p.attrs) continue;
     const keys = ATTRIBUTES.map(a => a.key);
     if (p.age <= 24) {
-      // Young: +drift to 1-2 random attrs
+      // Young: +drift to 1-2 random attrs, scaled by trajectory
+      const trajScale = 1 + trajectory * 0.15; // +4 = 60% faster, -4 = 40% slower
       const count = rand(1, 2);
       for (let i = 0; i < count; i++) {
         const k = keys[rand(0, keys.length - 1)];
-        p.attrs[k] = Math.min(ovrCap, (p.attrs[k] || 1) + drift);
+        const scaledDrift = Math.max(1, Math.round(drift * trajScale));
+        p.attrs[k] = Math.min(ovrCap, (p.attrs[k] || 1) + scaledDrift);
       }
     } else if (p.age >= 31) {
       // Aging: -drift to 1-2 random attrs (physical/pace decline faster)
@@ -523,7 +525,7 @@ export function evolveAISquad(squad, tier, trait, philosophy, prestigeLevel = 0)
 
   // 5. Generate replacements — 60% fill a retired position, 40% trait-weighted
   const usedNames = new Set(surviving.map(p => p.name));
-  const uniqueReplacement = (pos, isYouth) => uniqueGenerate(() => generateAIReplacement(pos, tier, isYouth, prestigeLevel), usedNames);
+  const uniqueReplacement = (pos, isYouth) => uniqueGenerate(() => generateAIReplacement(pos, tier, isYouth, prestigeLevel, trajectory), usedNames);
   const replacements = [];
   for (let i = 0; i < numReplacements; i++) {
     let pos;
@@ -536,6 +538,29 @@ export function evolveAISquad(squad, tier, trait, philosophy, prestigeLevel = 0)
     replacements.push(uniqueReplacement(pos, isYouth));
   }
 
+  // Rare AI events — applied before trimming so boosted players aren't popped
+  const def = LEAGUE_DEFS[tier] || LEAGUE_DEFS[11];
+  const _offset = getPrestigeOffset(prestigeLevel);
+  const youthReplacements = replacements.filter(p => (p.age || 25) <= 21);
+
+  // Wonderkid (3%): one YOUTH replacement arrives with exceptional potential
+  if (Math.random() < 0.03 && youthReplacements.length > 0) {
+    const wk = youthReplacements[rand(0, youthReplacements.length - 1)];
+    wk.potential = Math.min(ovrCap, def.ovrMax + _offset + 3);
+    wk.age = rand(17, 19);
+    if (eventsOut) eventsOut.push({ type: "wonderkid", playerName: wk.name, position: wk.position, age: wk.age });
+  }
+
+  // Golden generation (1%): 2-3 YOUTH replacements get potential +2
+  if (Math.random() < 0.01 && youthReplacements.length >= 2) {
+    const goldenCount = Math.min(youthReplacements.length, rand(2, 3));
+    const shuffled = [...youthReplacements].sort(() => Math.random() - 0.5);
+    for (let gi = 0; gi < goldenCount; gi++) {
+      shuffled[gi].potential = Math.min(ovrCap, (shuffled[gi].potential || 0) + 2);
+    }
+    if (eventsOut) eventsOut.push({ type: "golden_gen", count: goldenCount });
+  }
+
   // Hard floor: always able to field 11
   const result = [...surviving, ...replacements];
   while (result.length < 11) {
@@ -543,6 +568,21 @@ export function evolveAISquad(squad, tier, trait, philosophy, prestigeLevel = 0)
   }
   // Hard ceiling: never exceed 25 (same as player squad cap)
   while (result.length > 25) result.pop();
+
+  // Star decline (5% per 28+ above-average player): sharp drop
+  const avgOvr = result.reduce((s, p) => s + getOverall({ position: p.position, attrs: p.attrs }), 0) / result.length;
+  for (const p of result) {
+    if ((p.age || 25) >= 28 && getOverall({ position: p.position, attrs: p.attrs }) > avgOvr) {
+      if (Math.random() < 0.05) {
+        const keys = ATTRIBUTES.map(a => a.key);
+        for (let di = 0; di < 2; di++) {
+          const k = keys[rand(0, keys.length - 1)];
+          p.attrs[k] = Math.max(1, (p.attrs[k] || 1) - 3);
+        }
+      }
+    }
+  }
+
   return result;
 }
 
