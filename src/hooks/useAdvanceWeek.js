@@ -1,43 +1,71 @@
 import { useCallback } from "react";
 import { useGameStore } from "../store/gameStore.js";
 import { ATTRIBUTES, TRAINING_FOCUSES, TRAINING_INJURIES } from "../data/training.js";
-import { POSITION_TYPES } from "../data/positions.js";
 import { LEAGUE_DEFS, NUM_TIERS } from "../data/leagues.js";
-import { ARC_CATS, ARC_TICKET_POOL } from "../data/storyArcs.js";
+import { ARC_TICKET_POOL, ARC_CATS } from "../data/storyArcs.js";
 import { TICKET_DEFS } from "../data/tickets.js";
 import { MSG } from "../data/messages.js";
 import { getModifier } from "../data/leagueModifiers.js";
-import { rand, getOverall, getTrainingProgress, progressToPips, pickRandom } from "../utils/calc.js";
+import { rand, getOverall, progressToPips, getTrainingProgress, pickRandom } from "../utils/calc.js";
 import { getOvrCap } from "../utils/player.js";
-import { getArcById, checkArcCond, getStepNarrative, getFocusNarrative, processArcCompletion, precomputeArcEffects, applyArcFx, applyFinalReward, resolveSeasonEndArcs } from "../utils/arcs.js";
-import { sortStandings, processSeasonSwaps, initLeagueRosters, advanceCupRound, buildNextCupRound, collectSeasonEndAchievements } from "../utils/league.js";
+import { getArcById, checkArcCond, applyArcFx, applyFinalReward, processArcCompletion, precomputeArcEffects, getStepNarrative, getFocusNarrative, resolveSeasonEndArcs } from "../utils/arcs.js";
 import { simulateMatch, generatePenaltyShootout } from "../utils/match.js";
+import { sortStandings, processSeasonSwaps, initLeagueRosters, advanceCupRound, buildNextCupRound } from "../utils/league.js";
 import { checkAchievements } from "../utils/achievements.js";
-import { createInboxMessage } from "../utils/messageUtils.js";
+import { createInboxMessage, getUnreadCount } from "../utils/messageUtils.js";
 import { SFX, BGM } from "../utils/sfx.js";
+import { buildAIFiveASide } from "../components/match/FiveASidePicker.jsx";
 
 const DEFAULT_FIXTURE_COUNT = 18;
 
+/**
+ * Extracts the advanceWeek callback from App.jsx.
+ *
+ * All game state is read fresh from useGameStore.getState() on each call,
+ * eliminating stale closure bugs. Only React useState setters,
+ * component-local callbacks, and refs are passed as params.
+ */
 export function useAdvanceWeek({
-  setGains, setWeekTransition, setAchievementQueue, setRecentOvrLevelUps,
-  setShowAchievements, setShowTable, setShowCalendar, setShowCup, setShowTransfers, setShowLegends, setShowSquad,
+  // useState setters (not in Zustand)
+  setGains,
+  setWeekTransition,
+  setAchievementQueue,
+  setRecentOvrLevelUps,
+  setShowAchievements,
+  setShowTable,
+  setShowCalendar,
+  setShowCup,
+  setShowTransfers,
+  setShowLegends,
+  setShowSquad,
+  // Component-local callbacks
   tryUnlockAchievement,
-  storyArcsRef, pendingFinalRewardRef, weekRecoveriesRef, cardedPlayerIdsRef, boardWarnWeekRef, aiPredictionRef, achievableIdsRef, revealedInjuryCount, pendingTrialAction,
+  // Refs
+  storyArcsRef,
+  pendingFinalRewardRef,
+  weekRecoveriesRef,
+  cardedPlayerIdsRef,
+  boardWarnWeekRef,
+  aiPredictionRef,
+  achievableIdsRef,
+  revealedInjuryCount,
+  pendingTrialAction,
 }) {
   const advanceWeek = useCallback(() => {
     const s = useGameStore.getState();
-    const ovrCap = getOvrCap(s.prestigeLevel || 0);
-    const { processing, squad, league, leagueTier, calendarIndex, seasonCalendar,
-      matchweekIndex, cup, summerPhase, summerData, startingXI, bench,
-      formation, slotAssignments, allLeagueStates, leagueRosters,
-      storyArcs, prodigalSon, trialPlayer, trialHistory, consecutiveWins,
-      halfwayPosition, unlockedAchievements, seasonNumber, isOnHoliday,
-      leagueResults, fanSentiment, boardSentiment, seasonInjuryLog,
-      playerInjuryCount, trainedThisWeek, lopsidedWarned, inboxMessages,
-      doubleTrainingWeek, twelfthManActive, youthCoupActive,
-      clubRelationships, tickets, pendingTicketBoosts, dynastyCupQualifiers,
-      teamName, prestigeLevel, transferFocus,
+    const {
+      processing, squad, league, prodigalSon, leagueTier, matchweekIndex,
+      transferFocus, storyArcs, summerPhase, summerData, calendarIndex,
+      seasonNumber, cup, trialPlayer, trialHistory, consecutiveWins,
+      halfwayPosition, unlockedAchievements, startingXI, bench,
+      inboxMessages, trainedThisWeek, usedTicketTypes, scoutedPlayers,
+      clubRelationships, slotAssignments, formation, formationsWonWith,
+      freeAgentSignings, allLeagueStates, leagueRosters, teamName,
+      pendingTicketBoosts, dynastyCupQualifiers, prestigeLevel,
     } = s;
+    const ovrCap = getOvrCap(prestigeLevel || 0);
+    const achievableIds = achievableIdsRef.current;
+
     if (processing || !league) return;
 
     // Clear stale summer state if data is missing
@@ -190,7 +218,7 @@ export function useAdvanceWeek({
     // === STORY ARC CONDITION CHECK ===
     s.setStoryArcs(prev => {
       const next = {...prev};
-      const gs = { squad, league, prodigalSon, trialPlayer, trialHistory, leagueTier,
+      const gs2 = { squad, league, prodigalSon, trialPlayer, trialHistory, leagueTier,
                    consecutiveWins, halfwayPosition, cup };
       let changed = false;
       ARC_CATS.forEach(cat => {
@@ -200,7 +228,7 @@ export function useAdvanceWeek({
         if (!arc) return;
         const step = arc.steps[cs.step];
         if (!step || step.t !== "cond") return;
-        if (checkArcCond(step, cs.tracking, gs)) {
+        if (checkArcCond(step, cs.tracking, gs2)) {
           next[cat] = {...cs, step: cs.step + 1};
           changed = true;
           // Notification
@@ -250,10 +278,10 @@ export function useAdvanceWeek({
 
     // Check training focus mass achievements at moment of advance
     const focusUnlocks = checkAchievements({
-      squad, unlocked: unlockedAchievements, achievableIds: achievableIdsRef.current,
+      squad, unlocked: unlockedAchievements, achievableIds,
       lastMatchResult: null, league, weekGains: null,
       startingXI, bench, matchweekIndex, trainedThisWeek,
-      doubleTrainingWeek, usedTicketTypes, scoutedPlayers, transferFocus,
+      doubleTrainingWeek: s.doubleTrainingWeek, usedTicketTypes, scoutedPlayers, transferFocus,
       clubRelationships, slotAssignments, formation,
       formationsWonWith, freeAgentSignings,
     });
@@ -1004,13 +1032,13 @@ export function useAdvanceWeek({
             }
             // Auto-pick player's 5v5 squad
             const _holPlayerSquad = useGameStore.getState().squad;
-            const _holPlayerTeam = { name: teamName, color: C.green, squad: _holPlayerSquad, isPlayer: true, trait: null };
+            const _holPlayerTeam = { name: teamName, color: "#4ade80", squad: _holPlayerSquad, isPlayer: true, trait: null };
             const _holAIFive = buildAIFiveASide(_holOpp);
             const _holOppTeam = { ..._holOpp, squad: _holAIFive };
             const _holAutoFive = buildAIFiveASide(_holPlayerTeam); // use same AI logic for auto-pick
             const _holAutoIds = _holAutoFive.map(p => p.id);
             const _holMiniMod = getModifier(leagueTier);
-            const _holPlayerTeamFive = { name: teamName, color: C.green, squad: _holAutoFive, isPlayer: true, trait: null };
+            const _holPlayerTeamFive = { name: teamName, color: "#4ade80", squad: _holAutoFive, isPlayer: true, trait: null };
             const _holResult = simulateMatch(_holPlayerTeamFive, _holOppTeam, _holAutoIds, [], true, 1.0, 0, null, 0, _holMiniMod);
             const _holHG = _holResult.homeGoals;
             const _holAG = _holResult.awayGoals;
@@ -1478,7 +1506,7 @@ export function useAdvanceWeek({
         };
       }
     }
-  }, [setGains, setWeekTransition, setAchievementQueue, setRecentOvrLevelUps, setShowAchievements, setShowTable, setShowCalendar, setShowCup, setShowTransfers, setShowLegends, setShowSquad, tryUnlockAchievement, storyArcsRef, pendingFinalRewardRef, weekRecoveriesRef, cardedPlayerIdsRef, boardWarnWeekRef, aiPredictionRef, achievableIdsRef, revealedInjuryCount, pendingTrialAction]);
+  }, []); // All state read from getState() — no closure deps needed
 
   return { advanceWeek };
 }

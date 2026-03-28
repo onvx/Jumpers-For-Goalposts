@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { POSITION_TYPES, POSITION_ORDER, POS_COLORS, SUB_COLOR, TOTAL_SLOTS } from "./data/positions.js";
-import { ATTRIBUTES, TRAINING_FOCUSES, TRAINING_INJURIES } from "./data/training.js";
+import { ATTRIBUTES, TRAINING_FOCUSES } from "./data/training.js";
 import { DEFAULT_FORMATION } from "./data/formations.js";
 import { ACHIEVEMENTS, PLAYER_UNLOCK_ACHIEVEMENTS, UNLOCKABLE_PLAYERS } from "./data/achievements.js";
 import { LEAGUE_DEFS, NUM_TIERS, AI_BENCH_POSITIONS } from "./data/leagues.js";
@@ -8,10 +8,9 @@ import { ARC_TICKET_POOL, ARC_CATS, STORY_ARCS } from "./data/storyArcs.js";
 import { CIG_PACKS, STARTER_PACKS } from "./data/cigPacks.js";
 import { checkPackUnlocks, isPackComplete } from "./utils/packUnlocks.js";
 import { F, C, FONT, BTN, MODAL, CARD, Z } from "./data/tokens";
-import { TICKET_DEFS } from "./data/tickets.js";
 import { MSG } from "./data/messages.js";
 import { getModifier } from "./data/leagueModifiers.js";
-import { rand, getOverall, getAttrColor, getPosColor, progressToPips, getTrainingProgress, getPositionTrainingWeeks, pickRandom } from "./utils/calc.js";
+import { rand, getOverall, getAttrColor, getPosColor, getPositionTrainingWeeks, pickRandom } from "./utils/calc.js";
 import { detectFormationName, getEffectiveSlots, getTeamOOPMultiplier } from "./utils/formation.js";
 import { pickAINationality, generateNameForNation, inferNationality, generateSquad, generatePrestigeSquad, autoSelectXI, autoSelectBench, generateAITeam, checkRetirements, generateYouthIntake, generateTrialPlayer, generateProdigalPlayer, evolveAISquad, generateSquadPhilosophy, generateFreeAgent, getOvrCap, displayName } from "./utils/player.js";
 import { getArcById, checkArcCond, applyArcFx, applyFinalReward, processArcCompletion, precomputeArcEffects, initStoryArcs, getStepNarrative, getFocusNarrative, resolveSeasonEndArcs } from "./utils/arcs.js";
@@ -1926,13 +1925,16 @@ function FootballManager() {
       };
     }));
   }, []);
+
   const { advanceWeek } = useAdvanceWeek({
     setGains, setWeekTransition, setAchievementQueue, setRecentOvrLevelUps,
-    setShowAchievements, setShowTable, setShowCalendar, setShowCup, setShowTransfers, setShowLegends, setShowSquad,
+    setShowAchievements, setShowTable, setShowCalendar, setShowCup,
+    setShowTransfers, setShowLegends, setShowSquad,
     tryUnlockAchievement,
-    storyArcsRef, pendingFinalRewardRef, weekRecoveriesRef, cardedPlayerIdsRef, boardWarnWeekRef, aiPredictionRef, achievableIdsRef, revealedInjuryCount, pendingTrialAction,
+    storyArcsRef, pendingFinalRewardRef, weekRecoveriesRef, cardedPlayerIdsRef,
+    boardWarnWeekRef, aiPredictionRef, achievableIdsRef, revealedInjuryCount,
+    pendingTrialAction,
   });
-  advanceWeekRef.current = advanceWeek;
 
 
   // Triggered by "END SEASON" button — applies any pending arc final rewards, then opens SeasonEndReveal
@@ -2033,6 +2035,7 @@ function FootballManager() {
     setSummerData(prev => ({ ...(prev || {}), weeksLeft: 5 }));
     setTimeout(() => setWeekTransition(false), 1500);
   }, [processing, squad, league, storyArcs, prodigalSon, trialPlayer, trialHistory, leagueTier, consecutiveWins, halfwayPosition, cup, unlockedAchievements, seasonNumber, ovrCap]);
+  advanceWeekRef.current = advanceWeek;
 
   // Drives the 5-week summer break, one event per click
   const advanceSummer = useCallback(() => {
