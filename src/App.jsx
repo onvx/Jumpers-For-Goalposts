@@ -7772,8 +7772,10 @@ function FootballManager() {
           onDone={(wasAlwaysFast, wasAlwaysNormal) => {
            try {
            // Flush deferred league table update
+           let currentLeague = league;
            if (pendingLeagueRef.current) {
-             setLeague(pendingLeagueRef.current);
+             currentLeague = pendingLeagueRef.current;
+             setLeague(currentLeague);
              pendingLeagueRef.current = null;
            }
            // Tier 8: Track carded player team players so they skip next training
@@ -7984,7 +7986,7 @@ function FootballManager() {
 
             const newUnlocks = checkAchievements({
               squad: useGameStore.getState().squad, unlocked: unlockedAchievements, achievableIds,
-              lastMatchResult: matchResult, league, weekGains: null,
+              lastMatchResult: matchResult, league: currentLeague, weekGains: null,
               startingXI, bench, matchweekIndex: completedMDs, seasonCards,
               totalGains, totalMatches: totalMatches + 1,
               seasonCleanSheets: seasonCleanSheets + (oppGoals === 0 ? 1 : 0),
