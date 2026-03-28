@@ -67,7 +67,12 @@ export function hydrateState(saved) {
     if (key in out) {
       const raw = out[key];
       if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-        const entries = Object.entries(raw).map(([k, v]) => [k, Array.isArray(v) ? new Set(v) : new Set()]);
+        const entries = Object.entries(raw).map(([k, v]) => {
+          if (Array.isArray(v)) return [k, new Set(v)];
+          // Legacy saves stored numeric counts — convert to placeholder IDs to preserve the cap
+          if (typeof v === "number" && v > 0) return [k, new Set(Array.from({ length: v }, (_, i) => `__legacy_${i}`))];
+          return [k, new Set()];
+        });
         out[key] = new Map(entries);
       } else {
         out[key] = new Map();
