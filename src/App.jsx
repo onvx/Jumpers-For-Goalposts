@@ -11,7 +11,7 @@ import { F, C, FONT, BTN, MODAL, CARD, Z } from "./data/tokens";
 import { TICKET_DEFS } from "./data/tickets.js";
 import { MSG } from "./data/messages.js";
 import { getModifier } from "./data/leagueModifiers.js";
-import { rand, getOverall, getAttrColor, getPosColor, progressToPips, getTrainingProgress, pickRandom } from "./utils/calc.js";
+import { rand, getOverall, getAttrColor, getPosColor, progressToPips, getTrainingProgress, getPositionTrainingWeeks, pickRandom } from "./utils/calc.js";
 import { detectFormationName, getEffectiveSlots, getTeamOOPMultiplier } from "./utils/formation.js";
 import { pickAINationality, generateNameForNation, inferNationality, generateSquad, generatePrestigeSquad, autoSelectXI, autoSelectBench, generateAITeam, checkRetirements, generateYouthIntake, generateTrialPlayer, generateProdigalPlayer, evolveAISquad, generateSquadPhilosophy, generateFreeAgent, getOvrCap, displayName } from "./utils/player.js";
 import { getArcById, checkArcCond, applyArcFx, applyFinalReward, processArcCompletion, precomputeArcEffects, initStoryArcs, getStepNarrative, getFocusNarrative, resolveSeasonEndArcs } from "./utils/arcs.js";
