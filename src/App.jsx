@@ -1863,7 +1863,7 @@ function FootballManager() {
           setSquadFullAlert(true);
           return false;
         }
-        const tp = { ...msg.trialPlayerData, seasonStartOvr: getOverall(msg.trialPlayerData), seasonStartAttrs: { ...msg.trialPlayerData.attrs } };
+        const tp = { ...msg.trialPlayerData, seasonStartOvr: getOverall(msg.trialPlayerData), seasonStartAttrs: { ...msg.trialPlayerData.attrs }, trialStartMatchweek: matchweekIndex };
         setSquad(prev => [...prev, tp]);
         setTrialPlayer(tp);
         SFX.reveal();
@@ -2762,7 +2762,7 @@ function FootballManager() {
       // but holiday path returns early, so we must do it here using fresh squad data)
       try {
         const freshTP = useGameStore.getState().squad.find(p => p.isTrial);
-        if (freshTP) {
+        if (freshTP && useGameStore.getState().matchweekIndex > (freshTP.trialStartMatchweek ?? -1)) {
           const wasInXI = startingXI.includes(freshTP.id);
           const twl = freshTP.trialWeeksLeft - 1;
           const tns = (freshTP.trialStarts || 0) + (wasInXI ? 1 : 0);
@@ -3382,7 +3382,7 @@ function FootballManager() {
 
     // Trial player — compute action but defer squad changes to avoid re-triggering this useEffect
     pendingTrialAction.current = null;
-    if (trialPlayer) {
+    if (trialPlayer && matchweekIndex > (trialPlayer.trialStartMatchweek ?? -1)) {
       const wasInXI = startingXI.includes(trialPlayer.id);
       const newWeeksLeft = trialPlayer.trialWeeksLeft - 1;
       const newStarts = trialPlayer.trialStarts + (wasInXI ? 1 : 0);
