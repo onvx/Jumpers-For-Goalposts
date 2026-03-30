@@ -1,6 +1,6 @@
-# Jumpers for Goalposts
+# Fruit Cigs
 
-Build your team, go from the schoolyard to the top of the football pyramid, one +1 at a time. Jumpers for Goalposts is a retro football sim that revels in simple pleasures and gives you space to create your own narrative.
+Build your team, go from the schoolyard to the top of the football pyramid, one +1 at a time. Fruit Cigs is a retro football sim that revels in simple pleasures and gives you space to create your own narrative.
 
 A love letter to FIFA, Championship Manager, Ultimate Soccer Manager, and This Is Football.
 
