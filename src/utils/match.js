@@ -371,13 +371,14 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
 
   // Defensive: clean sheet bonus goal — if both scoreless, 30% chance of a scrappy set-piece goal
   // Randomise evaluation order to avoid home-first bias when both teams are defensive
+  let bonusHomeGoals = 0, bonusAwayGoals = 0;
   const defFirst = Math.random() < 0.5 ? "home" : "away";
   const defChecks = defFirst === "home"
     ? [{ team: homeTeam, side: "home" }, { team: awayTeam, side: "away" }]
     : [{ team: awayTeam, side: "away" }, { team: homeTeam, side: "home" }];
   for (const { team, side } of defChecks) {
     if (team.trait === "defensive" && homeGoals === 0 && awayGoals === 0 && Math.random() < MATCH.DEFENSIVE_CLEAN_SHEET_GOAL_CHANCE) {
-      if (side === "home") homeGoals++; else awayGoals++;
+      if (side === "home") { homeGoals++; bonusHomeGoals++; } else { awayGoals++; bonusAwayGoals++; }
     }
   }
 
@@ -388,14 +389,14 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
     const hasGK = starters.some(p => p.position === "GK");
     if (!hasGK && starters.length > 0) {
       outfieldInGoal = true;
-      if (Math.random() < MATCH.OUTFIELD_GK_EXTRA_CHANCE) awayGoals++; // ~50% chance of conceding an extra goal
+      if (Math.random() < MATCH.OUTFIELD_GK_EXTRA_CHANCE) { awayGoals++; bonusAwayGoals++; }
     }
   } else if (awayTeam.isPlayer && playerStartingXI) {
     const starters = awayTeam.squad.filter(p => playerStartingXI.includes(p.id) && !p.injury);
     const hasGK = starters.some(p => p.position === "GK");
     if (!hasGK && starters.length > 0) {
       outfieldInGoal = true;
-      if (Math.random() < MATCH.OUTFIELD_GK_EXTRA_CHANCE) homeGoals++;
+      if (Math.random() < MATCH.OUTFIELD_GK_EXTRA_CHANCE) { homeGoals++; bonusHomeGoals++; }
     }
   }
 
@@ -525,6 +526,10 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
   addGoalEvents(awayTeam, "away", awayGoals1H, 1, 45);
   addGoalEvents(homeTeam, "home", homeGoals2H, 46, 90);
   addGoalEvents(awayTeam, "away", awayGoals2H, 46, 90);
+
+  // Bonus goals (defensive trait, outfield GK) — events generated as late 2H goals
+  if (bonusHomeGoals > 0) addGoalEvents(homeTeam, "home", bonusHomeGoals, 70, 90);
+  if (bonusAwayGoals > 0) addGoalEvents(awayTeam, "away", bonusAwayGoals, 70, 90);
 
   // Generate substitution events (3 per team, between 55-85 min)
   const generateSubs = (team, side) => {
