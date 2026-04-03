@@ -1147,7 +1147,7 @@ function FruitCigs() {
           setSquadFullAlert(true);
           return false;
         }
-        const tp = { ...msg.trialPlayerData, seasonStartOvr: getOverall(msg.trialPlayerData), seasonStartAttrs: { ...msg.trialPlayerData.attrs }, trialStartMatchweek: calendarIndex };
+        const tp = { ...msg.trialPlayerData, seasonStartOvr: getOverall(msg.trialPlayerData), seasonStartAttrs: { ...msg.trialPlayerData.attrs }, trialStartWeek: calendarIndex };
         setSquad(prev => [...prev, tp]);
         setTrialPlayer(tp);
         SFX.reveal();
@@ -4934,7 +4934,7 @@ function FruitCigs() {
               const mRound = cupMatchResult.miniRound;
               const mhg = cupMatchResult.homeGoals;
               const mag = cupMatchResult.awayGoals;
-              const mPens = cupMatchResult.penalties || null;
+              let mPens = cupMatchResult.penalties || null;
 
               if (mRound === "sf_leg1") {
                 // Record leg 1 result
@@ -5023,8 +5023,8 @@ function FruitCigs() {
                   tpWinner = mhg > mag ? cupMatchResult.cupHome : cupMatchResult.cupAway;
                 } else {
                   // Draw without penalties — shouldn't happen, generate pens as fallback
-                  const fallbackPens = generatePenaltyShootout(cupMatchResult.cupHome, cupMatchResult.cupAway, cupMatchResult.events || [], null, null, getModifier(leagueTier));
-                  tpWinner = fallbackPens.winner === "home" ? cupMatchResult.cupHome : cupMatchResult.cupAway;
+                  mPens = generatePenaltyShootout(cupMatchResult.cupHome, cupMatchResult.cupAway, cupMatchResult.events || [], null, null, getModifier(leagueTier));
+                  tpWinner = mPens.winner === "home" ? cupMatchResult.cupHome : cupMatchResult.cupAway;
                 }
                 const playerWon3rd = tpWinner.isPlayer;
                 setMiniTournamentBracket(prev => ({

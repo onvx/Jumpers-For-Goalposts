@@ -232,18 +232,31 @@ export function generateFixtures(teamCount) {
     const f = week.find(m => m.home === 0 || m.away === 0);
     return f ? (f.home === 0 ? f.away : f.home) : null;
   };
-  for (let i = 0; i < result.length - 1; i++) {
-    if (getPlayerOpp(result[i]) === getPlayerOpp(result[i + 1])) {
-      // Swap with the nearest non-conflicting week
-      for (let j = i + 2; j < result.length; j++) {
-        if (getPlayerOpp(result[j]) !== getPlayerOpp(result[i]) &&
-            (j + 1 >= result.length || getPlayerOpp(result[j]) !== getPlayerOpp(result[j + 1])) &&
-            (i === 0 || getPlayerOpp(result[j]) !== getPlayerOpp(result[i - 1]))) {
-          [result[i + 1], result[j]] = [result[j], result[i + 1]];
-          break;
-        }
-      }
+  const hasClash = (arr, idx) => idx < arr.length - 1 && getPlayerOpp(arr[idx]) === getPlayerOpp(arr[idx + 1]);
+  const wouldClash = (arr, idx) => {
+    if (idx > 0 && getPlayerOpp(arr[idx]) === getPlayerOpp(arr[idx - 1])) return true;
+    if (idx < arr.length - 1 && getPlayerOpp(arr[idx]) === getPlayerOpp(arr[idx + 1])) return true;
+    return false;
+  };
+  // Multiple passes — each pass fixes one clash, up to 50 attempts
+  for (let pass = 0; pass < 50; pass++) {
+    let found = -1;
+    for (let i = 0; i < result.length - 1; i++) {
+      if (hasClash(result, i)) { found = i; break; }
     }
+    if (found === -1) break; // no clashes remain
+    // Try swapping result[found+1] with every other position
+    let swapped = false;
+    for (let j = 0; j < result.length; j++) {
+      if (j === found || j === found + 1) continue;
+      [result[found + 1], result[j]] = [result[j], result[found + 1]];
+      if (!wouldClash(result, found + 1) && !wouldClash(result, j) && !wouldClash(result, found)) {
+        swapped = true;
+        break;
+      }
+      [result[found + 1], result[j]] = [result[j], result[found + 1]]; // revert
+    }
+    if (!swapped) break; // no valid swap found — accept remaining clashes
   }
   return result;
 }
