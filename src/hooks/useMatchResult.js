@@ -140,7 +140,15 @@ export function useMatchResult({
         if (moveType === "relegated") { s.setFanSentiment(Math.max(0, s.fanSentiment - 20)); s.setBoardSentiment(Math.max(0, s.boardSentiment - 25)); }
         if (position === 1) { s.setFanSentiment(Math.min(100, s.fanSentiment + 10)); s.setBoardSentiment(Math.min(100, s.boardSentiment + 10)); }
         const playerRow = sortStandings(currentLeague.table).find(r => currentLeague.teams[r.teamIndex]?.isPlayer);
-        s.setSummerData({ moveType, fromTier: currentTier, toTier: newTier, position, leagueName: currentLeague.leagueName || LEAGUE_DEFS[currentTier].name, newLeagueName: LEAGUE_DEFS[newTier].name, newRosters: swapResult.rosters, isInvincible: position === 1 && playerRow?.lost === 0 });
+        // Detect Dynasty Cup finish for promotion text
+        const dBkt = s.dynastyCupBracket;
+        let dynastyCupFinish = null;
+        if (mod.knockoutAtEnd && dBkt) {
+          if (dBkt.winner?.isPlayer) dynastyCupFinish = "winner";
+          else if (dBkt.final?.home?.isPlayer || dBkt.final?.away?.isPlayer) dynastyCupFinish = "runner_up";
+          else if (dBkt.sf1?.home?.isPlayer || dBkt.sf1?.away?.isPlayer || dBkt.sf2?.home?.isPlayer || dBkt.sf2?.away?.isPlayer) dynastyCupFinish = "semi_finalist";
+        }
+        s.setSummerData({ moveType, fromTier: currentTier, toTier: newTier, position, leagueName: currentLeague.leagueName || LEAGUE_DEFS[currentTier].name, newLeagueName: LEAGUE_DEFS[newTier].name, newRosters: swapResult.rosters, isInvincible: position === 1 && playerRow?.lost === 0, dynastyCupFinish });
         s.setSummerPhase("summary");
 
         // Story arc season-end tracking

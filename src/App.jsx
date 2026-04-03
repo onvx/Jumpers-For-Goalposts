@@ -1229,6 +1229,14 @@ function FruitCigs() {
         });
       }
     }
+    if (msg.type === "stat_cap") {
+      if (choice === "switch_training" && msg.choices) {
+        const data = msg.choices.find(c => c.value === "switch_training")?.data;
+        if (data?.suggestedKey && msg._playerName) {
+          setSquad(prev => prev.map(p => p.name === msg._playerName ? { ...p, training: data.suggestedKey } : p));
+        }
+      }
+    }
     if (msg.type === "asst_mgr_training_intro" || msg.type === "asst_mgr_training_nudge") {
       if (choice === "delegate") {
         setSquad(prev => prev.map(p => ({ ...p, training: p.training || "balanced" })));
@@ -6008,6 +6016,7 @@ function FruitCigs() {
                   points,
                   topScorer: topScorer ? `${topScorer} (${topGoals})` : "N/A",
                   result: summerData.moveType,
+                  prestigeLevel: prestigeLevel || 0,
                 });
 
                 // Archive cup history

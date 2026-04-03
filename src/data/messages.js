@@ -990,6 +990,17 @@ export const MSG = {
     color: "#38bdf8",
     type: "holiday_summary",
   }),
+  // Training cap
+  statCapped: (playerName, cappedAttr, suggestedAttr, suggestedKey) => ({
+    id: `msg_stat_cap_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+    icon: "\uD83D\uDCC8", // 📈
+    title: `${playerName}: Elite Level`,
+    body: `Hey Boss, good news! ${playerName} has reached an elite level in ${cappedAttr} and now would benefit from focussing on other aspects of their game in training such as ${suggestedAttr}. Should I move them onto that or do you want to handle it yourself?`,
+    color: "#4ade80",
+    type: "stat_cap",
+    choices: [{ label: "You Handle It", value: "switch_training", data: { suggestedKey } }, { label: "I'll Sort It", value: "dismiss" }],
+    _playerName: playerName,
+  }),
   // Breakout
   breakout: (playerName, narrative, gainStr, potStr) => ({
     id: `msg_breakout_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
