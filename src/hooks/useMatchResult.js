@@ -703,7 +703,10 @@ export function useMatchResult({
           const msgs = [];
           if (wasInXI && ps.starts === 1 && !ps.sentFlags.firstStart) {
             ps.sentFlags = { ...ps.sentFlags, firstStart: true };
-            msgs.push(createInboxMessage(MSG.prodigalStart(ps.playerName), { calendarIndex: s.calendarIndex, seasonNumber: s.seasonNumber }));
+            // Skip "rusty" message if the player scored on debut — the goal message is better
+            if (!scored) {
+              msgs.push(createInboxMessage(MSG.prodigalStart(ps.playerName), { calendarIndex: s.calendarIndex, seasonNumber: s.seasonNumber }));
+            }
           }
           if (ps.consecutiveBenched >= 3 && !ps.sentFlags.benchWarn) {
             ps.sentFlags = { ...ps.sentFlags, benchWarn: true };

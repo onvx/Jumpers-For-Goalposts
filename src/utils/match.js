@@ -492,11 +492,23 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
   // Each goal must land on a unique minute — two goals cannot share a minute.
   const goalMinutes = [];
   const usedGoalMinutes = new Set();
+  const MIN_GOAL_GAP = 3; // minimum minutes between any two goals
+  const tooClose = (min) => {
+    for (const used of usedGoalMinutes) {
+      if (Math.abs(min - used) < MIN_GOAL_GAP) return true;
+    }
+    return false;
+  };
   const pickUniqueGoalMinute = (team, minMin, maxMin) => {
     for (let attempt = 0; attempt < 30; attempt++) {
       const min = pickGoalMinute(team, minMin, maxMin);
-      if (!usedGoalMinutes.has(min)) { usedGoalMinutes.add(min); return min; }
+      if (!usedGoalMinutes.has(min) && !tooClose(min)) { usedGoalMinutes.add(min); return min; }
     }
+    // Fallback: find any minute with enough gap
+    for (let m = minMin; m <= maxMin; m++) {
+      if (!usedGoalMinutes.has(m) && !tooClose(m)) { usedGoalMinutes.add(m); return m; }
+    }
+    // Last resort: find any unused minute (high-scoring games may exhaust gaps)
     for (let m = minMin; m <= maxMin; m++) {
       if (!usedGoalMinutes.has(m)) { usedGoalMinutes.add(m); return m; }
     }
