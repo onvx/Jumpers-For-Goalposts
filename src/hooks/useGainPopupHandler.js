@@ -42,7 +42,7 @@ export function useGainPopupHandler({
           const oldOvr = getOverall(old);
           const newOvr = getOverall(pp);
           if (newOvr > oldOvr) {
-            levelUps.push({ name: pp.name, position: pp.position, oldOvr, newOvr });
+            levelUps.push({ name: pp.name, position: pp.position, age: pp.age, oldOvr, newOvr });
           }
         }
       });

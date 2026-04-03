@@ -489,7 +489,7 @@ export function ClubLegends({ clubHistory, teamName, playerSeasonStats, playerRa
                         {moveEmoji(s.result)} {s.position}{typeof s.position === "number" ? (["st","nd","rd"][s.position-1]||"th") : "th"} — {s.leagueName}
                       </div>
                       <div style={{ fontSize: F.xs, color: C.textDim, marginTop: 2 }}>
-                        {s.points} pts · Top scorer: {s.topScorer}
+                        {s.points} pts · Top scorer: {s.topScorer}{s.prestigeLevel > 0 ? ` · P${s.prestigeLevel}` : ""}
                       </div>
                     </div>
                   </div>

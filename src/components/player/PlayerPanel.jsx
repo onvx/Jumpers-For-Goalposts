@@ -90,11 +90,11 @@ export function PlayerPanel({ player, onAssignTraining, onAssignPositionTraining
               {player.tags?.length > 0 && player.tags.map(tag => (
                 <span key={tag} style={{
                   marginLeft: 9, padding: "3px 10px", fontSize: F.sm,
-                  background: tag === "Prodigy" ? "rgba(167,139,250,0.15)" : tag === "Veteran" ? "rgba(250,204,21,0.15)" : "rgba(96,165,250,0.15)",
-                  color: tag === "Prodigy" ? "#a78bfa" : tag === "Veteran" ? C.amber : C.blue,
-                  border: `1px solid ${tag === "Prodigy" ? "#a78bfa44" : tag === "Veteran" ? C.amber + "44" : C.blue + "44"}`,
+                  background: tag === "Prodigy" ? "rgba(167,139,250,0.15)" : tag === "Veteran" ? "rgba(250,204,21,0.15)" : tag === "legend" ? "rgba(251,191,36,0.15)" : "rgba(96,165,250,0.15)",
+                  color: tag === "Prodigy" ? "#a78bfa" : tag === "Veteran" ? C.amber : tag === "legend" ? C.amber : C.blue,
+                  border: `1px solid ${tag === "Prodigy" ? "#a78bfa44" : tag === "Veteran" ? C.amber + "44" : tag === "legend" ? C.amber + "44" : C.blue + "44"}`,
                 }}>
-                  {tag === "Prodigy" ? "🧪" : tag === "Veteran" ? "🤝" : "©️"} {tag}
+                  {tag === "Prodigy" ? "🧪" : tag === "Veteran" ? "🤝" : tag === "legend" ? "🏅" : "©️"} {tag === "legend" ? "Legend" : tag}
                 </span>
               ))}
               {player.isLegend && (

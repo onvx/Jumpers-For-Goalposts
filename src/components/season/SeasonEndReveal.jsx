@@ -70,6 +70,11 @@ export function SeasonEndReveal({ info, onDone }) {
       : info.miniTournamentFinish === "runner_up" ? "Runner-up in the 5v5 Mini-Tournament."
       : "Won the 3rd-place playoff in the 5v5 Mini-Tournament.";
     subtitle = `${mtLabel} Promoted to ${info.newLeagueName}!`;
+  } else if (isPromoted && info.dynastyCupFinish) {
+    const dcLabel = info.dynastyCupFinish === "winner" ? "Won the Dynasty Cup!"
+      : info.dynastyCupFinish === "runner_up" ? "Dynasty Cup Runner-up."
+      : "Dynasty Cup Semi-finalist.";
+    subtitle = `${dcLabel} Promoted to ${info.newLeagueName}!`;
   } else if (isPromoted) {
     subtitle = `Finished ${info.position}${ordSuffix(info.position)} in ${info.leagueName}. Promoted to ${info.newLeagueName}!`;
   } else if (isRelegated) {

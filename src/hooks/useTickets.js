@@ -63,7 +63,10 @@ export function useTickets({
 
   const useTicketRelationBoost = useCallback((ticketId) => {
     if (transferFocus.length === 0) return;
-    const club = pickRandom(transferFocus);
+    const rels = useGameStore.getState().clubRelationships;
+    // Always boost the focus team with the lower relationship %
+    const sorted = [...transferFocus].sort((a, b) => (rels[a]?.pct || 0) - (rels[b]?.pct || 0));
+    const club = sorted[0];
     setClubRelationships(prev => {
       const entry = prev[club] || { pct: 0, tier: leagueTier };
       return { ...prev, [club]: { ...entry, pct: Math.min(100, entry.pct + 20) } };

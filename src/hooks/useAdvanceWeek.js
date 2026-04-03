@@ -107,12 +107,21 @@ export function useAdvanceWeek({
         const swapResult = processSeasonSwaps(currentRosters, league, currentTier, allLeagueStates);
         s.setLeagueRosters(swapResult.rosters);
         const recoveryPlayerRow = league?.table?.find(r => league.teams[r.teamIndex]?.isPlayer);
+        // Detect Dynasty Cup finish for promotion text
+        const dBkt = useGameStore.getState().dynastyCupBracket;
+        let dynastyCupFinish = null;
+        if (mod.knockoutAtEnd && dBkt) {
+          if (dBkt.winner?.isPlayer) dynastyCupFinish = "winner";
+          else if (dBkt.final?.home?.isPlayer || dBkt.final?.away?.isPlayer) dynastyCupFinish = "runner_up";
+          else if (dBkt.sf1?.home?.isPlayer || dBkt.sf1?.away?.isPlayer || dBkt.sf2?.home?.isPlayer || dBkt.sf2?.away?.isPlayer) dynastyCupFinish = "semi_finalist";
+        }
         s.setSummerData({
           moveType, fromTier: currentTier, toTier: newTier, position,
           leagueName: league.leagueName || LEAGUE_DEFS[currentTier].name,
           newLeagueName: LEAGUE_DEFS[newTier].name,
           newRosters: swapResult.rosters,
           isInvincible: position === 1 && recoveryPlayerRow?.lost === 0,
+          dynastyCupFinish,
         });
         // Season-end sentiment swings (recovery path)
         if (moveType === "promoted") { s.setFanSentiment(Math.min(100, useGameStore.getState().fanSentiment + 20)); s.setBoardSentiment(Math.min(100, useGameStore.getState().boardSentiment + 25)); }
@@ -303,6 +312,7 @@ export function useAdvanceWeek({
     const weekCardSkips = [];
     const weekRecoveries = [];
     const weekProgress = []; // notable progress events for training report
+    const weekStatCaps = []; // players whose focused stat just hit cap
 
     // Compute new squad state but DON'T apply yet — store as pending
     const computeNewSquad = (prev) => {
@@ -542,7 +552,13 @@ export function useAdvanceWeek({
                   newPlayer.attrs[attrKey] = Math.min(playerCap, newPlayer.attrs[attrKey] + 1);
                   levelUps++;
                 }
-                if (newPlayer.attrs[attrKey] >= playerCap) newProgress = 0; // at cap, no overflow
+                if (newPlayer.attrs[attrKey] >= playerCap) {
+                  newProgress = 0; // at cap, no overflow
+                  // Only notify for focused (single-attr) training hitting cap
+                  if (isFocused) {
+                    weekStatCaps.push({ playerId: p.id, playerName: p.name, position: p.position, attr: attrKey, training: p.training });
+                  }
+                }
                 newPlayer.gains[attrKey] = (newPlayer.gains[attrKey] || 0) + levelUps;
                 newPlayer.statProgress[attrKey] = Math.max(0, newProgress);
                 const priorPips = progressToPips(oldProgress);
@@ -1368,6 +1384,28 @@ export function useAdvanceWeek({
         MSG.disciplinePenalty(weekCardSkips.join(", ")),
         { calendarIndex, seasonNumber },
       )]);
+    }
+
+    // Notify when a player's focused stat hits cap — suggest switching training
+    if (weekStatCaps.length > 0 && !useGameStore.getState().isOnHoliday) {
+      for (const cap of weekStatCaps) {
+        const cappedLabel = ATTRIBUTES.find(a => a.key === cap.attr)?.label || cap.attr;
+        // Suggest a position-relevant non-capped attr
+        const pp = newSquad.find(p => p.id === cap.playerId);
+        if (!pp) continue;
+        const playerCap = pp.legendCap || ovrCap;
+        const nonCapped = ATTRIBUTES.filter(a => (pp.attrs[a.key] || 0) < playerCap && a.key !== cap.attr);
+        if (nonCapped.length === 0) continue; // fully maxed player, no suggestion needed
+        // Prefer attrs relevant to position: use training focus mapping
+        const posRelevant = { GK: ["defending","mental","physical"], CB: ["defending","physical","pace"], LB: ["physical","pace","defending"], RB: ["pace","physical","defending"], CM: ["passing","technique","mental"], AM: ["passing","technique","shooting"], LW: ["pace","technique","shooting"], RW: ["shooting","pace","technique"], ST: ["shooting","pace","technique"] };
+        const preferred = (posRelevant[cap.position] || []).filter(k => nonCapped.some(a => a.key === k));
+        const suggestedKey = preferred.length > 0 ? preferred[0] : nonCapped[0].key;
+        const suggestedLabel = ATTRIBUTES.find(a => a.key === suggestedKey)?.label || suggestedKey;
+        s.setInboxMessages(prev => [...prev, createInboxMessage(
+          MSG.statCapped(cap.playerName, cappedLabel, suggestedLabel, suggestedKey),
+          { calendarIndex, seasonNumber },
+        )]);
+      }
     }
 
     // Ice Bath — player recovers from injury while 'Ice Bath' is playing
