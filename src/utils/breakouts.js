@@ -18,22 +18,35 @@ const BREAKOUT_ATTRS = {
  * @param {number} ovrCap - current OVR cap
  * @returns {Array<{ playerId, playerName, playerPosition, trigger, attrGains, potentialGain }>}
  */
+const BREAKOUT_COOLDOWN = 3; // minimum matches between breakouts for the same player
+
 export function checkBreakouts(squad, playerMatchLog, breakoutsThisSeason, ovrCap, isCup = false) {
   const results = [];
   // Track group+position caps: e.g. "clean_sheet_run|DEF" → only 1 DEF can fire a clean_sheet_run trigger per match
   const groupCaps = new Set();
+  // Track position type caps: max 1 breakout per position type per check
+  const typeCaps = new Set();
 
-  for (const p of squad) {
+  // Shuffle squad to prevent order bias in position-type cap
+  const shuffledSquad = [...squad].sort(() => Math.random() - 0.5);
+
+  for (const p of shuffledSquad) {
     const raw = breakoutsThisSeason.get(p.id);
-    const usedTriggers = raw instanceof Set ? raw : null; // defensive: old saves may have number
-    if (usedTriggers && usedTriggers.size >= 2) continue;
+    // Support both old format (Set) and new format ({ triggers: Set, lastLogIndex: number })
+    const entry = raw instanceof Set ? { triggers: raw, lastLogIndex: -99 } : (raw || { triggers: new Set(), lastLogIndex: -99 });
+    const usedTriggers = entry.triggers instanceof Set ? entry.triggers : new Set();
+    if (usedTriggers.size >= 2) continue;
     if (p.isLegend || p.isUnlockable) continue;
+
+    const type = POSITION_TYPES[p.position];
+    if (typeCaps.has(type)) continue; // max 1 breakout per position type per check
 
     const log = playerMatchLog[p.id];
     if (!log || log.length < 3) continue;
 
     const i = log.length - 1;
-    const type = POSITION_TYPES[p.position];
+    // Cooldown: skip if this player broke out too recently
+    if (i - entry.lastLogIndex <= BREAKOUT_COOLDOWN) continue;
     const ovr = getOverall(p);
     const ctx = { ovr };
 
@@ -74,6 +87,7 @@ export function checkBreakouts(squad, playerMatchLog, breakoutsThisSeason, ovrCa
             playerId: p.id,
             playerName: p.name,
             playerPosition: p.position,
+            logIndex: i,
             trigger: {
               id: trigger.id, label: trigger.label,
               narrative: typeof trigger.narrativeFn === "function" && typeof checkResult === "number"
@@ -85,6 +99,7 @@ export function checkBreakouts(squad, playerMatchLog, breakoutsThisSeason, ovrCa
           });
 
           if (trigger.group) groupCaps.add(`${trigger.group}|${type}`);
+          typeCaps.add(type);
           break; // one breakout per player per check
         }
       } catch (err) {

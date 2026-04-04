@@ -46,7 +46,11 @@ export function serializeState(state) {
   for (const key of MAP_FIELDS) {
     if (out[key] instanceof Map) {
       const obj = {};
-      for (const [k, v] of out[key]) { obj[k] = v instanceof Set ? [...v] : v; }
+      for (const [k, v] of out[key]) {
+        if (v instanceof Set) obj[k] = [...v];
+        else if (v && typeof v === "object" && v.triggers instanceof Set) obj[k] = { triggers: [...v.triggers], lastLogIndex: v.lastLogIndex ?? 0 };
+        else obj[k] = v;
+      }
       out[key] = obj;
     }
   }
@@ -68,10 +72,15 @@ export function hydrateState(saved) {
       const raw = out[key];
       if (raw && typeof raw === "object" && !Array.isArray(raw)) {
         const entries = Object.entries(raw).map(([k, v]) => {
-          if (Array.isArray(v)) return [k, new Set(v)];
-          // Legacy saves stored numeric counts — convert to placeholder IDs to preserve the cap
-          if (typeof v === "number" && v > 0) return [k, new Set(Array.from({ length: v }, (_, i) => `__legacy_${i}`))];
-          return [k, new Set()];
+          // New format: { triggers: [...], lastLogIndex: N }
+          if (v && typeof v === "object" && !Array.isArray(v) && v.triggers) {
+            return [k, { triggers: new Set(Array.isArray(v.triggers) ? v.triggers : []), lastLogIndex: v.lastLogIndex ?? 0 }];
+          }
+          // Old format: array of trigger IDs → convert to new format
+          if (Array.isArray(v)) return [k, { triggers: new Set(v), lastLogIndex: -99 }];
+          // Legacy saves stored numeric counts — convert to placeholder IDs
+          if (typeof v === "number" && v > 0) return [k, { triggers: new Set(Array.from({ length: v }, (_, i) => `__legacy_${i}`)), lastLogIndex: -99 }];
+          return [k, { triggers: new Set(), lastLogIndex: -99 }];
         });
         out[key] = new Map(entries);
       } else {

@@ -237,37 +237,56 @@ export const BREAKOUT_TRIGGERS = {
 
   GK: [
     {
-      id: "gk_clean_sheets_4of6",
+      id: "gk_great_wall",
+      label: "One Man Army",
+      narrative: "MOTM despite the team not winning — stood between them and disaster",
+      check: (log, i) => log[i]?.motm && !log[i]?.teamWon && (log[i]?.rating || 0) >= 7.5,
+    },
+    {
+      id: "gk_fortress",
       group: "clean_sheet_run",
-      label: "Brick Wall",
-      narrativeFn: (w) => `four clean sheets in ${_num(w)} matches — nothing gets past`,
+      label: "Fortress",
+      narrative: "three home clean sheets on the bounce — nobody scores here",
       check: (log, i) => {
-        if (!log[i]?.cleanSheet) return false;
-        const w = _accum(log, i, m => m.cleanSheet, 4, 6);
-        return w || false;
+        if (!log[i]?.cleanSheet || log[i]?.away || !log[i]?.teamWon) return false;
+        const homeMatches = [];
+        for (let w = i; w >= 0 && homeMatches.length < 3; w--) {
+          if (!log[w]?.away) homeMatches.push(log[w]);
+        }
+        return homeMatches.length >= 3 && homeMatches.every(m => m.cleanSheet && m.teamWon);
       },
     },
     {
-      id: "gk_clean_streak_3",
+      id: "gk_road_warrior",
       group: "clean_sheet_run",
-      label: "Impenetrable",
-      narrative: "three clean sheets in a row — an unbeatable run",
+      label: "Road Warrior",
+      narrative: "three clean sheets in five away matches — untouchable on the road",
       check: (log, i) => {
-        if (!log[i]?.cleanSheet) return false;
-        if (i < 2) return false;
-        const w = log.slice(i - 2, i + 1);
-        return w.every(m => m.cleanSheet) && _consecutive(w);
+        if (!log[i]?.cleanSheet || !log[i]?.away) return false;
+        const awayMatches = [];
+        for (let w = i; w >= 0 && awayMatches.length < 5; w--) {
+          if (log[w]?.away) awayMatches.push(log[w]);
+        }
+        if (awayMatches.length < 4) return false;
+        return awayMatches.filter(m => m.cleanSheet).length >= 3;
       },
     },
     {
-      id: "gk_motm_2of5",
-      label: "Shot Stopper",
-      narrativeFn: (w) => `named MOTM twice in ${_num(w)} matches — superhuman reflexes`,
+      id: "gk_iron_gloves",
+      label: "Iron Gloves",
+      narrative: "averaged 7.0+ over six matches without a MOTM — quietly brilliant",
       check: (log, i) => {
-        if (!log[i]?.motm) return false;
-        const w = _accum(log, i, m => m.motm, 2, 5);
-        return w || false;
+        if (i < 5) return false;
+        const w = log.slice(i - 5, i + 1);
+        const avg = w.reduce((s, m) => s + m.rating, 0) / w.length;
+        return avg >= 7.0 && !w.some(m => m.motm);
       },
+    },
+    {
+      id: "gk_playmaker",
+      label: "The Playmaker",
+      narrative: "the goalkeeper got an assist — vision from the back",
+      check: (log, i) => log[i]?.assists >= 1,
     },
     {
       id: "gk_scorer",
@@ -297,12 +316,12 @@ export const BREAKOUT_TRIGGERS = {
     {
       id: "uni_high_avg_5",
       label: "Pulling His Weight",
-      narrative: "averaged 7.5+ over five consecutive matches — top-class form",
+      narrative: "averaged 8.0+ over five consecutive matches — top-class form",
       check: (log, i) => {
         if (i < 4) return false;
         const w = log.slice(i - 4, i + 1);
         if (!_consecutive(w)) return false;
-        return w.reduce((s, m) => s + m.rating, 0) / w.length >= 7.5;
+        return w.reduce((s, m) => s + m.rating, 0) / w.length >= 8.0;
       },
     },
   ],
