@@ -1423,7 +1423,15 @@ function FruitCigs() {
         }));
 
         // Mark as broken out this season
-        setBreakoutsThisSeason(prev => { const next = new Map(prev); const used = new Set(next.get(bo.playerId) || []); used.add(bo.trigger.id); next.set(bo.playerId, used); return next; });
+        setBreakoutsThisSeason(prev => {
+          const next = new Map(prev);
+          const raw = next.get(bo.playerId);
+          const entry = raw instanceof Set ? { triggers: raw, lastLogIndex: bo.logIndex } : (raw || { triggers: new Set(), lastLogIndex: bo.logIndex });
+          entry.triggers.add(bo.trigger.id);
+          entry.lastLogIndex = bo.logIndex;
+          next.set(bo.playerId, entry);
+          return next;
+        });
 
         // Inbox message
         const gainStr = Object.entries(bo.attrGains)

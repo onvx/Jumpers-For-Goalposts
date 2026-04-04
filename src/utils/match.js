@@ -498,9 +498,9 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
     if (players.length === 0) return null;
     const weights = players.map(p => {
       const type = POSITION_TYPES[p.position];
-      if (type === "GK") return 0;
       const passing = (p.attrs?.passing || MATCH.DEFAULT_ATTR) / MATCH.ATTR_MAX;
-      const posW = type === "MID" ? MATCH.ASSIST_MID : type === "FWD" ? MATCH.ASSIST_FWD : MATCH.ASSIST_DEF; // DEF = ASSIST_DEF
+      if (type === "GK") return passing * 0.3; // rare but possible — long kicks, quick throws
+      const posW = type === "MID" ? MATCH.ASSIST_MID : type === "FWD" ? MATCH.ASSIST_FWD : MATCH.ASSIST_DEF;
       return passing * posW;
     });
     const total = weights.reduce((s, w) => s + w, 0);
