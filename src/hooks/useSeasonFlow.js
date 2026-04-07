@@ -357,7 +357,7 @@ export function useSeasonFlow({
       if (topTeamName) previewBody += ` ${topTeamName} look like the ones to beat this season.`;
       previewBody += ` ${expectation}`;
       s.setInboxMessages(prev => [...prev,
-        createInboxMessage(MSG.wellRested(names), { calendarIndex, seasonNumber }),
+        ...(names ? [createInboxMessage(MSG.wellRested(names), { calendarIndex, seasonNumber })] : []),
         createInboxMessage(MSG.seasonPreview(previewBody), { calendarIndex, seasonNumber }),
       ]);
       if (transferWindowOpen) s.setTransferWindowWeeksRemaining(prev => Math.max(0, prev - 1));
