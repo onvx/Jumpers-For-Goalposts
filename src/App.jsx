@@ -6558,13 +6558,27 @@ function FruitCigs() {
                                        MSG.trialSignedRival(entry.name, entry.flag, entry.rivalTeam),
                                        { calendarIndex: 0, seasonNumber: nextSeason2 },
                                      ));
-                    // Boost rival team strength in rosters (search all tiers in case they moved)
+                    // Boost rival team strength + add player to their squad
                     if (rosters) {
                       for (let tierKey = 1; tierKey <= NUM_TIERS; tierKey++) {
                         if (!rosters[tierKey]) continue;
                         const rivalCfg = rosters[tierKey].find(t => t.name === entry.rivalTeam);
                         if (rivalCfg) {
                           rivalCfg.strength = Math.min(0.95, (rivalCfg.strength || 0.5) + 0.05);
+                          // Add the player to the rival's evolved squad
+                          const rivalSquad = evolvedSquads?.get(entry.rivalTeam);
+                          if (rivalSquad) {
+                            const str = rivalCfg.strength || 0.5;
+                            const base = Math.round(3 + str * 8);
+                            const attrs = {};
+                            ATTRIBUTES.forEach(({ key }) => { attrs[key] = Math.max(1, base + rand(-2, 2)); });
+                            rivalSquad.push({
+                              name: entry.name, position: entry.position || "CM",
+                              nationality: entry.nationality, flag: entry.flag,
+                              attrs, age: rand(20, 24), potential: base + rand(2, 5),
+                              id: `trial_rival_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+                            });
+                          }
                           break;
                         }
                       }
