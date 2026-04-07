@@ -836,21 +836,14 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
             });
           });
 
-          // Add player team current season from playerSeasonStats + clubHistory
+          // Add player team current season from playerSeasonStats (not clubHistory — that spans all tiers)
           if (playerSeasonStats) {
             Object.entries(playerSeasonStats).forEach(([name, s]) => {
               const key = `${name}|${teamName}`;
-              const career = clubHistory?.playerCareers?.[name];
-              // Career total + current season (career doesn't include current season yet)
-              const careerGoals = career ? (career.goals || 0) : 0;
-              const careerAssists = career ? (career.assists || 0) : 0;
-              const careerCards = career ? ((career.yellows || 0) + (career.reds || 0)) : 0;
-              const totalGoals = careerGoals + (s.goals || 0);
-              const totalAssists = careerAssists + (s.assists || 0);
-              const totalCards = careerCards + (s.yellows || 0) + (s.reds || 0);
-              if (totalGoals > 0) merged.scorers[key] = totalGoals;
-              if (totalAssists > 0) merged.assisters[key] = totalAssists;
-              if (totalCards > 0) merged.cards[key] = totalCards;
+              if (s.goals > 0) merged.scorers[key] = (merged.scorers[key] || 0) + (s.goals || 0);
+              if (s.assists > 0) merged.assisters[key] = (merged.assisters[key] || 0) + (s.assists || 0);
+              const cards = (s.yellows || 0) + (s.reds || 0);
+              if (cards > 0) merged.cards[key] = (merged.cards[key] || 0) + cards;
             });
           }
 
