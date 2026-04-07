@@ -325,10 +325,13 @@ export function useSeasonFlow({
       const newSquad = useGameStore.getState().squad.map(p => {  // Use ref for fresh data, not stale state!
         const pick = chosen.find(c => c.id === p.id);
         if (!pick) return p;
-        const attr = pickRandom(attrKeys);
+        const playerCap = p.legendCap || ovrCap;
+        const boostable = attrKeys.filter(k => (p.attrs[k] || 0) < playerCap);
+        if (boostable.length === 0) return p; // fully maxed, skip
+        const attr = pickRandom(boostable);
         const amt = rand(1, 3);
         const oldVal = p.attrs[attr] || 0;
-        const newVal = Math.min(p.legendCap || ovrCap, oldVal + amt);
+        const newVal = Math.min(playerCap, oldVal + amt);
         arcBoosts.push({ playerName: p.name, playerPosition: p.position, attr, oldVal, newVal, isArcBoost: true, sourceKey: "well_rested" });
         return { ...p, attrs: { ...p.attrs, [attr]: newVal }, gains: { ...(p.gains || {}), [attr]: (p.gains?.[attr] || 0) + (newVal - oldVal) } };
       });

@@ -935,8 +935,9 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
       if (!isSubstitute && p.injury) base -= MATCH.RATE_INJURY;
       const goals = playerGoalCounts[p.name] || 0;
       const assists = playerAssistCounts[p.name] || 0;
-      base += goals * MATCH.RATE_GOAL;
-      base += assists * MATCH.RATE_ASSIST;
+      // Diminishing returns: first 2 goals full value, additional goals halved
+      base += Math.min(goals, 2) * MATCH.RATE_GOAL + Math.max(0, goals - 2) * MATCH.RATE_GOAL * 0.5;
+      base += Math.min(assists, 2) * MATCH.RATE_ASSIST + Math.max(0, assists - 2) * MATCH.RATE_ASSIST * 0.5;
       const type = POSITION_TYPES[p.position];
       if (oppGoalsInMatch === 0 && (type === "GK" || type === "DEF")) base += isSubstitute ? MATCH.RATE_CS_SUB : MATCH.RATE_CS;
       if (teamWon) base += MATCH.RATE_WIN;
