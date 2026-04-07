@@ -2840,6 +2840,8 @@ function FruitCigs() {
                           }
                         }
                         // matchweekIndex derived from calendarIndex — no explicit increment needed
+                        // Capture AI tier scorer data for all-time stats (holiday path)
+                        const holAIMWScorers = [];
                         setAllLeagueStates(prev => {
                           if (!prev || Object.keys(prev).length === 0) return prev;
                           const next = {};
@@ -2848,12 +2850,37 @@ function FruitCigs() {
                               next[t] = aiLeague;
                             } else {
                               const copy = { ...aiLeague, table: aiLeague.table.map(r => ({ ...r })) };
-                              simulateMatchweek(copy, aiLeague.matchweekIndex, null, null, null, null, null);
+                              const aiResults = simulateMatchweek(copy, aiLeague.matchweekIndex, null, null, null, null, null);
+                              if (aiResults) {
+                                for (const r of aiResults) {
+                                  for (const e of (r.events || [])) {
+                                    if (e.type === "goal") {
+                                      const teamIdx = e.side === "home" ? r.home : r.away;
+                                      const team = copy.teams?.[teamIdx];
+                                      if (team) holAIMWScorers.push({ name: e.player, assister: e.assister, teamName: team.name });
+                                    }
+                                  }
+                                }
+                              }
                               next[t] = { ...copy, matchweekIndex: aiLeague.matchweekIndex + 1 };
                             }
                           }
                           return next;
                         });
+                        if (holAIMWScorers.length > 0) {
+                          setAllTimeLeagueStats(prev => {
+                            const next = { scorers: { ...prev.scorers }, assisters: { ...(prev.assisters || {}) }, cards: { ...prev.cards } };
+                            for (const g of holAIMWScorers) {
+                              const key = `${g.name}|${g.teamName}`;
+                              next.scorers[key] = (next.scorers[key] || 0) + 1;
+                              if (g.assister) {
+                                const aKey = `${g.assister}|${g.teamName}`;
+                                next.assisters[aKey] = (next.assisters[aKey] || 0) + 1;
+                              }
+                            }
+                            return next;
+                          });
+                        }
                         if (playerMatch) {
                           // === HOLIDAY: process stats inline, skip MatchResultScreen ===
                           const pIsHome = updatedLeague.teams[playerMatch.home]?.isPlayer;
@@ -3498,6 +3525,8 @@ function FruitCigs() {
                     );
                   }
                   // Advance every AI league by one matchweek in parallel
+                  // Capture scorer data for all-time stats accumulation
+                  const aiMWScorers = [];
                   setAllLeagueStates(prev => {
                     if (!prev || Object.keys(prev).length === 0) return prev;
                     const next = {};
@@ -3506,12 +3535,38 @@ function FruitCigs() {
                         next[t] = aiLeague; // season finished for this tier
                       } else {
                         const copy = { ...aiLeague, table: aiLeague.table.map(r => ({ ...r })) };
-                        simulateMatchweek(copy, aiLeague.matchweekIndex, null, null, null, null, null);
+                        const aiResults = simulateMatchweek(copy, aiLeague.matchweekIndex, null, null, null, null, null);
+                        if (aiResults) {
+                          for (const r of aiResults) {
+                            for (const e of (r.events || [])) {
+                              if (e.type === "goal") {
+                                const teamIdx = e.side === "home" ? r.home : r.away;
+                                const team = copy.teams?.[teamIdx];
+                                if (team) aiMWScorers.push({ name: e.player, assister: e.assister, teamName: team.name });
+                              }
+                            }
+                          }
+                        }
                         next[t] = { ...copy, matchweekIndex: aiLeague.matchweekIndex + 1 };
                       }
                     }
                     return next;
                   });
+                  // Accumulate AI tier scorer data into all-time stats
+                  if (aiMWScorers.length > 0) {
+                    setAllTimeLeagueStats(prev => {
+                      const next = { scorers: { ...prev.scorers }, assisters: { ...(prev.assisters || {}) }, cards: { ...prev.cards } };
+                      for (const g of aiMWScorers) {
+                        const key = `${g.name}|${g.teamName}`;
+                        next.scorers[key] = (next.scorers[key] || 0) + 1;
+                        if (g.assister) {
+                          const aKey = `${g.assister}|${g.teamName}`;
+                          next.assisters[aKey] = (next.assisters[aKey] || 0) + 1;
+                        }
+                      }
+                      return next;
+                    });
+                  }
                   if (playerMatch) {
                     playerMatch._playedMatchweekIndex = capturedMWIdx;
                     playerMatch._calendarIndex = capturedCalIdx;
@@ -6367,6 +6422,26 @@ function FruitCigs() {
                 }
               }
 
+              // Pre-pass: add trial-to-rival players to evolvedSquads BEFORE building leagues
+              const nextSeasonPre = (seasonNumber || 1) + 1;
+              (useGameStore.getState().trialHistory || []).forEach(entry => {
+                if (entry.phase === "on_trial" && entry.departureSeason < nextSeasonPre && entry.rivalTeam && rosters) {
+                  for (let tk = 1; tk <= NUM_TIERS; tk++) {
+                    const rivalCfg = (rosters[tk] || []).find(t => t.name === entry.rivalTeam);
+                    if (!rivalCfg) continue;
+                    const rivalSquad = evolvedSquads?.get(entry.rivalTeam);
+                    if (rivalSquad) {
+                      const rivalOvrCap = getOvrCap(prestigeLevel);
+                      const rivalAvgOvr = rivalSquad.length > 0
+                        ? Math.round(rivalSquad.reduce((s, p) => s + getOverall(p), 0) / rivalSquad.length) : 8;
+                      const generated = generateFreeAgent(tk, rivalAvgOvr, rivalOvrCap);
+                      rivalSquad.push({ ...generated, name: entry.name, position: entry.position || generated.position, nationality: entry.nationality, flag: entry.flag });
+                    }
+                    break;
+                  }
+                }
+              });
+
               setLeagueRosters(rosters);
               const newLeague2 = initLeague(squad, teamName, newTier, rosters, evolvedSquads, prestigeLevel);
               setLeague(newLeague2);
@@ -6409,27 +6484,8 @@ function FruitCigs() {
                     });
                   });
                 });
-                // Player's team from playerSeasonStats (overwrite to avoid double-counting)
-                if (playerSeasonStats) {
-                  Object.entries(playerSeasonStats).forEach(([name, s]) => {
-                    const key = `${name}|${teamName}`;
-                    // Use clubHistory career totals if available (most accurate)
-                    const career = clubHistory?.playerCareers?.[name];
-                    if (career) {
-                      const totalGoals = (career.goals || 0) + (s.goals || 0);
-                      const totalAssists = (career.assists || 0) + (s.assists || 0);
-                      const totalCards = (career.yellows || 0) + (career.reds || 0) + (s.yellows || 0) + (s.reds || 0);
-                      if (totalGoals > 0) next.scorers[key] = totalGoals;
-                      if (totalAssists > 0) next.assisters[key] = totalAssists;
-                      if (totalCards > 0) next.cards[key] = totalCards;
-                    } else {
-                      if (s.goals > 0) next.scorers[key] = (next.scorers[key] || 0) + (s.goals || 0);
-                      if (s.assists > 0) next.assisters[key] = (next.assisters[key] || 0) + (s.assists || 0);
-                      const cards = (s.yellows || 0) + (s.reds || 0);
-                      if (cards > 0) next.cards[key] = (next.cards[key] || 0) + cards;
-                    }
-                  });
-                }
+                // Player's team stats are already captured in leagueResults above
+                // (simulateMatchweek includes the player's match). No separate override needed.
                 // Etched In Stone — check if player's team tops all-time scorers
                 if (!unlockedAchievements.has("all_time_top")) {
                   const sortedAllTime = Object.entries(next.scorers).sort((a, b) => b[1] - a[1]);
@@ -6577,7 +6633,7 @@ function FruitCigs() {
                                        MSG.trialSignedRival(entry.name, entry.flag, entry.rivalTeam),
                                        { calendarIndex: 0, seasonNumber: nextSeason2 },
                                      ));
-                    // Boost rival team strength in rosters (search all tiers in case they moved)
+                    // Boost rival team strength (player already added to squad in pre-pass above)
                     if (rosters) {
                       for (let tierKey = 1; tierKey <= NUM_TIERS; tierKey++) {
                         if (!rosters[tierKey]) continue;

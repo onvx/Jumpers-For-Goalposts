@@ -836,34 +836,31 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
             });
           });
 
-          // Add player team current season from playerSeasonStats + clubHistory
+          // Add player team current season from playerSeasonStats (not clubHistory — that spans all tiers)
           if (playerSeasonStats) {
             Object.entries(playerSeasonStats).forEach(([name, s]) => {
               const key = `${name}|${teamName}`;
-              const career = clubHistory?.playerCareers?.[name];
-              // Career total + current season (career doesn't include current season yet)
-              const careerGoals = career ? (career.goals || 0) : 0;
-              const careerAssists = career ? (career.assists || 0) : 0;
-              const careerCards = career ? ((career.yellows || 0) + (career.reds || 0)) : 0;
-              const totalGoals = careerGoals + (s.goals || 0);
-              const totalAssists = careerAssists + (s.assists || 0);
-              const totalCards = careerCards + (s.yellows || 0) + (s.reds || 0);
-              if (totalGoals > 0) merged.scorers[key] = totalGoals;
-              if (totalAssists > 0) merged.assisters[key] = totalAssists;
-              if (totalCards > 0) merged.cards[key] = totalCards;
+              if (s.goals > 0) merged.scorers[key] = (merged.scorers[key] || 0) + (s.goals || 0);
+              if (s.assists > 0) merged.assisters[key] = (merged.assisters[key] || 0) + (s.assists || 0);
+              const cards = (s.yellows || 0) + (s.reds || 0);
+              if (cards > 0) merged.cards[key] = (merged.cards[key] || 0) + cards;
             });
           }
 
+          // Filter to current league teams only — records are per-division
+          const leagueTeamNames = new Set((league?.teams || []).map(t => t.name));
+          const inLeague = ([key]) => { const team = key.split("|")[1]; return leagueTeamNames.has(team); };
+
           // Build sorted lists
-          const scorerList = Object.entries(merged.scorers)
+          const scorerList = Object.entries(merged.scorers).filter(inLeague)
             .map(([key, goals]) => { const [name, team] = key.split("|"); return { name, teamName: team, goals, isPlayerTeam: team === teamName }; })
             .sort((a, b) => b.goals - a.goals)
             .slice(0, 20);
-          const assisterList = Object.entries(merged.assisters)
+          const assisterList = Object.entries(merged.assisters).filter(inLeague)
             .map(([key, assists]) => { const [name, team] = key.split("|"); return { name, teamName: team, assists, isPlayerTeam: team === teamName }; })
             .sort((a, b) => b.assists - a.assists)
             .slice(0, 20);
-          const cardList = Object.entries(merged.cards)
+          const cardList = Object.entries(merged.cards).filter(inLeague)
             .map(([key, cards]) => { const [name, team] = key.split("|"); return { name, teamName: team, cards, isPlayerTeam: team === teamName }; })
             .sort((a, b) => b.cards - a.cards)
             .slice(0, 20);
