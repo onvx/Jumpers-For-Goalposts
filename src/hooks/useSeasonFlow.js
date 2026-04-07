@@ -318,23 +318,26 @@ export function useSeasonFlow({
     } else {
       // Week 5: Well Rested boosts + New season preview, then end summer
       const attrKeys = ATTRIBUTES.map(a => a.key);
-      const eligible = squad.filter(p => !p.isTrial);
+      const eligible = squad.filter(p => !p.isTrial && attrKeys.some(k => (p.attrs[k] || 0) < (p.legendCap || ovrCap)));
       const shuffled = [...eligible].sort(() => Math.random() - 0.5);
       const chosen = shuffled.slice(0, Math.min(3, shuffled.length));
       const arcBoosts = [];
       const newSquad = useGameStore.getState().squad.map(p => {  // Use ref for fresh data, not stale state!
         const pick = chosen.find(c => c.id === p.id);
         if (!pick) return p;
-        const attr = pickRandom(attrKeys);
+        const playerCap = p.legendCap || ovrCap;
+        const boostable = attrKeys.filter(k => (p.attrs[k] || 0) < playerCap);
+        if (boostable.length === 0) return p; // fully maxed, skip
+        const attr = pickRandom(boostable);
         const amt = rand(1, 3);
         const oldVal = p.attrs[attr] || 0;
-        const newVal = Math.min(p.legendCap || ovrCap, oldVal + amt);
+        const newVal = Math.min(playerCap, oldVal + amt);
         arcBoosts.push({ playerName: p.name, playerPosition: p.position, attr, oldVal, newVal, isArcBoost: true, sourceKey: "well_rested" });
         return { ...p, attrs: { ...p.attrs, [attr]: newVal }, gains: { ...(p.gains || {}), [attr]: (p.gains?.[attr] || 0) + (newVal - oldVal) } };
       });
       s.setPendingSquad(newSquad);
       setGains({ improvements: [], injuries: [], duos: [], recoveries: [], progress: [], arcBoosts, ticketBoosts: [] });
-      const names = chosen.map(p => p.name.split(" ").pop()).join(", ");
+      const names = arcBoosts.map(b => b.playerName.split(" ").pop()).join(", ");
       const newLeagueName = league?.leagueName || LEAGUE_DEFS[leagueTier]?.name || "the new division";
       // Pick strongest AI team by average squad OVR (not standings — all teams have 0 pts at season start)
       const aiTeams = (league?.teams || []).filter(t => t && !t.isPlayer && t.squad?.length);
@@ -354,7 +357,7 @@ export function useSeasonFlow({
       if (topTeamName) previewBody += ` ${topTeamName} look like the ones to beat this season.`;
       previewBody += ` ${expectation}`;
       s.setInboxMessages(prev => [...prev,
-        createInboxMessage(MSG.wellRested(names), { calendarIndex, seasonNumber }),
+        ...(names ? [createInboxMessage(MSG.wellRested(names), { calendarIndex, seasonNumber })] : []),
         createInboxMessage(MSG.seasonPreview(previewBody), { calendarIndex, seasonNumber }),
       ]);
       if (transferWindowOpen) s.setTransferWindowWeeksRemaining(prev => Math.max(0, prev - 1));

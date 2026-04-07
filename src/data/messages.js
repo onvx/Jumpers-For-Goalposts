@@ -133,9 +133,9 @@ const trainingNudge = (introDeclined) => ({
 const disciplinePenalty = (playerNames) => ({
   id: `card-skip-${Date.now()}`,
   type: "card_skip",
-  icon: "\uD83E\uDD4B", // 🥋
-  title: "Discipline Penalty",
-  body: `${playerNames} missed training \u2014 indiscipline in the last match cost them a session.`,
+  icon: "\uD83D\uDFE8", // 🟨
+  title: "Asst. Manager's Notes",
+  body: `${playerNames} won't train today. ${playerNames.includes(",") ? "Those bookings at the weekend mean" : "That booking at the weekend means"} a day in the doghouse.`,
   color: "#fb923c",
 });
 

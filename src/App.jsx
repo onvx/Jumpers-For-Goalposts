@@ -1433,16 +1433,19 @@ function FruitCigs() {
           return next;
         });
 
-        // Inbox message
-        const gainStr = Object.entries(bo.attrGains)
-          .filter(([, v]) => v > 0)
-          .map(([k, v]) => `${k.toUpperCase()} +${v}`)
-          .join(", ");
-        const potStr = bo.potentialGain > 0 ? " Potential +1." : "";
-        setInboxMessages(prev => [...prev, createInboxMessage(
-          MSG.breakout(bo.playerName, bo.trigger.narrative, gainStr, potStr),
-          { calendarIndex: useGameStore.getState().calendarIndex, seasonNumber: useGameStore.getState().seasonNumber },
-        )]);
+        // Inbox message — only send immediately during holiday (no popup).
+        // During normal play, deferred to when the breakout popup is dismissed.
+        if (useGameStore.getState().isOnHoliday) {
+          const gainStr = Object.entries(bo.attrGains)
+            .filter(([, v]) => v > 0)
+            .map(([k, v]) => `${k.toUpperCase()} +${v}`)
+            .join(", ");
+          const potStr = bo.potentialGain > 0 ? " Potential +1." : "";
+          setInboxMessages(prev => [...prev, createInboxMessage(
+            MSG.breakout(bo.playerName, bo.trigger.narrative, gainStr, potStr),
+            { calendarIndex: useGameStore.getState().calendarIndex, seasonNumber: useGameStore.getState().seasonNumber },
+          )]);
+        }
       }
 
       // Queue breakout popup (shows after match report closes, skip during holiday)
@@ -4753,7 +4756,23 @@ function FruitCigs() {
       {showBreakoutPopup && pendingBreakouts && pendingBreakouts.length > 0 && !matchResult && !cupMatchResult && arcStepQueue.length === 0 && (
         <BreakoutPopup
           breakouts={pendingBreakouts}
-          onDone={() => { setShowBreakoutPopup(false); setPendingBreakouts(null); }}
+          onDone={() => {
+            // Send deferred breakout inbox messages now that the popup has been seen
+            if (pendingBreakouts) {
+              pendingBreakouts.forEach(bo => {
+                const gainStr = Object.entries(bo.attrGains)
+                  .filter(([, v]) => v > 0)
+                  .map(([k, v]) => `${k.toUpperCase()} +${v}`)
+                  .join(", ");
+                const potStr = bo.potentialGain > 0 ? " Potential +1." : "";
+                setInboxMessages(prev => [...prev, createInboxMessage(
+                  MSG.breakout(bo.playerName, bo.trigger.narrative, gainStr, potStr),
+                  { calendarIndex: useGameStore.getState().calendarIndex, seasonNumber: useGameStore.getState().seasonNumber },
+                )]);
+              });
+            }
+            setShowBreakoutPopup(false); setPendingBreakouts(null);
+          }}
           isOnHoliday={isOnHoliday}
         />
       )}

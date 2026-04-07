@@ -297,12 +297,11 @@ export function autoSelectXI(squad, formation) {
   }
 
   if (selected.length < 11) {
-    for (const p of available) {
-      if (!used.has(p.id)) {
-        selected.push(p.id);
-        used.add(p.id);
-        if (selected.length >= 11) break;
-      }
+    const remaining = available.filter(p => !used.has(p.id)).sort((a, b) => getOverall(b) - getOverall(a));
+    for (const p of remaining) {
+      selected.push(p.id);
+      used.add(p.id);
+      if (selected.length >= 11) break;
     }
   }
 
