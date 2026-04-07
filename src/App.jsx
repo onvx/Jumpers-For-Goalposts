@@ -3495,6 +3495,8 @@ function FruitCigs() {
                     );
                   }
                   // Advance every AI league by one matchweek in parallel
+                  // Capture scorer data for all-time stats accumulation
+                  const aiMWScorers = [];
                   setAllLeagueStates(prev => {
                     if (!prev || Object.keys(prev).length === 0) return prev;
                     const next = {};
@@ -3503,12 +3505,38 @@ function FruitCigs() {
                         next[t] = aiLeague; // season finished for this tier
                       } else {
                         const copy = { ...aiLeague, table: aiLeague.table.map(r => ({ ...r })) };
-                        simulateMatchweek(copy, aiLeague.matchweekIndex, null, null, null, null, null);
+                        const aiResults = simulateMatchweek(copy, aiLeague.matchweekIndex, null, null, null, null, null);
+                        if (aiResults) {
+                          for (const r of aiResults) {
+                            for (const e of (r.events || [])) {
+                              if (e.type === "goal") {
+                                const teamIdx = e.side === "home" ? r.home : r.away;
+                                const team = copy.teams?.[teamIdx];
+                                if (team) aiMWScorers.push({ name: e.player, assister: e.assister, teamName: team.name });
+                              }
+                            }
+                          }
+                        }
                         next[t] = { ...copy, matchweekIndex: aiLeague.matchweekIndex + 1 };
                       }
                     }
                     return next;
                   });
+                  // Accumulate AI tier scorer data into all-time stats
+                  if (aiMWScorers.length > 0) {
+                    setAllTimeLeagueStats(prev => {
+                      const next = { scorers: { ...prev.scorers }, assisters: { ...(prev.assisters || {}) }, cards: { ...prev.cards } };
+                      for (const g of aiMWScorers) {
+                        const key = `${g.name}|${g.teamName}`;
+                        next.scorers[key] = (next.scorers[key] || 0) + 1;
+                        if (g.assister) {
+                          const aKey = `${g.assister}|${g.teamName}`;
+                          next.assisters[aKey] = (next.assisters[aKey] || 0) + 1;
+                        }
+                      }
+                      return next;
+                    });
+                  }
                   if (playerMatch) {
                     playerMatch._playedMatchweekIndex = capturedMWIdx;
                     playerMatch._calendarIndex = capturedCalIdx;

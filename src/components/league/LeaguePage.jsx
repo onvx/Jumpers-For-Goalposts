@@ -854,16 +854,20 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
             });
           }
 
+          // Filter to current league teams only — records are per-division
+          const leagueTeamNames = new Set((league?.teams || []).map(t => t.name));
+          const inLeague = ([key]) => { const team = key.split("|")[1]; return leagueTeamNames.has(team); };
+
           // Build sorted lists
-          const scorerList = Object.entries(merged.scorers)
+          const scorerList = Object.entries(merged.scorers).filter(inLeague)
             .map(([key, goals]) => { const [name, team] = key.split("|"); return { name, teamName: team, goals, isPlayerTeam: team === teamName }; })
             .sort((a, b) => b.goals - a.goals)
             .slice(0, 20);
-          const assisterList = Object.entries(merged.assisters)
+          const assisterList = Object.entries(merged.assisters).filter(inLeague)
             .map(([key, assists]) => { const [name, team] = key.split("|"); return { name, teamName: team, assists, isPlayerTeam: team === teamName }; })
             .sort((a, b) => b.assists - a.assists)
             .slice(0, 20);
-          const cardList = Object.entries(merged.cards)
+          const cardList = Object.entries(merged.cards).filter(inLeague)
             .map(([key, cards]) => { const [name, team] = key.split("|"); return { name, teamName: team, cards, isPlayerTeam: team === teamName }; })
             .sort((a, b) => b.cards - a.cards)
             .slice(0, 20);
