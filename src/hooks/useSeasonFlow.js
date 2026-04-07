@@ -318,7 +318,7 @@ export function useSeasonFlow({
     } else {
       // Week 5: Well Rested boosts + New season preview, then end summer
       const attrKeys = ATTRIBUTES.map(a => a.key);
-      const eligible = squad.filter(p => !p.isTrial);
+      const eligible = squad.filter(p => !p.isTrial && attrKeys.some(k => (p.attrs[k] || 0) < (p.legendCap || ovrCap)));
       const shuffled = [...eligible].sort(() => Math.random() - 0.5);
       const chosen = shuffled.slice(0, Math.min(3, shuffled.length));
       const arcBoosts = [];
@@ -337,7 +337,7 @@ export function useSeasonFlow({
       });
       s.setPendingSquad(newSquad);
       setGains({ improvements: [], injuries: [], duos: [], recoveries: [], progress: [], arcBoosts, ticketBoosts: [] });
-      const names = chosen.map(p => p.name.split(" ").pop()).join(", ");
+      const names = arcBoosts.map(b => b.playerName.split(" ").pop()).join(", ");
       const newLeagueName = league?.leagueName || LEAGUE_DEFS[leagueTier]?.name || "the new division";
       // Pick strongest AI team by average squad OVR (not standings — all teams have 0 pts at season start)
       const aiTeams = (league?.teams || []).filter(t => t && !t.isPlayer && t.squad?.length);

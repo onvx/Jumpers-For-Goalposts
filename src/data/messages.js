@@ -135,7 +135,7 @@ const disciplinePenalty = (playerNames) => ({
   type: "card_skip",
   icon: "\uD83D\uDFE8", // 🟨
   title: "Asst. Manager's Notes",
-  body: `${playerNames} won't train today. That booking at the weekend means a day in the doghouse.`,
+  body: `${playerNames} won't train today. ${playerNames.includes(",") ? "Those bookings at the weekend mean" : "That booking at the weekend means"} a day in the doghouse.`,
   color: "#fb923c",
 });
 
