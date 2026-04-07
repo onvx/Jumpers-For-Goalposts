@@ -6403,6 +6403,26 @@ function FruitCigs() {
                 }
               }
 
+              // Pre-pass: add trial-to-rival players to evolvedSquads BEFORE building leagues
+              const nextSeasonPre = (seasonNumber || 1) + 1;
+              (useGameStore.getState().trialHistory || []).forEach(entry => {
+                if (entry.phase === "on_trial" && entry.departureSeason < nextSeasonPre && entry.rivalTeam && rosters) {
+                  for (let tk = 1; tk <= NUM_TIERS; tk++) {
+                    const rivalCfg = (rosters[tk] || []).find(t => t.name === entry.rivalTeam);
+                    if (!rivalCfg) continue;
+                    const rivalSquad = evolvedSquads?.get(entry.rivalTeam);
+                    if (rivalSquad) {
+                      const rivalOvrCap = getOvrCap(prestigeLevel);
+                      const rivalAvgOvr = rivalSquad.length > 0
+                        ? Math.round(rivalSquad.reduce((s, p) => s + getOverall(p), 0) / rivalSquad.length) : 8;
+                      const generated = generateFreeAgent(tk, rivalAvgOvr, rivalOvrCap);
+                      rivalSquad.push({ ...generated, name: entry.name, position: entry.position || generated.position, nationality: entry.nationality, flag: entry.flag });
+                    }
+                    break;
+                  }
+                }
+              });
+
               setLeagueRosters(rosters);
               const newLeague2 = initLeague(squad, teamName, newTier, rosters, evolvedSquads, prestigeLevel);
               setLeague(newLeague2);
@@ -6594,27 +6614,13 @@ function FruitCigs() {
                                        MSG.trialSignedRival(entry.name, entry.flag, entry.rivalTeam),
                                        { calendarIndex: 0, seasonNumber: nextSeason2 },
                                      ));
-                    // Boost rival team strength + add player to their squad
+                    // Boost rival team strength (player already added to squad in pre-pass above)
                     if (rosters) {
                       for (let tierKey = 1; tierKey <= NUM_TIERS; tierKey++) {
                         if (!rosters[tierKey]) continue;
                         const rivalCfg = rosters[tierKey].find(t => t.name === entry.rivalTeam);
                         if (rivalCfg) {
                           rivalCfg.strength = Math.min(0.95, (rivalCfg.strength || 0.5) + 0.05);
-                          // Add the player to the rival's evolved squad
-                          const rivalSquad = evolvedSquads?.get(entry.rivalTeam);
-                          if (rivalSquad) {
-                            const rivalOvrCap = getOvrCap(prestigeLevel);
-                            const rivalAvgOvr = rivalSquad.length > 0
-                              ? Math.round(rivalSquad.reduce((s, p) => s + getOverall(p), 0) / rivalSquad.length)
-                              : 8;
-                            const generated = generateFreeAgent(tierKey, rivalAvgOvr, rivalOvrCap);
-                            rivalSquad.push({
-                              ...generated,
-                              name: entry.name, position: entry.position || generated.position,
-                              nationality: entry.nationality, flag: entry.flag,
-                            });
-                          }
                           break;
                         }
                       }
