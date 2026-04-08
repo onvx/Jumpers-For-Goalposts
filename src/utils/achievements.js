@@ -1202,8 +1202,7 @@ export function checkAchievements(state) {
     }
   }
 
-  // Gate by unlocked packs — only return achievements the player can currently earn
-  if (achievableIds) return newUnlocks.filter(id => achievableIds.has(id));
+  // All earned achievements returned regardless of pack status — banking handled by caller
   return newUnlocks;
 }
 
