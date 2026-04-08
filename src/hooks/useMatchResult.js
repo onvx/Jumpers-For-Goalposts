@@ -135,7 +135,19 @@ export function useMatchResult({
         }, BGM.getCurrentTrackId());
         if (newSeasonUnlocks.length > 0) {
           s.setUnlockedAchievements(prev => { const next = new Set(prev); newSeasonUnlocks.forEach(id => next.add(id)); return next; });
-          setAchievementQueue(prev => { const ex = new Set(prev); const f = newSeasonUnlocks.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+          const toastableS = newSeasonUnlocks.filter(id => achievableIdsRef.current.has(id));
+          if (toastableS.length > 0) {
+            setAchievementQueue(prev => { const ex = new Set(prev); const f = toastableS.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+          }
+          for (const id of newSeasonUnlocks) {
+            if (PLAYER_UNLOCK_ACHIEVEMENTS.has(id)) {
+              const unlock = UNLOCKABLE_PLAYERS.find(u => u.achievementId === id);
+              const sq = useGameStore.getState().squad;
+              if (unlock?.attrs && !sq.some(p => p.id === `unlockable_${unlock.id}`)) {
+                setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat([unlock]) : [unlock]);
+              }
+            }
+          }
         }
         s.setLastSeasonMove(moveType);
         if (moveType === "promoted") { s.setFanSentiment(Math.min(100, s.fanSentiment + 20)); s.setBoardSentiment(Math.min(100, s.boardSentiment + 25)); }

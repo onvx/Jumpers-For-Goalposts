@@ -5332,8 +5332,18 @@ function FruitCigs() {
 
               if (cupNewUnlocks.length > 0) {
                 setUnlockedAchievements(prev => { const next = new Set(prev); cupNewUnlocks.forEach(id => next.add(id)); return next; });
-                setAchievementQueue(prev => { const ex = new Set(prev); const f = cupNewUnlocks.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
-                // Player unlocks now triggered by pack completion (useEffect above)
+                const cupToastable = cupNewUnlocks.filter(id => achievableIdsRef.current.has(id));
+                if (cupToastable.length > 0) {
+                  setAchievementQueue(prev => { const ex = new Set(prev); const f = cupToastable.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+                }
+                for (const id of cupNewUnlocks) {
+                  if (PLAYER_UNLOCK_ACHIEVEMENTS.has(id)) {
+                    const unlock = UNLOCKABLE_PLAYERS.find(u => u.achievementId === id);
+                    if (unlock?.attrs && !squad.some(p => p.id === `unlockable_${unlock.id}`)) {
+                      setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat([unlock]) : [unlock]);
+                    }
+                  }
+                }
               }
             } catch(err) {
               console.error("Cup achievement check error:", err, err.stack);
@@ -5415,8 +5425,18 @@ function FruitCigs() {
               }, BGM.getCurrentTrackId());
               if (newSeasonUnlocks2.length > 0) {
                 setUnlockedAchievements(prev => { const next = new Set(prev); newSeasonUnlocks2.forEach(id => next.add(id)); return next; });
-                setAchievementQueue(prev => { const ex = new Set(prev); const f = newSeasonUnlocks2.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
-                // Player unlocks now triggered by pack completion (useEffect above)
+                const seasonToastable = newSeasonUnlocks2.filter(id => achievableIdsRef.current.has(id));
+                if (seasonToastable.length > 0) {
+                  setAchievementQueue(prev => { const ex = new Set(prev); const f = seasonToastable.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+                }
+                for (const id of newSeasonUnlocks2) {
+                  if (PLAYER_UNLOCK_ACHIEVEMENTS.has(id)) {
+                    const unlock = UNLOCKABLE_PLAYERS.find(u => u.achievementId === id);
+                    if (unlock?.attrs && !squad.some(p => p.id === `unlockable_${unlock.id}`)) {
+                      setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat([unlock]) : [unlock]);
+                    }
+                  }
+                }
               }
               setLastSeasonMove(moveType);
               // Season-end sentiment swings (cup path)
