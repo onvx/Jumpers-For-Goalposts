@@ -16,7 +16,7 @@ export function Dashboard({
   consecutiveWins, consecutiveUnbeaten, consecutiveLosses,
   seasonGoalsFor, seasonCleanSheets, seasonDraws,
   calendarResults, clubHistory,
-  onOpenInbox, onOpenLeague, onOpenSquad, onAsstXI, onInboxChoice, setInboxMessages,
+  onOpenInbox, onOpenLeague, onOpenSquad, onAsstXI, onApplyPreset, xiPresets, onInboxChoice, setInboxMessages,
   isMobile,
   onPlayerClick, onTeamClick,
   fanSentiment = 50, boardSentiment = 50,
@@ -609,7 +609,19 @@ export function Dashboard({
                   padding: "4px 8px", fontSize: F.xs, fontFamily: FONT,
                   background: "transparent", border: `1px solid ${C.bgInput}`,
                   color: HEADER_COLOR, cursor: "pointer",
-                }}>ASST XI</button>
+                }}>ASST</button>
+                <button onClick={() => onApplyPreset?.("primary")} disabled={!xiPresets?.primary} style={{
+                  padding: "4px 8px", fontSize: F.xs, fontFamily: FONT,
+                  background: "transparent", border: `1px solid ${xiPresets?.primary ? C.bgInput : C.bgCard}`,
+                  color: xiPresets?.primary ? HEADER_COLOR : C.textDim, cursor: xiPresets?.primary ? "pointer" : "default",
+                  opacity: xiPresets?.primary ? 1 : 0.4,
+                }}>1ST</button>
+                <button onClick={() => onApplyPreset?.("secondary")} disabled={!xiPresets?.secondary} style={{
+                  padding: "4px 8px", fontSize: F.xs, fontFamily: FONT,
+                  background: "transparent", border: `1px solid ${xiPresets?.secondary ? C.bgInput : C.bgCard}`,
+                  color: xiPresets?.secondary ? HEADER_COLOR : C.textDim, cursor: xiPresets?.secondary ? "pointer" : "default",
+                  opacity: xiPresets?.secondary ? 1 : 0.4,
+                }}>2ND</button>
                 <button onClick={onOpenSquad} style={{
                   padding: "4px 8px", fontSize: F.xs, fontFamily: FONT,
                   background: "transparent", border: `1px solid ${C.bgInput}`,

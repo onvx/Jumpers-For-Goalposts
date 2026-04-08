@@ -13,6 +13,7 @@ import { rand, getOverall, getAttrColor, getPosColor, getPositionTrainingWeeks, 
 import { detectFormationName, getEffectiveSlots, getTeamOOPMultiplier } from "./utils/formation.js";
 import { generateSquad, generatePrestigeSquad, autoSelectXI, autoSelectBench, generateAITeam, checkRetirements, generateYouthIntake, generateTrialPlayer, generateProdigalPlayer, evolveAISquad, generateSquadPhilosophy, getOvrCap, displayName } from "./utils/player.js";
 import { resolveSeasonEndArcs } from "./utils/arcs.js";
+import { buildAssistantLineup, buildPresetLineup } from "./utils/lineup.js";
 import { simulateMatch, generatePenaltyShootout, simulateMatchweek } from "./utils/match.js";
 import { initLeagueRosters, sortStandings, collectSeasonEndAchievements, processSeasonSwaps, initLeague, initAILeague, buildSeasonCalendar, initCup, advanceCupRound, buildNextCupRound } from "./utils/league.js";
 import { checkBreakouts } from "./utils/breakouts.js";
@@ -179,7 +180,7 @@ function FruitCigs() {
     setConsecutiveWins, setConsecutiveScoreless,
     setHalfwayPosition, setRecentScorelines, setSecondPlaceFinishes,
     setOvrHistory, setClubHistory, setAllTimeLeagueStats,
-    setStartingXI, setBench, setFormation, setSlotAssignments, setPrevStartingXI,
+    setStartingXI, setBench, setFormation, setSlotAssignments, setPrevStartingXI, setXiPresets,
     setTrialPlayer, setTrialHistory, setProdigalSon, setRetiringPlayers,
     setPendingFreeAgent, setScoutedPlayers,
     setMotmTracker, setStScoredConsecutive, setPlayerRatingTracker, setPlayerRatingNames, setPlayerMatchLog, setBreakoutsThisSeason,
@@ -605,7 +606,10 @@ function FruitCigs() {
   const [squadView, setSquadView] = useState("attrs"); // "attrs" or "stats"
   const formation = useGameStore(s => s.formation);
   const slotAssignments = useGameStore(s => s.slotAssignments);
+  const xiPresets = useGameStore(s => s.xiPresets);
   const [showTactics, setShowTactics] = useState(false);
+  const [showSaveDropdown, setShowSaveDropdown] = useState(false);
+  const [presetSaveFlash, setPresetSaveFlash] = useState(null); // "primary" | "secondary" | null
   const [selectedSlot, setSelectedSlot] = useState(null); // index of formation slot being assigned
   const [saveStatus, setSaveStatus] = useState(null);
   const [loadingGame, setLoadingGame] = useState(true);
@@ -1094,50 +1098,52 @@ function FruitCigs() {
     )]);
   }, [calendarResults, leagueTier, formation, startingXI, bench, slotAssignments, calendarIndex, seasonNumber]);
 
+  const applyLineup = useCallback((result) => {
+    setSlotAssignments(result.slots);
+    setStartingXI(result.startingXI);
+    setBench(result.bench);
+  }, []);
+
   const handleAsstXI = useCallback(() => {
-    const available = squad.filter(p => !p.injury && !p.isLegend);
-    const newSlots = new Array(TOTAL_SLOTS).fill(null);
-    const used = new Set();
-    const canPlay = (p, pos) => p.position === pos || p.learnedPositions?.includes(pos);
-    formation.forEach((slot, i) => {
-      const candidates = available.filter(p => canPlay(p, slot.pos) && !used.has(p.id));
-      candidates.sort((a, b) => getOverall(b) - getOverall(a));
-      if (candidates.length > 0) { newSlots[i] = candidates[0].id; used.add(candidates[0].id); }
-    });
-    const gkIdx = formation.findIndex(s => s.pos === "GK");
-    if (gkIdx !== -1 && newSlots[gkIdx] == null) {
-      const anyGK = squad.filter(p => p.position === "GK" && !used.has(p.id))
-        .sort((a, b) => (a.injury ? 1 : 0) - (b.injury ? 1 : 0) || getOverall(b) - getOverall(a))[0];
-      if (anyGK) { newSlots[gkIdx] = anyGK.id; used.add(anyGK.id); }
+    applyLineup(buildAssistantLineup(squad, formation, { excludeLegends: true }));
+  }, [squad, formation, applyLineup]);
+
+  const handleFansXI = useCallback(() => {
+    applyLineup(buildAssistantLineup(squad, formation, { excludeLegends: false }));
+  }, [squad, formation, applyLineup]);
+
+  const handleApplyPreset = useCallback((presetKey) => {
+    const preset = xiPresets?.[presetKey];
+    if (!preset) return;
+    const result = buildPresetLineup(preset, squad, formation);
+    applyLineup(result);
+    // Write back cleaned preset if stale IDs were pruned
+    if (result.pruned) {
+      setXiPresets(prev => ({
+        ...prev,
+        [presetKey]: { slots: result.slots, formationSnapshot: formation.map(s => ({ pos: s.pos })) },
+      }));
     }
-    formation.forEach((_, i) => {
-      if (newSlots[i] != null) return;
-      const best = available.filter(p => !used.has(p.id)).sort((a, b) => getOverall(b) - getOverall(a));
-      if (best.length > 0) { newSlots[i] = best[0].id; used.add(best[0].id); }
-    });
-    const benchPool = available.filter(p => !used.has(p.id));
-    const benchIds = [];
-    const sectionNeeds = [
-      { positions: ["GK"] }, { positions: ["CB", "LB", "RB"] },
-      { positions: ["CM", "AM"] }, { positions: ["LW", "RW", "ST"] },
-    ];
-    const benchUsed = new Set();
-    for (const need of sectionNeeds) {
-      const pick = benchPool
-        .filter(p => (need.positions.includes(p.position) || need.positions.some(pos => p.learnedPositions?.includes(pos))) && !benchUsed.has(p.id))
-        .sort((a, b) => getOverall(b) - getOverall(a))[0];
-      if (pick) { benchIds.push(pick.id); benchUsed.add(pick.id); }
-    }
-    const rest = benchPool.filter(p => !benchUsed.has(p.id)).sort((a, b) => getOverall(b) - getOverall(a));
-    for (const p of rest) { if (benchIds.length >= 5) break; benchIds.push(p.id); }
-    benchIds.sort((a, b) => (POSITION_ORDER[squad.find(p => p.id === a)?.position] || 0) - (POSITION_ORDER[squad.find(p => p.id === b)?.position] || 0));
-    benchIds.forEach((id, i) => { newSlots[11 + i] = id; });
-    setSlotAssignments(newSlots);
-    const newXI = [], newBench = [];
-    newSlots.forEach((pid, i) => { if (pid == null) return; if (i < 11) newXI.push(pid); else newBench.push(pid); });
-    setStartingXI(newXI);
-    setBench(newBench);
-  }, [squad, formation]);
+  }, [squad, formation, xiPresets, applyLineup]);
+
+  const handleSavePreset = useCallback((presetKey) => {
+    if (startingXI.length < 11) return;
+    const slots = slotAssignments
+      ? [...slotAssignments]
+      : (() => {
+          const s = new Array(TOTAL_SLOTS).fill(null);
+          startingXI.forEach((id, i) => { s[i] = id; });
+          bench.forEach((id, i) => { s[11 + i] = id; });
+          return s;
+        })();
+    setXiPresets(prev => ({
+      ...prev,
+      [presetKey]: { slots, formationSnapshot: formation.map(s => ({ pos: s.pos })) },
+    }));
+    setPresetSaveFlash(presetKey);
+    setTimeout(() => setPresetSaveFlash(null), 1200);
+    setShowSaveDropdown(false);
+  }, [startingXI, bench, slotAssignments, formation]);
 
   const handleInboxChoice = useCallback((msg, choice) => {
 
@@ -4300,78 +4306,7 @@ function FruitCigs() {
                       </div>
                     )}
                   </div>
-                  <button onClick={(e) => {
-                    e.stopPropagation();
-                    // Assistant's XI: optimal lineup considering formation, OVR, injuries, bench coverage
-                    // Exclude legends — user manually assigns them when desired
-                    const available = squad.filter(p => !p.injury && !p.isLegend);
-                    const newSlots = new Array(TOTAL_SLOTS).fill(null);
-                    const used = new Set();
-
-                    // 1. Fill formation slots — best OVR player per position (includes learned positions)
-                    const canPlay = (p, pos) => p.position === pos || p.learnedPositions?.includes(pos);
-                    formation.forEach((slot, i) => {
-                      const candidates = available.filter(p => canPlay(p, slot.pos) && !used.has(p.id));
-                      candidates.sort((a, b) => getOverall(b) - getOverall(a));
-                      if (candidates.length > 0) {
-                        newSlots[i] = candidates[0].id;
-                        used.add(candidates[0].id);
-                      }
-                    });
-                    // GK safety net — if the GK slot is empty, find any GK in the full squad (even injured)
-                    const gkIdx = formation.findIndex(s => s.pos === "GK");
-                    if (gkIdx !== -1 && newSlots[gkIdx] == null) {
-                      const anyGK = squad.filter(p => p.position === "GK" && !used.has(p.id))
-                        .sort((a, b) => (a.injury ? 1 : 0) - (b.injury ? 1 : 0) || getOverall(b) - getOverall(a))[0];
-                      if (anyGK) { newSlots[gkIdx] = anyGK.id; used.add(anyGK.id); }
-                    }
-                    // Fill any remaining XI slots with best available (OOP)
-                    formation.forEach((_, i) => {
-                      if (newSlots[i] != null) return;
-                      const best = available.filter(p => !used.has(p.id)).sort((a, b) => getOverall(b) - getOverall(a));
-                      if (best.length > 0) { newSlots[i] = best[0].id; used.add(best[0].id); }
-                    });
-
-                    // 2. Smart bench — ensure 1 GK, 1 DEF, 1 MID, 1 FWD, then best remaining
-                    const benchPool = available.filter(p => !used.has(p.id));
-                    const benchIds = [];
-                    const sectionNeeds = [
-                      { type: "GK", positions: ["GK"] },
-                      { type: "DEF", positions: ["CB", "LB", "RB"] },
-                      { type: "MID", positions: ["CM", "AM"] },
-                      { type: "FWD", positions: ["LW", "RW", "ST"] },
-                    ];
-                    const benchUsed = new Set();
-                    for (const need of sectionNeeds) {
-                      const pick = benchPool
-                        .filter(p => (need.positions.includes(p.position) || need.positions.some(pos => p.learnedPositions?.includes(pos))) && !benchUsed.has(p.id))
-                        .sort((a, b) => getOverall(b) - getOverall(a))[0];
-                      if (pick) { benchIds.push(pick.id); benchUsed.add(pick.id); }
-                    }
-                    // Fill remaining bench spots (up to 5) with best OVR
-                    const rest = benchPool.filter(p => !benchUsed.has(p.id)).sort((a, b) => getOverall(b) - getOverall(a));
-                    for (const p of rest) {
-                      if (benchIds.length >= 5) break;
-                      benchIds.push(p.id);
-                    }
-                    benchIds.sort((a, b) => {
-                      const pa = squad.find(p => p.id === a);
-                      const pb = squad.find(p => p.id === b);
-                      return (POSITION_ORDER[pa?.position] || 0) - (POSITION_ORDER[pb?.position] || 0);
-                    });
-                    benchIds.forEach((id, i) => { newSlots[11 + i] = id; });
-
-                    setSlotAssignments(newSlots);
-                    const newXI = [];
-                    const newBench = [];
-                    newSlots.forEach((pid, i) => {
-                      if (pid == null) return;
-                      if (i < 11) newXI.push(pid);
-                      else newBench.push(pid);
-                    });
-                    setStartingXI(newXI);
-                    setBench(newBench);
-                  }} style={{
+                  <button onClick={(e) => { e.stopPropagation(); handleAsstXI(); }} style={{
                     padding: "7px 12px", fontSize: F.xs, cursor: "pointer",
                     background: "transparent",
                     border: `1px solid ${C.bgInput}`,
@@ -4379,78 +4314,64 @@ function FruitCigs() {
                     fontFamily: FONT,
                   }}>ASST XI</button>
                   {squad.some(p => p.isLegend) && (
-                    <button onClick={(e) => {
-                      e.stopPropagation();
-                      // Fans XI: same as ASST XI but legends with remaining appearances are included
-                      const available = squad.filter(p => !p.injury && !(p.isLegend && (p.legendAppearances || 0) >= 12));
-                      const newSlots = new Array(TOTAL_SLOTS).fill(null);
-                      const used = new Set();
-
-                      const canPlay = (p, pos) => p.position === pos || p.learnedPositions?.includes(pos);
-                      formation.forEach((slot, i) => {
-                        const candidates = available.filter(p => canPlay(p, slot.pos) && !used.has(p.id));
-                        candidates.sort((a, b) => getOverall(b) - getOverall(a));
-                        if (candidates.length > 0) {
-                          newSlots[i] = candidates[0].id;
-                          used.add(candidates[0].id);
-                        }
-                      });
-                      const gkIdx = formation.findIndex(s => s.pos === "GK");
-                      if (gkIdx !== -1 && newSlots[gkIdx] == null) {
-                        const anyGK = squad.filter(p => p.position === "GK" && !used.has(p.id))
-                          .sort((a, b) => (a.injury ? 1 : 0) - (b.injury ? 1 : 0) || getOverall(b) - getOverall(a))[0];
-                        if (anyGK) { newSlots[gkIdx] = anyGK.id; used.add(anyGK.id); }
-                      }
-                      formation.forEach((_, i) => {
-                        if (newSlots[i] != null) return;
-                        const best = available.filter(p => !used.has(p.id)).sort((a, b) => getOverall(b) - getOverall(a));
-                        if (best.length > 0) { newSlots[i] = best[0].id; used.add(best[0].id); }
-                      });
-
-                      const benchPool = available.filter(p => !used.has(p.id));
-                      const benchIds = [];
-                      const sectionNeeds = [
-                        { type: "GK", positions: ["GK"] },
-                        { type: "DEF", positions: ["CB", "LB", "RB"] },
-                        { type: "MID", positions: ["CM", "AM"] },
-                        { type: "FWD", positions: ["LW", "RW", "ST"] },
-                      ];
-                      const benchUsed = new Set();
-                      for (const need of sectionNeeds) {
-                        const pick = benchPool
-                          .filter(p => (need.positions.includes(p.position) || need.positions.some(pos => p.learnedPositions?.includes(pos))) && !benchUsed.has(p.id))
-                          .sort((a, b) => getOverall(b) - getOverall(a))[0];
-                        if (pick) { benchIds.push(pick.id); benchUsed.add(pick.id); }
-                      }
-                      const rest = benchPool.filter(p => !benchUsed.has(p.id)).sort((a, b) => getOverall(b) - getOverall(a));
-                      for (const p of rest) {
-                        if (benchIds.length >= 5) break;
-                        benchIds.push(p.id);
-                      }
-                      benchIds.sort((a, b) => {
-                        const pa = squad.find(p => p.id === a);
-                        const pb = squad.find(p => p.id === b);
-                        return (POSITION_ORDER[pa?.position] || 0) - (POSITION_ORDER[pb?.position] || 0);
-                      });
-                      benchIds.forEach((id, i) => { newSlots[11 + i] = id; });
-
-                      setSlotAssignments(newSlots);
-                      const newXI = [];
-                      const newBench = [];
-                      newSlots.forEach((pid, i) => {
-                        if (pid == null) return;
-                        if (i < 11) newXI.push(pid);
-                        else newBench.push(pid);
-                      });
-                      setStartingXI(newXI);
-                      setBench(newBench);
-                    }} style={{
+                    <button onClick={(e) => { e.stopPropagation(); handleFansXI(); }} style={{
                       padding: "7px 12px", fontSize: F.xs, cursor: "pointer",
                       background: "transparent",
                       border: "1px solid rgba(251,191,36,0.4)",
                       color: C.amber,
                       fontFamily: FONT,
                     }}>FANS XI</button>
+                  )}
+                  <button onClick={(e) => { e.stopPropagation(); handleApplyPreset("primary"); }} style={{
+                    padding: "7px 12px", fontSize: F.xs, cursor: "pointer",
+                    background: "transparent",
+                    border: presetSaveFlash === "primary" ? "1px solid #4ade80" : `1px solid ${xiPresets?.primary ? C.bgInput : C.bgCard}`,
+                    color: xiPresets?.primary ? C.textMuted : C.textDim,
+                    opacity: xiPresets?.primary ? 1 : 0.4,
+                    fontFamily: FONT,
+                    transition: "border-color 0.3s",
+                  }}>MY XI</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleApplyPreset("secondary"); }} style={{
+                    padding: "7px 12px", fontSize: F.xs, cursor: "pointer",
+                    background: "transparent",
+                    border: presetSaveFlash === "secondary" ? "1px solid #4ade80" : `1px solid ${xiPresets?.secondary ? C.bgInput : C.bgCard}`,
+                    color: xiPresets?.secondary ? C.textMuted : C.textDim,
+                    opacity: xiPresets?.secondary ? 1 : 0.4,
+                    fontFamily: FONT,
+                    transition: "border-color 0.3s",
+                  }}>2ND XI</button>
+                  {startingXI.length >= 11 && (
+                    <div style={{ position: "relative", display: "inline-block" }}>
+                      <button onClick={(e) => { e.stopPropagation(); setShowSaveDropdown(prev => !prev); }} style={{
+                        padding: "7px 10px", fontSize: F.xs, cursor: "pointer",
+                        background: "transparent",
+                        border: `1px solid ${C.bgInput}`,
+                        color: C.textMuted,
+                        fontFamily: FONT,
+                      }}>💾</button>
+                      {showSaveDropdown && (
+                        <>
+                          <div onClick={() => setShowSaveDropdown(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
+                          <div style={{
+                            position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 100,
+                            background: C.bgCard, border: `1px solid ${C.bgInput}`, padding: 4,
+                            display: "flex", flexDirection: "column", gap: 2, minWidth: 160,
+                          }}>
+                            <button onClick={() => handleSavePreset("primary")} style={{
+                              padding: "8px 12px", fontSize: F.xs, cursor: "pointer", textAlign: "left",
+                              background: "transparent", border: "none", color: C.text, fontFamily: FONT,
+                            }}>{xiPresets?.primary ? "Overwrite My XI" : "Save as My XI"}</button>
+                            <button onClick={() => handleSavePreset("secondary")} style={{
+                              padding: "8px 12px", fontSize: F.xs, cursor: "pointer", textAlign: "left",
+                              background: "transparent", border: "none", color: C.text, fontFamily: FONT,
+                            }}>{xiPresets?.secondary ? "Overwrite 2nd XI" : "Save as 2nd XI"}</button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {(!xiPresets?.primary || !xiPresets?.secondary) && (
+                    <div style={{ fontSize: F.micro, color: C.textDim, width: "100%", marginTop: 2 }}>💾 Save current lineup as My XI or 2nd XI</div>
                   )}
                 </div>
               </div>
@@ -4719,6 +4640,8 @@ function FruitCigs() {
         onOpenLeague={() => setShowTable(true)}
         onOpenSquad={() => setShowSquad(true)}
         onAsstXI={handleAsstXI}
+        onApplyPreset={handleApplyPreset}
+        xiPresets={xiPresets}
         onInboxChoice={handleInboxChoice}
         setInboxMessages={setInboxMessages}
         isMobile={isMobile}

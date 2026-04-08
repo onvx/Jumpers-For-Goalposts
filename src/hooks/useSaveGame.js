@@ -103,6 +103,7 @@ export function useSaveGame({
         allTimeLeagueStats: s.allTimeLeagueStats,
         formation: s.formation,
         slotAssignments: s.slotAssignments,
+        xiPresets: s.xiPresets,
         allLeagueStates: s.allLeagueStates,
         clubRelationships: s.clubRelationships,
         transferFocus: s.transferFocus,
@@ -560,6 +561,7 @@ export function useSaveGame({
       } else {
         store.setSlotAssignments(null);
       }
+      store.setXiPresets(s.xiPresets || { primary: null, secondary: null });
       // Load AI league states
       if (s.allLeagueStates && Object.keys(s.allLeagueStates).length > 0) {
         for (const [tier, leagueState] of Object.entries(s.allLeagueStates)) {
