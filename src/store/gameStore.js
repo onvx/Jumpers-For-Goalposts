@@ -181,6 +181,7 @@ export const useGameStore = create((set, get) => ({
   formation: DEFAULT_FORMATION.map(s => ({ ...s })),
   slotAssignments: null,
   prevStartingXI: null,
+  xiPresets: { primary: null, secondary: null },
 
   // === Player management ===
   trialPlayer: null,
@@ -346,6 +347,7 @@ export const useGameStore = create((set, get) => ({
   setFormation: (val) => set(s => ({ formation: typeof val === "function" ? val(s.formation) : val })),
   setSlotAssignments: (val) => set(s => ({ slotAssignments: typeof val === "function" ? val(s.slotAssignments) : val })),
   setPrevStartingXI: (val) => set(s => ({ prevStartingXI: typeof val === "function" ? val(s.prevStartingXI) : val })),
+  setXiPresets: (val) => set(s => ({ xiPresets: typeof val === "function" ? val(s.xiPresets) : val })),
 
   setTrialPlayer: (val) => set(s => ({ trialPlayer: typeof val === "function" ? val(s.trialPlayer) : val })),
   setTrialHistory: (val) => set(s => ({ trialHistory: typeof val === "function" ? val(s.trialHistory) : val })),
@@ -483,6 +485,7 @@ export const useGameStore = create((set, get) => ({
     formation: DEFAULT_FORMATION.map(s => ({ ...s })),
     slotAssignments: null,
     prevStartingXI: null,
+    xiPresets: { primary: null, secondary: null },
     trialPlayer: null,
     trialHistory: [],
     prodigalSon: null,
