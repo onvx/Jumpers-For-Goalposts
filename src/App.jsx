@@ -1117,11 +1117,13 @@ function FruitCigs() {
     if (!preset) return;
     const result = buildPresetLineup(preset, squad, formation);
     applyLineup(result);
-    // Write back cleaned preset if stale IDs were pruned
+    // Write back cleaned preset if sold/retired IDs were pruned (keep injured IDs intact)
     if (result.pruned) {
+      const squadIds = new Set(squad.map(p => p.id));
+      const cleanedForSave = preset.slots.map(id => id && squadIds.has(id) ? id : null);
       setXiPresets(prev => ({
         ...prev,
-        [presetKey]: { slots: result.slots, formationSnapshot: formation.map(s => ({ pos: s.pos })) },
+        [presetKey]: { slots: cleanedForSave, formationSnapshot: preset.formationSnapshot },
       }));
     }
   }, [squad, formation, xiPresets, applyLineup]);
@@ -1131,8 +1133,9 @@ function FruitCigs() {
     const slots = slotAssignments
       ? [...slotAssignments]
       : (() => {
-          const s = new Array(TOTAL_SLOTS).fill(null);
-          startingXI.forEach((id, i) => { s[i] = id; });
+          const effective = getEffectiveSlots(startingXI, formation, squad, null);
+          const s = [...effective];
+          while (s.length < TOTAL_SLOTS) s.push(null);
           bench.forEach((id, i) => { s[11 + i] = id; });
           return s;
         })();

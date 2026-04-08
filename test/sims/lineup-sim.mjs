@@ -1,9 +1,9 @@
 /**
  * Unit tests for src/utils/lineup.js
- * Run: node test/lineup.test.mjs
+ * Run: node test/sims/lineup-sim.mjs
  */
 
-import { buildAssistantLineup, buildPresetLineup, sanitizePreset } from '../src/utils/lineup.js';
+import { buildAssistantLineup, buildPresetLineup, sanitizePreset } from '../../src/utils/lineup.js';
 
 let passed = 0, failed = 0;
 function assert(condition, msg) {
