@@ -2770,7 +2770,7 @@ function FruitCigs() {
                           home: r.home, away: r.away,
                           homeGoals: r.homeGoals, awayGoals: r.awayGoals,
                           goalScorers: (r.events || []).filter(e => e.type === "goal").map(e => ({ name: e.player, assister: e.assister || null, side: e.side, minute: e.minute })),
-                          cardRecipients: (r.events || []).filter(e => e.type === "card" && e.cardPlayer).map(e => ({
+                          cardRecipients: (r.events || []).filter(e => (e.type === "card" || e.type === "red_card") && e.cardPlayer).map(e => ({
                             name: e.cardPlayer,
                             teamIdx: e.cardTeamName === updatedLeague.teams[r.home]?.name ? r.home : r.away,
                           })),
@@ -3483,7 +3483,7 @@ function FruitCigs() {
                     home: r.home, away: r.away,
                     homeGoals: r.homeGoals, awayGoals: r.awayGoals,
                     goalScorers: (r.events || []).filter(e => e.type === "goal").map(e => ({ name: e.player, assister: e.assister || null, side: e.side, minute: e.minute })),
-                    cardRecipients: (r.events || []).filter(e => e.type === "card" && e.cardPlayer).map(e => ({
+                    cardRecipients: (r.events || []).filter(e => (e.type === "card" || e.type === "red_card") && e.cardPlayer).map(e => ({
                       name: e.cardPlayer,
                       teamIdx: e.cardTeamName === updatedLeague.teams[r.home]?.name ? r.home : r.away,
                     })),
