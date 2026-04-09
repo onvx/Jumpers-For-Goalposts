@@ -739,8 +739,23 @@ export function useSaveGame({
         const lowestTier = Math.min(s.leagueTier || 11, ...archive.map(e => e.tier || 11));
         if (lowestTier <= 5 && !u.has("promised_land")) historyAchs.push("promised_land");
 
+        // from_the_bottom — won a league at Federation (tier 5) or above
+        if (!u.has("from_the_bottom")) {
+          const wonAtHighTier = archive.some(e => e.position === 1 && e.tier && e.tier <= 5);
+          if (wonAtHighTier) historyAchs.push("from_the_bottom");
+        }
+
+        // the_double — won league and cup in the same season
+        if (!u.has("the_double")) {
+          const leagueWinSeasons = new Set(archive.filter(e => e.position === 1).map(e => e.season));
+          const cupWinSeasons = new Set(cupHist.filter(c => c.winnerIsPlayer).map(c => c.season));
+          for (const s2 of leagueWinSeasons) {
+            if (cupWinSeasons.has(s2)) { historyAchs.push("the_double"); break; }
+          }
+        }
+
         // Cup wins from cupHistory
-        const cupWins = cupHist.filter(c => c.result === "Winner 🏆" || c.result?.includes("Winner"));
+        const cupWins = cupHist.filter(c => c.winnerIsPlayer);
         if (cupWins.length > 0 && !u.has("cup_winner")) historyAchs.push("cup_winner");
         const distinctCups = new Set(cupWins.map(c => c.cupName));
         if (distinctCups.size >= 2 && !u.has("cup_collector")) historyAchs.push("cup_collector");
