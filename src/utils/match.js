@@ -574,16 +574,19 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
   if (bonusHomeGoals > 0) addGoalEvents(homeTeam, "home", bonusHomeGoals, 70, 90);
   if (bonusAwayGoals > 0) addGoalEvents(awayTeam, "away", bonusAwayGoals, 70, 90);
 
-  // Generate substitution events (3 per team, between 55-85 min)
+  // Generate substitution events (up to 5 per team)
   const generateSubs = (team, side) => {
     const bench = getBench(team);
     const playing = getPlayingSquad(team);
-    const subCount = Math.min(3, bench.length);
+    const subRoll = Math.random();
+    const subCount = Math.min(subRoll < 0.12 ? 5 : subRoll < 0.35 ? 4 : 3, bench.length);
     const subEvents = [];
     const subbedOff = new Set();
     const subbedOn = new Set();
+    // ~10% chance of an early forced sub (injury/tactical, min 15-40)
+    const hasEarlySub = Math.random() < 0.10;
     for (let i = 0; i < subCount; i++) {
-      const min = rand(MATCH.SUB_MIN, MATCH.SUB_MAX);
+      const min = (i === 0 && hasEarlySub) ? rand(15, 40) : rand(MATCH.SUB_MIN, MATCH.SUB_MAX);
       const availableOff = playing.filter(p => !subbedOff.has(p.name) && POSITION_TYPES[p.position] !== "GK");
       const availableOn = bench.filter(p => !subbedOn.has(p.name));
       if (availableOff.length === 0 || availableOn.length === 0) break;
