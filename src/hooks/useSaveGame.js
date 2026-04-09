@@ -6,7 +6,7 @@ import { POSITION_TYPES, TOTAL_SLOTS } from "../data/positions.js";
 import { LEAGUE_DEFS, NUM_TIERS, AI_BENCH_POSITIONS } from "../data/leagues.js";
 import { STORY_ARCS } from "../data/storyArcs.js";
 import { STARTER_PACKS } from "../data/cigPacks.js";
-import { UNLOCKABLE_PLAYERS } from "../data/achievements.js";
+import { UNLOCKABLE_PLAYERS, TIER_WIN_ACHS } from "../data/achievements.js";
 import { DEFAULT_FORMATION } from "../data/formations.js";
 import { getModifier } from "../data/leagueModifiers.js";
 import { rand, getOverall } from "../utils/calc.js";
@@ -701,6 +701,65 @@ export function useSaveGame({
         if (catchUp.length > 0) {
           const merged = new Set(loadedUnlocked);
           catchUp.forEach(id => merged.add(id));
+          s.unlockedAchievements = merged;
+          store.setUnlockedAchievements(merged);
+        }
+      }
+
+      // Migration: retroactive history-based achievement reconstruction
+      // Reconstruct season-end and career achievements from clubHistory
+      // that checkAchievements() can't detect (promotion, relegation, tier
+      // wins, cup wins, career milestones, etc.)
+      {
+        const u = s.unlockedAchievements || new Set();
+        const historyAchs = [];
+        const archive = s.clubHistory?.seasonArchive || [];
+        const cupHist = s.clubHistory?.cupHistory || [];
+
+        // Season milestones
+        if ((s.seasonNumber || 1) >= 5 && !u.has("season_5")) historyAchs.push("season_5");
+        if ((s.seasonNumber || 1) >= 10 && !u.has("season_10")) historyAchs.push("season_10");
+
+        // Tier wins from archive
+        const titlesWon = new Set();
+        archive.forEach(entry => {
+          if (entry.position === 1 && entry.tier) {
+            titlesWon.add(entry.tier);
+            const tierAch = TIER_WIN_ACHS[entry.tier];
+            if (tierAch && !u.has(tierAch)) historyAchs.push(tierAch);
+          }
+          if (entry.result === "promoted" && !u.has("promoted")) historyAchs.push("promoted");
+          if (entry.result === "relegated" && !u.has("relegated")) historyAchs.push("relegated");
+        });
+        if (!u.has("champion") && titlesWon.size > 0) historyAchs.push("champion");
+        if (!u.has("tinpot_treble") && titlesWon.size >= 3) historyAchs.push("tinpot_treble");
+        if (!u.has("dynasty") && (s.leagueWins || 0) >= 3) historyAchs.push("dynasty");
+
+        // Promised Land — reached tier 5 or above
+        const lowestTier = Math.min(s.leagueTier || 11, ...archive.map(e => e.tier || 11));
+        if (lowestTier <= 5 && !u.has("promised_land")) historyAchs.push("promised_land");
+
+        // Cup wins from cupHistory
+        const cupWins = cupHist.filter(c => c.result === "Winner 🏆" || c.result?.includes("Winner"));
+        if (cupWins.length > 0 && !u.has("cup_winner")) historyAchs.push("cup_winner");
+        const distinctCups = new Set(cupWins.map(c => c.cupName));
+        if (distinctCups.size >= 2 && !u.has("cup_collector")) historyAchs.push("cup_collector");
+        // Specific cup wins
+        const cupNameMap = { "Sub Money": "win_sub_money", "Clubman": "win_clubman", "Global": "win_global", "Ultimate": "win_ultimate" };
+        cupWins.forEach(c => {
+          const achId = Object.entries(cupNameMap).find(([name]) => c.cupName?.includes(name))?.[1];
+          if (achId && !u.has(achId)) historyAchs.push(achId);
+        });
+
+        // Career apps/goals from playerCareers
+        const careers = s.clubHistory?.playerCareers || {};
+        if (!u.has("fifty_not_out") && Object.values(careers).some(c => (c.apps || 0) >= 50)) historyAchs.push("fifty_not_out");
+        if (!u.has("century_club") && Object.values(careers).some(c => (c.goals || 0) >= 100)) historyAchs.push("century_club");
+        if (!u.has("golden_boot") && Object.values(careers).some(c => c.seasons?.some(ss => (ss.goals || 0) >= 20))) historyAchs.push("golden_boot");
+
+        if (historyAchs.length > 0) {
+          const merged = new Set(u);
+          historyAchs.forEach(id => merged.add(id));
           s.unlockedAchievements = merged;
           store.setUnlockedAchievements(merged);
         }

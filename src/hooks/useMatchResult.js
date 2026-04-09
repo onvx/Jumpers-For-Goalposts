@@ -332,11 +332,19 @@ export function useMatchResult({
             }
           }
         }
-        // Latch wonLeagueOnHoliday when title clinched during holiday
-        if (s.isOnHoliday && completedMDs >= (currentLeague.fixtures?.length || DEFAULT_FIXTURE_COUNT)) {
+        // Latch wonLeagueOnHoliday when title mathematically clinched during holiday
+        if (s.isOnHoliday && !s.wonLeagueOnHoliday) {
           const sorted = sortStandings(currentLeague.table);
           const playerIdx = sorted.findIndex(r => currentLeague.teams[r.teamIndex]?.isPlayer);
-          if (playerIdx === 0) s.setWonLeagueOnHoliday(true);
+          if (playerIdx === 0) {
+            const totalFixturesH = currentLeague.fixtures?.length || DEFAULT_FIXTURE_COUNT;
+            const remainingGames = totalFixturesH - completedMDs;
+            const pointsGap = sorted[0].points - (sorted[1]?.points || 0);
+            // Clinched if lead > max points second place can earn
+            if (remainingGames <= 0 || pointsGap > remainingGames * 3) {
+              s.setWonLeagueOnHoliday(true);
+            }
+          }
         }
       } catch(err) {
         console.error("Achievement check error:", err, err.stack);
