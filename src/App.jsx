@@ -1295,23 +1295,6 @@ function FruitCigs() {
     setShowCup(false); setShowTransfers(false); setShowLegends(false); setShowSquad(false);
   }, []);
 
-  // Keyboard shortcuts for desktop play
-  useKeyboard({
-    showSquad, showCalendar, showTable, showCup, showTransfers, showLegends, showAchievements,
-    setShowSquad, setShowCalendar, setShowTable, setShowCup, setShowTransfers, setShowLegends, setShowAchievements,
-    clearAllTabs,
-    setInitialBootRoomTab, setBootRoomKey, setLeagueKey, setCupKey, setTransfersKey, setClubKey, setCabinetKey,
-    setLastSeenAchievementCount, unlockedAchievements,
-    cup,
-    processing, matchPending, summerPhase, gains, matchResult, cupMatchResult,
-    selectedPlayer, pendingPlayerUnlock, ovrLevelUps, showBreakoutPopup,
-    isOnHoliday: useGameStore.getState().isOnHoliday,
-    advanceWeek, advanceSummer,
-    setGains,
-    seasonCalendar, calendarIndex, startingXI,
-    setShowLineupWarning,
-  });
-
   // Shared helper: update playerMatchLog after any match (league, cup, or holiday)
   const updateMatchLog = (matchResult, isPlayerHome, xiIds, isCup, leagueRef) => {
     const side = isPlayerHome ? "home" : "away";
@@ -1502,6 +1485,23 @@ function FruitCigs() {
     setGains, setOvrLevelUps, setRecentOvrLevelUps, setInjuryWarning,
     tryUnlockAchievement,
     pendingTrialAction, aiPredictionRef,
+  });
+
+  // Keyboard shortcuts for desktop play
+  useKeyboard({
+    showSquad, showCalendar, showTable, showCup, showTransfers, showLegends, showAchievements,
+    setShowSquad, setShowCalendar, setShowTable, setShowCup, setShowTransfers, setShowLegends, setShowAchievements,
+    clearAllTabs,
+    setInitialBootRoomTab, setBootRoomKey, setLeagueKey, setCupKey, setTransfersKey, setClubKey, setCabinetKey,
+    setLastSeenAchievementCount, unlockedAchievements,
+    cup,
+    processing, matchPending, summerPhase, gains, matchResult, cupMatchResult,
+    selectedPlayer, pendingPlayerUnlock, ovrLevelUps, showBreakoutPopup,
+    isOnHoliday: useGameStore.getState().isOnHoliday,
+    advanceWeek, advanceSummer,
+    processGainsDone,
+    seasonCalendar, calendarIndex, startingXI,
+    setShowLineupWarning,
   });
 
   const assignAllGeneral = useCallback(() => {

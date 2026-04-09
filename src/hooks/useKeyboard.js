@@ -22,7 +22,7 @@ export function useKeyboard({
   isOnHoliday,
   // Actions
   advanceWeek, advanceSummer,
-  setGains,
+  processGainsDone,
   // Lineup warning
   seasonCalendar, calendarIndex, startingXI,
   setShowLineupWarning,
@@ -33,16 +33,16 @@ export function useKeyboard({
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
-      // Don't intercept during match playback or when overlays are active
-      if (matchResult || cupMatchResult || selectedPlayer || pendingPlayerUnlock || ovrLevelUps || showBreakoutPopup) return;
+      // Don't intercept during match playback, overlays, or holiday mode
+      if (matchResult || cupMatchResult || selectedPlayer || pendingPlayerUnlock || ovrLevelUps || showBreakoutPopup || isOnHoliday) return;
 
       // === SPACE — advance / dismiss ===
       if (e.code === "Space") {
         e.preventDefault();
 
-        // Dismiss gains popup if showing
+        // Dismiss gains popup via the proper completion flow
         if (gains !== null) {
-          setGains(null);
+          processGainsDone(gains);
           return;
         }
 
