@@ -303,7 +303,7 @@ export function useMatchResult({
           slotAssignments: s.slotAssignments,
           usedTicketTypes: s.usedTicketTypes, formationsWonWith: playerWon ? new Set([...s.formationsWonWith, s.formation.map(sl => sl.pos).join("-")]) : s.formationsWonWith,
           freeAgentSignings: s.freeAgentSignings, scoutedPlayers: s.scoutedPlayers, transferFocus: s.transferFocus, clubRelationships: s.clubRelationships,
-          isOnHoliday: s.isOnHoliday, holidayMatchesThisSeason: s.holidayMatchesThisSeason,
+          isOnHoliday: s.isOnHoliday, wonLeagueOnHoliday: s.wonLeagueOnHoliday, holidayMatchesThisSeason: s.holidayMatchesThisSeason,
           testimonialPlayer: s.testimonialPlayer,
           seasonNumber: s.seasonNumber, lastSeasonPosition: s.clubHistory?.seasonArchive?.length > 0 ? s.clubHistory.seasonArchive[s.clubHistory.seasonArchive.length - 1].position : null,
           shortlist: s.shortlist, wasAlwaysNormal: !!wasAlwaysNormal,
@@ -329,6 +329,20 @@ export function useMatchResult({
               if (unlock?.attrs && !sq.some(p => p.id === `unlockable_${unlock.id}`)) {
                 setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat([unlock]) : [unlock]);
               }
+            }
+          }
+        }
+        // Latch wonLeagueOnHoliday when title mathematically clinched during holiday
+        if (s.isOnHoliday && !s.wonLeagueOnHoliday) {
+          const sorted = sortStandings(currentLeague.table);
+          const playerIdx = sorted.findIndex(r => currentLeague.teams[r.teamIndex]?.isPlayer);
+          if (playerIdx === 0) {
+            const totalFixturesH = currentLeague.fixtures?.length || DEFAULT_FIXTURE_COUNT;
+            const remainingGames = totalFixturesH - completedMDs;
+            const pointsGap = sorted[0].points - (sorted[1]?.points || 0);
+            // Clinched if lead > max points second place can earn
+            if (remainingGames <= 0 || pointsGap > remainingGames * 3) {
+              s.setWonLeagueOnHoliday(true);
             }
           }
         }

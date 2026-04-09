@@ -371,7 +371,7 @@ export const ACHIEVEMENTS = [
   // === REMAINING GAPS ===
   { id: "swiss_army_knife", name: "Swiss Army Knife", desc: "Have a player learn 3+ positions", icon: "🔪" },
   { id: "identity_crisis", name: "Identity Crisis", desc: "Play a player in neither their natural nor any learned position", icon: "❓" },
-  { id: "full_circle", name: "Full Circle", desc: "A released youth returns as a prodigal and wins the league with you", icon: "🔄" },
+  { id: "full_circle", name: "Full Circle", desc: "Win the league with a prodigal player in your squad", icon: "🔄" },
   { id: "save_scummer", name: "Save Scummer", desc: "Load a save for the first time", icon: "💾" },
   { id: "season_10", name: "Season 10", desc: "Complete 10 seasons", icon: "🔟" },
 

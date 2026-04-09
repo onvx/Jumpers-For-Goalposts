@@ -48,7 +48,7 @@ export function checkAchievements(state) {
     playerInjuryCount, benchStreaks, highScoringMatches, trialHistory,
     playerSeasonStats, clubHistory, consecutiveScoreless, formation: stateFormation, slotAssignments: stateSlotAssignments,
     usedTicketTypes, formationsWonWith, freeAgentSignings, scoutedPlayers, transferFocus, clubRelationships,
-    isOnHoliday, holidayMatchesThisSeason, doubleTrainingWeek, testimonialPlayer,
+    isOnHoliday, wonLeagueOnHoliday, holidayMatchesThisSeason, doubleTrainingWeek, testimonialPlayer,
     seasonNumber, lastSeasonPosition,
     shortlist, wasAlwaysNormal, fastMatchesThisSeason, twelfthManActive, gkCleanSheets,
     totalShortlisted, achievableIds } = state;
@@ -1006,12 +1006,9 @@ export function checkAchievements(state) {
   }
 
   // Absentee Landlord — win the league while on holiday
-  if (lastMatchResult && league?.table && matchweekIndex >= (league.fixtures?.length || 18)) {
-    if (!unlocked.has("absentee_landlord") && isOnHoliday) {
-      const sorted = sortStandings(league.table);
-      const playerIdx = sorted.findIndex(r => league.teams[r.teamIndex]?.isPlayer);
-      if (playerIdx === 0) newUnlocks.push("absentee_landlord");
-    }
+  // Uses latched flag set by useMatchResult when title clinched during holiday
+  if (!unlocked.has("absentee_landlord") && wonLeagueOnHoliday) {
+    newUnlocks.push("absentee_landlord");
   }
 
   // === HOLIDAY MODE ===

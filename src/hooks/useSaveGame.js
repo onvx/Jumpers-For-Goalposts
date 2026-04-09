@@ -6,7 +6,7 @@ import { POSITION_TYPES, TOTAL_SLOTS } from "../data/positions.js";
 import { LEAGUE_DEFS, NUM_TIERS, AI_BENCH_POSITIONS } from "../data/leagues.js";
 import { STORY_ARCS } from "../data/storyArcs.js";
 import { STARTER_PACKS } from "../data/cigPacks.js";
-import { UNLOCKABLE_PLAYERS } from "../data/achievements.js";
+import { UNLOCKABLE_PLAYERS, TIER_WIN_ACHS } from "../data/achievements.js";
 import { DEFAULT_FORMATION } from "../data/formations.js";
 import { getModifier } from "../data/leagueModifiers.js";
 import { rand, getOverall } from "../utils/calc.js";
@@ -15,6 +15,7 @@ import { initStoryArcs } from "../utils/arcs.js";
 import { simulateMatchweek } from "../utils/match.js";
 import { normalizeRosters, initLeague, initAILeague, buildSeasonCalendar, computeCalendarIndex, initCup } from "../utils/league.js";
 import { seedMessageSeq, getMessageSeq } from "../utils/messageUtils.js";
+import { checkAchievements } from "../utils/achievements.js";
 
 /**
  * Extracts save/load/export/import/delete/sacking callbacks.
@@ -126,6 +127,7 @@ export function useSaveGame({
         formationsWonWith: s.formationsWonWith,
         freeAgentSignings: s.freeAgentSignings,
         holidayMatchesThisSeason: s.holidayMatchesThisSeason,
+        wonLeagueOnHoliday: s.wonLeagueOnHoliday,
         fastMatchesThisSeason: s.fastMatchesThisSeason,
         gkCleanSheets: s.gkCleanSheets,
         totalShortlisted: s.totalShortlisted,
@@ -613,6 +615,7 @@ export function useSaveGame({
       store.setFormationsWonWith(s.formationsWonWith || new Set());
       store.setFreeAgentSignings(s.freeAgentSignings || 0);
       store.setHolidayMatchesThisSeason(s.holidayMatchesThisSeason || 0);
+      store.setWonLeagueOnHoliday(s.wonLeagueOnHoliday || false);
       store.setFastMatchesThisSeason(s.fastMatchesThisSeason || 0);
       store.setGkCleanSheets(s.gkCleanSheets || {});
       store.setTotalShortlisted(s.totalShortlisted || 0);
@@ -636,6 +639,147 @@ export function useSaveGame({
         (s.squad || []).forEach(p => { snap[`${p.name}|${p.position}`] = getOverall(p); });
         store.setOvrHistory([{ w: (s.calendarIndex || 0) + 1, s: s.seasonNumber || 1, p: snap }]);
       }
+      // Migration: retroactive achievement catch-up
+      // Re-run checkAchievements against loaded state so that achievements
+      // the player already satisfied (but weren't recorded under the old
+      // pack-gated system) get banked silently.
+      if (migratedSquad.length > 0) {
+        const loadedUnlocked = s.unlockedAchievements || new Set();
+        const catchUp = checkAchievements({
+          squad: migratedSquad, unlocked: loadedUnlocked,
+          lastMatchResult: null, league: s.league, weekGains: null,
+          startingXI: s.startingXI, bench: s.bench,
+          matchweekIndex: s.matchweekIndex || 0,
+          seasonCards: s.seasonCards || 0,
+          totalGains: s.totalGains || 0, totalMatches: s.totalMatches || 0,
+          seasonCleanSheets: s.seasonCleanSheets || 0,
+          seasonGoalsFor: s.seasonGoalsFor || 0,
+          seasonDraws: s.seasonDraws || 0,
+          consecutiveUnbeaten: s.consecutiveUnbeaten || 0,
+          consecutiveLosses: s.consecutiveLosses || 0,
+          consecutiveWins: s.consecutiveWins || 0,
+          consecutiveScoreless: s.consecutiveScoreless || 0,
+          prevStartingXI: s.prevStartingXI || null,
+          motmTracker: s.motmTracker || {},
+          stScoredConsecutive: s.stScoredConsecutive || 0,
+          playerRatingTracker: _loadedTracker,
+          beatenTeams: s.beatenTeams || new Set(),
+          halfwayPosition: s.halfwayPosition ?? null,
+          seasonHomeUnbeaten: s.seasonHomeUnbeaten !== false,
+          seasonAwayWins: s.seasonAwayWins || 0,
+          seasonAwayGames: s.seasonAwayGames || 0,
+          leagueWins: s.leagueWins || 0,
+          wasAlwaysFast: false, wasAlwaysNormal: false,
+          recoveries: [], recentScorelines: s.recentScorelines || [],
+          secondPlaceFinishes: s.secondPlaceFinishes || 0,
+          playerInjuryCount: s.playerInjuryCount || {},
+          benchStreaks: s.benchStreaks || {},
+          highScoringMatches: s.highScoringMatches || 0,
+          trialHistory: s.trialHistory || [],
+          playerSeasonStats: s.playerSeasonStats || {},
+          clubHistory: s.clubHistory || null,
+          formation: s.formation || null,
+          slotAssignments: s.slotAssignments || null,
+          usedTicketTypes: s.usedTicketTypes || new Set(),
+          formationsWonWith: s.formationsWonWith || new Set(),
+          freeAgentSignings: s.freeAgentSignings || 0,
+          scoutedPlayers: s.scoutedPlayers || {},
+          transferFocus: s.transferFocus || [],
+          clubRelationships: s.clubRelationships || {},
+          isOnHoliday: false,
+          wonLeagueOnHoliday: s.wonLeagueOnHoliday || false,
+          holidayMatchesThisSeason: s.holidayMatchesThisSeason || 0,
+          doubleTrainingWeek: false, testimonialPlayer: null,
+          seasonNumber: s.seasonNumber || 1,
+          lastSeasonPosition: s.lastSeasonPosition ?? null,
+          shortlist: s.shortlist || [],
+          fastMatchesThisSeason: s.fastMatchesThisSeason || 0,
+          twelfthManActive: false,
+          gkCleanSheets: s.gkCleanSheets || {},
+          totalShortlisted: s.totalShortlisted || 0,
+        });
+        if (catchUp.length > 0) {
+          const merged = new Set(loadedUnlocked);
+          catchUp.forEach(id => merged.add(id));
+          s.unlockedAchievements = merged;
+          store.setUnlockedAchievements(merged);
+        }
+      }
+
+      // Migration: retroactive history-based achievement reconstruction
+      // Reconstruct season-end and career achievements from clubHistory
+      // that checkAchievements() can't detect (promotion, relegation, tier
+      // wins, cup wins, career milestones, etc.)
+      {
+        const u = s.unlockedAchievements || new Set();
+        const historyAchs = [];
+        const archive = s.clubHistory?.seasonArchive || [];
+        const cupHist = s.clubHistory?.cupHistory || [];
+
+        // Season milestones
+        if ((s.seasonNumber || 1) >= 5 && !u.has("season_5")) historyAchs.push("season_5");
+        if ((s.seasonNumber || 1) >= 10 && !u.has("season_10")) historyAchs.push("season_10");
+
+        // Tier wins from archive
+        const titlesWon = new Set();
+        archive.forEach(entry => {
+          if (entry.position === 1 && entry.tier) {
+            titlesWon.add(entry.tier);
+            const tierAch = TIER_WIN_ACHS[entry.tier];
+            if (tierAch && !u.has(tierAch)) historyAchs.push(tierAch);
+          }
+          if (entry.result === "promoted" && !u.has("promoted")) historyAchs.push("promoted");
+          if (entry.result === "relegated" && !u.has("relegated")) historyAchs.push("relegated");
+        });
+        if (!u.has("champion") && titlesWon.size > 0) historyAchs.push("champion");
+        if (!u.has("tinpot_treble") && titlesWon.size >= 3) historyAchs.push("tinpot_treble");
+        if (!u.has("dynasty") && (s.leagueWins || 0) >= 3) historyAchs.push("dynasty");
+
+        // Promised Land — reached tier 5 or above
+        const lowestTier = Math.min(s.leagueTier || 11, ...archive.map(e => e.tier || 11));
+        if (lowestTier <= 5 && !u.has("promised_land")) historyAchs.push("promised_land");
+
+        // from_the_bottom — won a league at Federation (tier 5) or above
+        if (!u.has("from_the_bottom")) {
+          const wonAtHighTier = archive.some(e => e.position === 1 && e.tier && e.tier <= 5);
+          if (wonAtHighTier) historyAchs.push("from_the_bottom");
+        }
+
+        // the_double — won league and cup in the same season
+        if (!u.has("the_double")) {
+          const leagueWinSeasons = new Set(archive.filter(e => e.position === 1).map(e => e.season));
+          const cupWinSeasons = new Set(cupHist.filter(c => c.winnerIsPlayer).map(c => c.season));
+          for (const s2 of leagueWinSeasons) {
+            if (cupWinSeasons.has(s2)) { historyAchs.push("the_double"); break; }
+          }
+        }
+
+        // Cup wins from cupHistory
+        const cupWins = cupHist.filter(c => c.winnerIsPlayer);
+        if (cupWins.length > 0 && !u.has("cup_winner")) historyAchs.push("cup_winner");
+        const distinctCups = new Set(cupWins.map(c => c.cupName));
+        if (distinctCups.size >= 2 && !u.has("cup_collector")) historyAchs.push("cup_collector");
+        // Specific cup wins
+        const cupNameMap = { "Sub Money": "win_sub_money", "Clubman": "win_clubman", "Global": "win_global", "Ultimate": "win_ultimate" };
+        cupWins.forEach(c => {
+          const achId = Object.entries(cupNameMap).find(([name]) => c.cupName?.includes(name))?.[1];
+          if (achId && !u.has(achId)) historyAchs.push(achId);
+        });
+
+        // Career apps/goals from playerCareers
+        const careers = s.clubHistory?.playerCareers || {};
+        if (!u.has("fifty_not_out") && Object.values(careers).some(c => (c.apps || 0) >= 50)) historyAchs.push("fifty_not_out");
+        if (!u.has("century_club") && Object.values(careers).some(c => (c.goals || 0) >= 100)) historyAchs.push("century_club");
+        if (!u.has("golden_boot") && Object.values(careers).some(c => c.seasons?.some(ss => (ss.goals || 0) >= 20))) historyAchs.push("golden_boot");
+
+        if (historyAchs.length > 0) {
+          const merged = new Set(u);
+          historyAchs.forEach(id => merged.add(id));
+          s.unlockedAchievements = merged;
+          store.setUnlockedAchievements(merged);
+        }
+      }
+
       // Migration: grant missing player unlocks
       if (s.unlockedAchievements && s.squad) {
         const currentSquadIds = new Set((s.squad || []).map(p => p.id));
