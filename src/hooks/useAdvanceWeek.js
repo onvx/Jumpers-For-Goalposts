@@ -854,6 +854,15 @@ export function useAdvanceWeek({
       weekRecoveriesRef.current = weekRecoveries;
       revealedInjuryCount.current = 0;
 
+      // Position-learning achievements (normally fired by GainPopup which is skipped on holiday)
+      const posLearnedEvents = (weekProgress || []).filter(e => e.type === "positionLearned");
+      posLearnedEvents.forEach(pl => {
+        if (!unlockedAchievements.has("shape_shifter")) tryUnlockAchievement("shape_shifter");
+        const plPlayer = newSquad.find(p => p.name === pl.playerName);
+        if (!unlockedAchievements.has("new_tricks") && plPlayer && plPlayer.age >= 30) tryUnlockAchievement("new_tricks");
+        if (!unlockedAchievements.has("sick_as_a_parrot") && pl.learnedPosition === "GK" && pl.playerPosition !== "GK") tryUnlockAchievement("sick_as_a_parrot");
+      });
+
       // Snapshot OVR for progress chart
       const ovrSnap = {};
       newSquad.forEach(p => {
