@@ -5628,13 +5628,13 @@ function FruitCigs() {
           const retirees = useGameStore.getState().squad.filter(p => retiringPlayers.has(p.id));
           // Save squad snapshot before retirements for season archiving
           const preRetirementSquad = [...useGameStore.getState().squad];  // Use ref!
-          // Testimonial achievement — retiring player with 30+ apps
+          // Testimonial achievement — retiring player with 30+ career apps
           if (!unlockedAchievements.has("testimonial")) {
             for (const p of retirees) {
-              const stats = playerSeasonStats[p.name];
-              // Check total apps across career (estimate from current season stats)
-              // We use their current season apps — could accumulate over seasons later
-              if (stats && stats.apps >= 30) {
+              const career = clubHistory?.playerCareers?.[p.name];
+              const currentStats = playerSeasonStats[p.name];
+              const careerApps = (career?.apps || 0) + (currentStats?.apps || 0);
+              if (careerApps >= 30) {
                 tryUnlockAchievement("testimonial");
                 break;
               }
