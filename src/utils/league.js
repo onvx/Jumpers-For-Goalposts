@@ -149,9 +149,9 @@ export function collectSeasonEndAchievements({ position, currentTier, moveType, 
     if (newPlayers >= 5) achs.push("new_era");
   }
 
-  // Full Circle — released youth returns as prodigal and wins league
+  // Full Circle — prodigal player wins the league with you
   if (!unlockedAchievements.has("full_circle") && position === 1 && squad) {
-    if (squad.some(p => p.isProdigal && String(p.id).startsWith("youth_"))) {
+    if (squad.some(p => p.isProdigal)) {
       achs.push("full_circle");
     }
   }

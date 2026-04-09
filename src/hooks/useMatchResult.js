@@ -303,7 +303,7 @@ export function useMatchResult({
           slotAssignments: s.slotAssignments,
           usedTicketTypes: s.usedTicketTypes, formationsWonWith: playerWon ? new Set([...s.formationsWonWith, s.formation.map(sl => sl.pos).join("-")]) : s.formationsWonWith,
           freeAgentSignings: s.freeAgentSignings, scoutedPlayers: s.scoutedPlayers, transferFocus: s.transferFocus, clubRelationships: s.clubRelationships,
-          isOnHoliday: s.isOnHoliday, holidayMatchesThisSeason: s.holidayMatchesThisSeason,
+          isOnHoliday: s.isOnHoliday, wonLeagueOnHoliday: s.wonLeagueOnHoliday, holidayMatchesThisSeason: s.holidayMatchesThisSeason,
           testimonialPlayer: s.testimonialPlayer,
           seasonNumber: s.seasonNumber, lastSeasonPosition: s.clubHistory?.seasonArchive?.length > 0 ? s.clubHistory.seasonArchive[s.clubHistory.seasonArchive.length - 1].position : null,
           shortlist: s.shortlist, wasAlwaysNormal: !!wasAlwaysNormal,
@@ -331,6 +331,12 @@ export function useMatchResult({
               }
             }
           }
+        }
+        // Latch wonLeagueOnHoliday when title clinched during holiday
+        if (s.isOnHoliday && completedMDs >= (currentLeague.fixtures?.length || DEFAULT_FIXTURE_COUNT)) {
+          const sorted = sortStandings(currentLeague.table);
+          const playerIdx = sorted.findIndex(r => currentLeague.teams[r.teamIndex]?.isPlayer);
+          if (playerIdx === 0) s.setWonLeagueOnHoliday(true);
         }
       } catch(err) {
         console.error("Achievement check error:", err, err.stack);

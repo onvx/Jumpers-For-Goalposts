@@ -126,6 +126,7 @@ export function useSaveGame({
         formationsWonWith: s.formationsWonWith,
         freeAgentSignings: s.freeAgentSignings,
         holidayMatchesThisSeason: s.holidayMatchesThisSeason,
+        wonLeagueOnHoliday: s.wonLeagueOnHoliday,
         fastMatchesThisSeason: s.fastMatchesThisSeason,
         gkCleanSheets: s.gkCleanSheets,
         totalShortlisted: s.totalShortlisted,
@@ -613,6 +614,7 @@ export function useSaveGame({
       store.setFormationsWonWith(s.formationsWonWith || new Set());
       store.setFreeAgentSignings(s.freeAgentSignings || 0);
       store.setHolidayMatchesThisSeason(s.holidayMatchesThisSeason || 0);
+      store.setWonLeagueOnHoliday(s.wonLeagueOnHoliday || false);
       store.setFastMatchesThisSeason(s.fastMatchesThisSeason || 0);
       store.setGkCleanSheets(s.gkCleanSheets || {});
       store.setTotalShortlisted(s.totalShortlisted || 0);

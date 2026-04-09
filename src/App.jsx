@@ -5322,7 +5322,7 @@ function FruitCigs() {
                 formation, slotAssignments,
                 usedTicketTypes, formationsWonWith: cupPlayerWon ? new Set([...formationsWonWith, formation.map(s => s.pos).join("-")]) : formationsWonWith,
                 freeAgentSignings, scoutedPlayers, transferFocus, clubRelationships,
-                isOnHoliday, holidayMatchesThisSeason,
+                isOnHoliday, wonLeagueOnHoliday: useGameStore.getState().wonLeagueOnHoliday, holidayMatchesThisSeason,
                 testimonialPlayer: useGameStore.getState().testimonialPlayer,
                 seasonNumber, lastSeasonPosition: clubHistory?.seasonArchive?.length > 0 ? clubHistory.seasonArchive[clubHistory.seasonArchive.length - 1].position : null,
                 shortlist, wasAlwaysNormal: !!cupWasAlwaysNormal,
@@ -5839,6 +5839,7 @@ function FruitCigs() {
             setBreakoutsThisSeason(new Map());
             setPrevStartingXI(null);
             setMotmTracker({});
+            useGameStore.getState().setWonLeagueOnHoliday(false);
             // Sentiment partial carry-over on prestige reset
             setFanSentiment(Math.round(useGameStore.getState().fanSentiment * 0.5 + 25));
             setBoardSentiment(Math.round(useGameStore.getState().boardSentiment * 0.5 + 25));
@@ -6466,6 +6467,7 @@ function FruitCigs() {
               setHighScoringMatches(0);
               setFormationsWonWith(new Set());
               setHolidayMatchesThisSeason(0);
+              useGameStore.getState().setWonLeagueOnHoliday(false);
               setFastMatchesThisSeason(0);
               setGkCleanSheets({});
               // Save current squad IDs for New Era achievement detection next season

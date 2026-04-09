@@ -104,6 +104,7 @@ export const useGameStore = create((set, get) => ({
   processing: false,
   pendingSquad: null,
   isOnHoliday: false,
+  wonLeagueOnHoliday: false,
 
   // === Season / summer ===
   summerPhase: null,
@@ -287,6 +288,7 @@ export const useGameStore = create((set, get) => ({
   setProcessing: (val) => set(s => ({ processing: typeof val === "function" ? val(s.processing) : val })),
   setPendingSquad: (val) => set(s => ({ pendingSquad: typeof val === "function" ? val(s.pendingSquad) : val })),
   setIsOnHoliday: (val) => set({ isOnHoliday: val }),
+  setWonLeagueOnHoliday: (val) => set({ wonLeagueOnHoliday: val }),
 
   setSummerPhase: (val) => set({ summerPhase: val }),
 
@@ -430,6 +432,7 @@ export const useGameStore = create((set, get) => ({
     processing: false,
     pendingSquad: null,
     isOnHoliday: false,
+    wonLeagueOnHoliday: false,
     summerPhase: null,
     fanSentiment: 50,
     boardSentiment: 50,
@@ -559,6 +562,7 @@ export const useGameStore = create((set, get) => ({
     processing: false,
     pendingSquad: null,
     isOnHoliday: false,
+    wonLeagueOnHoliday: false,
     summerPhase: null,
     boardWarnCount: 0,
     ultimatumActive: false,
