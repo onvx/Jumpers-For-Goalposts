@@ -28,6 +28,7 @@ import { useMatchResult } from "./hooks/useMatchResult.js";
 import { useGainPopupHandler } from "./hooks/useGainPopupHandler.js";
 import { useAdvanceWeek } from "./hooks/useAdvanceWeek.js";
 import { useSeasonFlow } from "./hooks/useSeasonFlow.js";
+import { useKeyboard } from "./hooks/useKeyboard.js";
 import { OvrLevelUpCelebration } from "./components/ui/OvrLevelUpCelebration.jsx";
 import { HolidayOverlay } from "./components/ui/HolidayOverlay.jsx";
 import { WeekTransitionOverlay } from "./components/ui/WeekTransitionOverlay.jsx";
@@ -1288,6 +1289,12 @@ function FruitCigs() {
   });
   advanceWeekRef.current = advanceWeek;
 
+  // Clear all tab views (return to Home)
+  const clearAllTabs = useCallback(() => {
+    setShowAchievements(false); setShowTable(false); setShowCalendar(false);
+    setShowCup(false); setShowTransfers(false); setShowLegends(false); setShowSquad(false);
+  }, []);
+
   // Shared helper: update playerMatchLog after any match (league, cup, or holiday)
   const updateMatchLog = (matchResult, isPlayerHome, xiIds, isCup, leagueRef) => {
     const side = isPlayerHome ? "home" : "away";
@@ -1478,6 +1485,23 @@ function FruitCigs() {
     setGains, setOvrLevelUps, setRecentOvrLevelUps, setInjuryWarning,
     tryUnlockAchievement,
     pendingTrialAction, aiPredictionRef,
+  });
+
+  // Keyboard shortcuts for desktop play
+  useKeyboard({
+    showSquad, showCalendar, showTable, showCup, showTransfers, showLegends, showAchievements,
+    setShowSquad, setShowCalendar, setShowTable, setShowCup, setShowTransfers, setShowLegends, setShowAchievements,
+    clearAllTabs,
+    setInitialBootRoomTab, setBootRoomKey, setLeagueKey, setCupKey, setTransfersKey, setClubKey, setCabinetKey,
+    setLastSeenAchievementCount, unlockedAchievements,
+    cup,
+    processing, matchPending, summerPhase, gains, matchResult, cupMatchResult,
+    selectedPlayer, pendingPlayerUnlock, ovrLevelUps, showBreakoutPopup,
+    isOnHoliday: useGameStore.getState().isOnHoliday,
+    advanceWeek, advanceSummer,
+    processGainsDone,
+    seasonCalendar, calendarIndex, startingXI,
+    setShowLineupWarning,
   });
 
   const assignAllGeneral = useCallback(() => {
@@ -2289,7 +2313,7 @@ function FruitCigs() {
 
       {/* Nav bar — persistent across all tabs */}
       {(() => {
-        const clearAll = () => { setShowAchievements(false); setShowTable(false); setShowCalendar(false); setShowCup(false); setShowTransfers(false); setShowLegends(false); setShowSquad(false); };
+        const clearAll = clearAllTabs;
         const isHome = !showSquad && !showTable && !showCalendar && !showCup && !showTransfers && !showLegends && !showAchievements;
         const navBtn = (active, color, label, onClick) => ({
           background: active ? `${color}22` : "rgba(30, 41, 59, 0.5)",
