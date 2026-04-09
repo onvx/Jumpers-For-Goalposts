@@ -15,6 +15,7 @@ import { initStoryArcs } from "../utils/arcs.js";
 import { simulateMatchweek } from "../utils/match.js";
 import { normalizeRosters, initLeague, initAILeague, buildSeasonCalendar, computeCalendarIndex, initCup } from "../utils/league.js";
 import { seedMessageSeq, getMessageSeq } from "../utils/messageUtils.js";
+import { checkAchievements } from "../utils/achievements.js";
 
 /**
  * Extracts save/load/export/import/delete/sacking callbacks.
@@ -638,6 +639,73 @@ export function useSaveGame({
         (s.squad || []).forEach(p => { snap[`${p.name}|${p.position}`] = getOverall(p); });
         store.setOvrHistory([{ w: (s.calendarIndex || 0) + 1, s: s.seasonNumber || 1, p: snap }]);
       }
+      // Migration: retroactive achievement catch-up
+      // Re-run checkAchievements against loaded state so that achievements
+      // the player already satisfied (but weren't recorded under the old
+      // pack-gated system) get banked silently.
+      if (migratedSquad.length > 0) {
+        const loadedUnlocked = s.unlockedAchievements || new Set();
+        const catchUp = checkAchievements({
+          squad: migratedSquad, unlocked: loadedUnlocked,
+          lastMatchResult: null, league: s.league, weekGains: null,
+          startingXI: s.startingXI, bench: s.bench,
+          matchweekIndex: s.matchweekIndex || 0,
+          seasonCards: s.seasonCards || 0,
+          totalGains: s.totalGains || 0, totalMatches: s.totalMatches || 0,
+          seasonCleanSheets: s.seasonCleanSheets || 0,
+          seasonGoalsFor: s.seasonGoalsFor || 0,
+          seasonDraws: s.seasonDraws || 0,
+          consecutiveUnbeaten: s.consecutiveUnbeaten || 0,
+          consecutiveLosses: s.consecutiveLosses || 0,
+          consecutiveWins: s.consecutiveWins || 0,
+          consecutiveScoreless: s.consecutiveScoreless || 0,
+          prevStartingXI: s.prevStartingXI || null,
+          motmTracker: s.motmTracker || {},
+          stScoredConsecutive: s.stScoredConsecutive || 0,
+          playerRatingTracker: _loadedTracker,
+          beatenTeams: s.beatenTeams || new Set(),
+          halfwayPosition: s.halfwayPosition ?? null,
+          seasonHomeUnbeaten: s.seasonHomeUnbeaten !== false,
+          seasonAwayWins: s.seasonAwayWins || 0,
+          seasonAwayGames: s.seasonAwayGames || 0,
+          leagueWins: s.leagueWins || 0,
+          wasAlwaysFast: false, wasAlwaysNormal: false,
+          recoveries: [], recentScorelines: s.recentScorelines || [],
+          secondPlaceFinishes: s.secondPlaceFinishes || 0,
+          playerInjuryCount: s.playerInjuryCount || {},
+          benchStreaks: s.benchStreaks || {},
+          highScoringMatches: s.highScoringMatches || 0,
+          trialHistory: s.trialHistory || [],
+          playerSeasonStats: s.playerSeasonStats || {},
+          clubHistory: s.clubHistory || null,
+          formation: s.formation || null,
+          slotAssignments: s.slotAssignments || null,
+          usedTicketTypes: s.usedTicketTypes || new Set(),
+          formationsWonWith: s.formationsWonWith || new Set(),
+          freeAgentSignings: s.freeAgentSignings || 0,
+          scoutedPlayers: s.scoutedPlayers || {},
+          transferFocus: s.transferFocus || [],
+          clubRelationships: s.clubRelationships || {},
+          isOnHoliday: false,
+          wonLeagueOnHoliday: s.wonLeagueOnHoliday || false,
+          holidayMatchesThisSeason: s.holidayMatchesThisSeason || 0,
+          doubleTrainingWeek: false, testimonialPlayer: null,
+          seasonNumber: s.seasonNumber || 1,
+          lastSeasonPosition: s.lastSeasonPosition ?? null,
+          shortlist: s.shortlist || [],
+          fastMatchesThisSeason: s.fastMatchesThisSeason || 0,
+          twelfthManActive: false,
+          gkCleanSheets: s.gkCleanSheets || {},
+          totalShortlisted: s.totalShortlisted || 0,
+        });
+        if (catchUp.length > 0) {
+          const merged = new Set(loadedUnlocked);
+          catchUp.forEach(id => merged.add(id));
+          s.unlockedAchievements = merged;
+          store.setUnlockedAchievements(merged);
+        }
+      }
+
       // Migration: grant missing player unlocks
       if (s.unlockedAchievements && s.squad) {
         const currentSquadIds = new Set((s.squad || []).map(p => p.id));
