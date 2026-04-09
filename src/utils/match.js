@@ -546,19 +546,51 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
     return maxMin;
   };
 
+  // Track in-match goal counts per player for hat-trick commentary
+  const matchGoalCounts = {};
+
   const addGoalEvents = (team, side, count, minMin, maxMin) => {
     for (let i = 0; i < count; i++) {
       const min = pickUniqueGoalMinute(team, minMin, maxMin);
       goalMinutes.push(min);
       const scorer = pickScorer(team) ?? "Unknown";
       const assister = pickAssister(team, scorer);
+      const scorerKey = `${side}|${scorer}`;
+      matchGoalCounts[scorerKey] = (matchGoalCounts[scorerKey] || 0) + 1;
+
+      const baseLine = assister
+        ? `⚽ GOAL! ${scorer} scores for ${team.name}! (Assist: ${assister})`
+        : `⚽ GOAL! ${scorer} scores for ${team.name}!`;
+
+      // Context-aware commentary for player team goals
+      let contextLine = "";
+      if (team.isPlayer && modifiers.playerSeasonStats) {
+        const stats = modifiers.playerSeasonStats[scorer];
+        const careers = modifiers.playerCareers;
+        const careerApps = (careers?.[scorer]?.apps || 0) + (stats?.apps || 0);
+        const seasonGoals = (stats?.goals || 0) + matchGoalCounts[scorerKey];
+        const matchGoals = matchGoalCounts[scorerKey];
+        const squadPlayer = modifiers.playerSquad?.find(p => p.name === scorer);
+        let consecutiveScoring = 0;
+        const log = modifiers.playerMatchLog?.[squadPlayer?.id];
+        if (log) { for (let li = log.length - 1; li >= 0; li--) { if (log[li].goals > 0) consecutiveScoring++; else break; } }
+
+        if (matchGoals === 3) contextLine = " Hat-trick hero! 🎩";
+        else if (matchGoals === 4) contextLine = " FOUR goals! Unstoppable!";
+        else if (careerApps === 0 && matchGoals === 1) contextLine = " A goal on his debut! 🌟";
+        else if (squadPlayer?.isYouthIntake && matchGoals === 1 && seasonGoals <= 1) contextLine = " Academy graduate opens his account! 🌱";
+        else if (squadPlayer?.isYouthIntake && matchGoals === 1) contextLine = " Homegrown talent on the scoresheet!";
+        else if (seasonGoals === 10) contextLine = " That's 10 for the season!";
+        else if (seasonGoals === 20) contextLine = " 20 goals this season! Golden Boot form!";
+        else if (seasonGoals === 50) contextLine = " FIFTY goals in a season! Incredible!";
+        else if (consecutiveScoring >= 3 && matchGoals === 1) contextLine = ` Scoring in ${consecutiveScoring + 1} games running — red-hot form! 🔥`;
+      }
+
       events.push({
         minute: min, type: "goal", side,
         player: scorer,
         assister: assister || undefined,
-        text: assister
-          ? `⚽ GOAL! ${scorer} scores for ${team.name}! (Assist: ${assister})`
-          : `⚽ GOAL! ${scorer} scores for ${team.name}!`,
+        text: baseLine + contextLine,
         flash: true, flashColor: team.isPlayer ? MATCH.FLASH_PLAYER : MATCH.FLASH_OPP,
       });
     }

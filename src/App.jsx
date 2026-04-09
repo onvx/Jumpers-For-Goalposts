@@ -1034,9 +1034,10 @@ function FruitCigs() {
     const updatedLeague = { ...useGameStore.getState().league, table: useGameStore.getState().league.table.map(r => ({ ...r })) };
     const mod = getModifier(leagueTier);
     const oopMult = formation ? getTeamOOPMultiplier(startingXI, formation, useGameStore.getState().squad, slotAssignments) : 1.0;
+    const commentaryCtx = { playerSeasonStats, playerMatchLog, playerSquad: useGameStore.getState().squad, playerCareers: clubHistory?.playerCareers };
     const newResult = simulateMatch(
       updatedLeague.teams[fixture.home], updatedLeague.teams[fixture.away],
-      startingXI, bench, false, oopMult, 0, talismanIdRef.current, 0, mod
+      startingXI, bench, false, oopMult, 0, talismanIdRef.current, 0, { ...mod, ...commentaryCtx }
     );
     // Adjust league table: subtract old result, add new
     const homeRow = updatedLeague.table.find(r => r.teamIndex === fixture.home);
@@ -2183,7 +2184,8 @@ function FruitCigs() {
                       const playerTeam = { name: teamName, color: C.green, squad: playerFive, isPlayer: true, trait: null };
                       const oppTeam = { ..._miniOpp, squad: aiFive };
                       const miniMod = getModifier(leagueTier);
-                      const result = simulateMatch(playerTeam, oppTeam, _fiveIds, [], true, 1.0, 0, null, 0, miniMod);
+                      const miniCtx = { playerSeasonStats, playerMatchLog, playerSquad: squad, playerCareers: clubHistory?.playerCareers };
+                      const result = simulateMatch(playerTeam, oppTeam, _fiveIds, [], true, 1.0, 0, null, 0, { ...miniMod, ...miniCtx });
                       let penalties = null;
                       if ((_miniRound === "final" || _miniRound === "third_place") && result.homeGoals === result.awayGoals) {
                         penalties = generatePenaltyShootout(playerTeam, oppTeam, result.events, _fiveIds, [], miniMod);
@@ -2527,7 +2529,8 @@ function FruitCigs() {
                       const awayT = isPlayerHome ? awayTeam : playerTeam;
                       const dynOOPMult = formation ? getTeamOOPMultiplier(currentXI, formation, freshSquad, slotAssignments) : 1.0;
                       const dynMod = getModifier(leagueTier);
-                      const result = simulateMatch(homeT, awayT, currentXI, currentBench, true, dynOOPMult, 0, talismanIdRef.current, 0, dynMod);
+                      const dynCtx = { playerSeasonStats, playerMatchLog, playerSquad: freshSquad, playerCareers: clubHistory?.playerCareers };
+                      const result = simulateMatch(homeT, awayT, currentXI, currentBench, true, dynOOPMult, 0, talismanIdRef.current, 0, { ...dynMod, ...dynCtx });
                       let penalties = null;
                       if (result.homeGoals === result.awayGoals) {
                         penalties = generatePenaltyShootout(homeT, awayT, result.events, currentXI, currentBench, dynMod);
@@ -2663,7 +2666,8 @@ function FruitCigs() {
                       const cupOOPMult = formation ? getTeamOOPMultiplier(currentXI, formation, freshSquad, slotAssignments) : 1.0;
                       const cup12thMan = (isPlayerHome && !isNeutral && useGameStore.getState().twelfthManActive) ? 0.15 : 0;
                       const cupFanMod = isPlayerHome && !isNeutral ? (useGameStore.getState().fanSentiment > 75 ? 0.03 : useGameStore.getState().fanSentiment < 25 ? -0.03 : 0) : 0;
-                      const result = simulateMatch(homeT, awayT, currentXI, currentBench, isNeutral, cupOOPMult, cup12thMan, talismanIdRef.current, cupFanMod);
+                      const cupCommentaryCtx = { playerSeasonStats, playerMatchLog, playerSquad: freshSquad, playerCareers: clubHistory?.playerCareers };
+                      const result = simulateMatch(homeT, awayT, currentXI, currentBench, isNeutral, cupOOPMult, cup12thMan, talismanIdRef.current, cupFanMod, cupCommentaryCtx);
                       if (cup12thMan > 0) setTwelfthManActive(false);
                       let penalties = null;
                       if (result.homeGoals === result.awayGoals) {
@@ -3406,7 +3410,8 @@ function FruitCigs() {
                 const cupOOPMult = formation ? getTeamOOPMultiplier(currentXI, formation, squad, slotAssignments) : 1.0;
                 const cup12thMan2 = (isPlayerHome && !isNeutral && useGameStore.getState().twelfthManActive) ? 0.15 : 0;
                 const cup2FanMod = isPlayerHome && !isNeutral ? (useGameStore.getState().fanSentiment > 75 ? 0.03 : useGameStore.getState().fanSentiment < 25 ? -0.03 : 0) : 0;
-                const result = simulateMatch(homeT, awayT, currentXI, currentBench, isNeutral, cupOOPMult, cup12thMan2, talismanIdRef.current, cup2FanMod);
+                const cup2Ctx = { playerSeasonStats, playerMatchLog, playerSquad: squad, playerCareers: clubHistory?.playerCareers };
+                const result = simulateMatch(homeT, awayT, currentXI, currentBench, isNeutral, cupOOPMult, cup12thMan2, talismanIdRef.current, cup2FanMod, cup2Ctx);
                 if (cup12thMan2 > 0) setTwelfthManActive(false);
                 let penalties = null;
                 if (result.homeGoals === result.awayGoals) {
@@ -3448,7 +3453,8 @@ function FruitCigs() {
                 const awayT = isPlayerHome ? awayTeam : playerTeam;
                 const dynOOPMult = formation ? getTeamOOPMultiplier(currentXI, formation, squad, slotAssignments) : 1.0;
                 const dynMod = getModifier(leagueTier);
-                const result = simulateMatch(homeT, awayT, currentXI, currentBench, true, dynOOPMult, 0, talismanIdRef.current, 0, dynMod);
+                const dynCtx2 = { playerSeasonStats, playerMatchLog, playerSquad: squad, playerCareers: clubHistory?.playerCareers };
+                const result = simulateMatch(homeT, awayT, currentXI, currentBench, true, dynOOPMult, 0, talismanIdRef.current, 0, { ...dynMod, ...dynCtx2 });
                 let penalties = null;
                 if (result.homeGoals === result.awayGoals) {
                   penalties = generatePenaltyShootout(homeT, awayT, result.events, currentXI, currentBench, dynMod);
