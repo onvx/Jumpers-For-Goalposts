@@ -10,6 +10,7 @@ import { generateFreeAgent, getOvrCap } from "../utils/player.js";
 import { getArcById, checkArcCond, getStepNarrative, processArcCompletion, resolveSeasonEndArcs } from "../utils/arcs.js";
 import { sortStandings, collectSeasonEndAchievements, processSeasonSwaps, initLeagueRosters, advanceCupRound, buildNextCupRound } from "../utils/league.js";
 import { checkAchievements } from "../utils/achievements.js";
+import { PLAYER_UNLOCK_ACHIEVEMENTS, UNLOCKABLE_PLAYERS } from "../data/achievements.js";
 import { createInboxMessage } from "../utils/messageUtils.js";
 import { BGM } from "../utils/sfx.js";
 
@@ -33,6 +34,7 @@ export function useMatchResult({
   aiPredictionRef,
   weekRecoveriesRef,
   achievableIdsRef,
+  setPendingPlayerUnlock,
 }) {
   const processMatchDone = useCallback((matchResult, wasAlwaysFast, wasAlwaysNormal) => {
     const s = useGameStore.getState();
@@ -133,7 +135,19 @@ export function useMatchResult({
         }, BGM.getCurrentTrackId());
         if (newSeasonUnlocks.length > 0) {
           s.setUnlockedAchievements(prev => { const next = new Set(prev); newSeasonUnlocks.forEach(id => next.add(id)); return next; });
-          setAchievementQueue(prev => { const ex = new Set(prev); const f = newSeasonUnlocks.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+          const toastableS = newSeasonUnlocks.filter(id => achievableIdsRef.current.has(id));
+          if (toastableS.length > 0) {
+            setAchievementQueue(prev => { const ex = new Set(prev); const f = toastableS.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+          }
+          for (const id of newSeasonUnlocks) {
+            if (PLAYER_UNLOCK_ACHIEVEMENTS.has(id)) {
+              const unlock = UNLOCKABLE_PLAYERS.find(u => u.achievementId === id);
+              const sq = useGameStore.getState().squad;
+              if (unlock?.attrs && !sq.some(p => p.id === `unlockable_${unlock.id}`)) {
+                setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat([unlock]) : [unlock]);
+              }
+            }
+          }
         }
         s.setLastSeasonMove(moveType);
         if (moveType === "promoted") { s.setFanSentiment(Math.min(100, s.fanSentiment + 20)); s.setBoardSentiment(Math.min(100, s.boardSentiment + 25)); }
@@ -302,7 +316,21 @@ export function useMatchResult({
         });
         if (newUnlocks.length > 0) {
           s.setUnlockedAchievements(prev => { const next = new Set(prev); newUnlocks.forEach(id => next.add(id)); return next; });
-          setAchievementQueue(prev => { const ex = new Set(prev); const f = newUnlocks.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+          // Toast only for achievements in unlocked packs
+          const toastable = newUnlocks.filter(id => achievableIdsRef.current.has(id));
+          if (toastable.length > 0) {
+            setAchievementQueue(prev => { const ex = new Set(prev); const f = toastable.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+          }
+          // Player unlocks fire immediately regardless of pack
+          for (const id of newUnlocks) {
+            if (PLAYER_UNLOCK_ACHIEVEMENTS.has(id)) {
+              const unlock = UNLOCKABLE_PLAYERS.find(u => u.achievementId === id);
+              const sq = useGameStore.getState().squad;
+              if (unlock?.attrs && !sq.some(p => p.id === `unlockable_${unlock.id}`)) {
+                setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat([unlock]) : [unlock]);
+              }
+            }
+          }
         }
       } catch(err) {
         console.error("Achievement check error:", err, err.stack);

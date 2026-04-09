@@ -328,11 +328,19 @@ function FruitCigs() {
   }, [unlockedPacks]);
   const achievableIdsRef = useRef(achievableIds);
   achievableIdsRef.current = achievableIds;
-  // Helper: only unlock an achievement if its pack is unlocked
+  // Always record achievement. Toast only if pack is unlocked. Player unlock fires immediately.
   const tryUnlockAchievement = useCallback((id) => {
-    if (!achievableIdsRef.current.has(id)) return;
     setUnlockedAchievements(prev => { if (prev.has(id)) return prev; const n = new Set(prev); n.add(id); return n; });
-    setAchievementQueue(prev => prev.includes(id) ? prev : [...prev, id]);
+    if (achievableIdsRef.current.has(id)) {
+      setAchievementQueue(prev => prev.includes(id) ? prev : [...prev, id]);
+    }
+    if (PLAYER_UNLOCK_ACHIEVEMENTS.has(id)) {
+      const unlock = UNLOCKABLE_PLAYERS.find(u => u.achievementId === id);
+      const sq = useGameStore.getState().squad;
+      if (unlock?.attrs && !sq.some(p => p.id === `unlockable_${unlock.id}`)) {
+        setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat([unlock]) : [unlock]);
+      }
+    }
   }, []);
   const [achievementQueue, setAchievementQueue] = useState([]);
   const [packUnlockQueue, setPackUnlockQueue] = useState([]);
@@ -397,26 +405,16 @@ function FruitCigs() {
     }
   }, [unlockedAchievements, unlockedPacks, seasonNumber, leagueTier, prestigeLevel]);
 
-  // Pack completion rewards: player unlocks + 3 random tickets
+  // Pack completion rewards: 3 random tickets (player unlocks now fire on individual achievement)
   const completedPacksRef = useRef(new Set());
   useEffect(() => {
-    const newPlayerUnlocks = [];
     let ticketsToAdd = 0;
     for (const pack of CIG_PACKS) {
       if (!unlockedPacks.has(pack.id)) continue;
       if (completedPacksRef.current.has(pack.id)) continue;
       if (!isPackComplete(pack.id, unlockedAchievements)) continue;
       completedPacksRef.current.add(pack.id);
-      // Award 3 random tickets for every completed pack
       ticketsToAdd += 3;
-      // Check for player unlock achievement in this pack
-      const playerAch = pack.achievementIds.find(achId => PLAYER_UNLOCK_ACHIEVEMENTS.has(achId));
-      if (playerAch) {
-        const unlock = UNLOCKABLE_PLAYERS.find(u => u.achievementId === playerAch);
-        if (unlock && unlock.attrs && !squad.some(p => p.id === `unlockable_${unlock.id}`)) {
-          newPlayerUnlocks.push(unlock);
-        }
-      }
     }
     if (ticketsToAdd > 0) {
       const pool = ARC_TICKET_POOL;
@@ -429,10 +427,7 @@ function FruitCigs() {
         return newTickets;
       });
     }
-    if (newPlayerUnlocks.length > 0) {
-      setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat(newPlayerUnlocks) : newPlayerUnlocks);
-    }
-  }, [unlockedAchievements, unlockedPacks, squad]);
+  }, [unlockedAchievements, unlockedPacks]);
 
   const seasonCalendar = useGameStore(s => s.seasonCalendar);
   const matchweekIndex = useGameStore(s => s.matchweekIndex);
@@ -1476,6 +1471,7 @@ function FruitCigs() {
     setMatchResult, setAchievementQueue,
     tryUnlockAchievement, updateUltimatumProgress, updateMatchLog,
     pendingLeagueRef, cardedPlayerIdsRef, aiPredictionRef, weekRecoveriesRef, achievableIdsRef,
+    setPendingPlayerUnlock,
   });
 
   const { processGainsDone } = useGainPopupHandler({
@@ -2774,7 +2770,7 @@ function FruitCigs() {
                           home: r.home, away: r.away,
                           homeGoals: r.homeGoals, awayGoals: r.awayGoals,
                           goalScorers: (r.events || []).filter(e => e.type === "goal").map(e => ({ name: e.player, assister: e.assister || null, side: e.side, minute: e.minute })),
-                          cardRecipients: (r.events || []).filter(e => e.type === "card" && e.cardPlayer).map(e => ({
+                          cardRecipients: (r.events || []).filter(e => (e.type === "card" || e.type === "red_card") && e.cardPlayer).map(e => ({
                             name: e.cardPlayer,
                             teamIdx: e.cardTeamName === updatedLeague.teams[r.home]?.name ? r.home : r.away,
                           })),
@@ -3487,7 +3483,7 @@ function FruitCigs() {
                     home: r.home, away: r.away,
                     homeGoals: r.homeGoals, awayGoals: r.awayGoals,
                     goalScorers: (r.events || []).filter(e => e.type === "goal").map(e => ({ name: e.player, assister: e.assister || null, side: e.side, minute: e.minute })),
-                    cardRecipients: (r.events || []).filter(e => e.type === "card" && e.cardPlayer).map(e => ({
+                    cardRecipients: (r.events || []).filter(e => (e.type === "card" || e.type === "red_card") && e.cardPlayer).map(e => ({
                       name: e.cardPlayer,
                       teamIdx: e.cardTeamName === updatedLeague.teams[r.home]?.name ? r.home : r.away,
                     })),
@@ -5336,8 +5332,18 @@ function FruitCigs() {
 
               if (cupNewUnlocks.length > 0) {
                 setUnlockedAchievements(prev => { const next = new Set(prev); cupNewUnlocks.forEach(id => next.add(id)); return next; });
-                setAchievementQueue(prev => { const ex = new Set(prev); const f = cupNewUnlocks.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
-                // Player unlocks now triggered by pack completion (useEffect above)
+                const cupToastable = cupNewUnlocks.filter(id => achievableIdsRef.current.has(id));
+                if (cupToastable.length > 0) {
+                  setAchievementQueue(prev => { const ex = new Set(prev); const f = cupToastable.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+                }
+                for (const id of cupNewUnlocks) {
+                  if (PLAYER_UNLOCK_ACHIEVEMENTS.has(id)) {
+                    const unlock = UNLOCKABLE_PLAYERS.find(u => u.achievementId === id);
+                    if (unlock?.attrs && !squad.some(p => p.id === `unlockable_${unlock.id}`)) {
+                      setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat([unlock]) : [unlock]);
+                    }
+                  }
+                }
               }
             } catch(err) {
               console.error("Cup achievement check error:", err, err.stack);
@@ -5419,8 +5425,18 @@ function FruitCigs() {
               }, BGM.getCurrentTrackId());
               if (newSeasonUnlocks2.length > 0) {
                 setUnlockedAchievements(prev => { const next = new Set(prev); newSeasonUnlocks2.forEach(id => next.add(id)); return next; });
-                setAchievementQueue(prev => { const ex = new Set(prev); const f = newSeasonUnlocks2.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
-                // Player unlocks now triggered by pack completion (useEffect above)
+                const seasonToastable = newSeasonUnlocks2.filter(id => achievableIdsRef.current.has(id));
+                if (seasonToastable.length > 0) {
+                  setAchievementQueue(prev => { const ex = new Set(prev); const f = seasonToastable.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+                }
+                for (const id of newSeasonUnlocks2) {
+                  if (PLAYER_UNLOCK_ACHIEVEMENTS.has(id)) {
+                    const unlock = UNLOCKABLE_PLAYERS.find(u => u.achievementId === id);
+                    if (unlock?.attrs && !squad.some(p => p.id === `unlockable_${unlock.id}`)) {
+                      setPendingPlayerUnlock(prev => prev ? [].concat(prev).concat([unlock]) : [unlock]);
+                    }
+                  }
+                }
               }
               setLastSeasonMove(moveType);
               // Season-end sentiment swings (cup path)
@@ -5612,13 +5628,13 @@ function FruitCigs() {
           const retirees = useGameStore.getState().squad.filter(p => retiringPlayers.has(p.id));
           // Save squad snapshot before retirements for season archiving
           const preRetirementSquad = [...useGameStore.getState().squad];  // Use ref!
-          // Testimonial achievement — retiring player with 30+ apps
+          // Testimonial achievement — retiring player with 30+ career apps
           if (!unlockedAchievements.has("testimonial")) {
             for (const p of retirees) {
-              const stats = playerSeasonStats[p.name];
-              // Check total apps across career (estimate from current season stats)
-              // We use their current season apps — could accumulate over seasons later
-              if (stats && stats.apps >= 30) {
+              const career = clubHistory?.playerCareers?.[p.name];
+              const currentStats = playerSeasonStats[p.name];
+              const careerApps = (career?.apps || 0) + (currentStats?.apps || 0);
+              if (careerApps >= 30) {
                 tryUnlockAchievement("testimonial");
                 break;
               }
@@ -6650,6 +6666,7 @@ function FruitCigs() {
           <PackUnlockReveal
             key={pack.id}
             pack={pack}
+            bankedCount={pack.achievementIds.filter(id => unlockedAchievements.has(id)).length}
             isOnHoliday={isOnHoliday}
             onDone={() => setPackUnlockQueue(prev => prev.slice(1))}
           />

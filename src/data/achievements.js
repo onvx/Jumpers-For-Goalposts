@@ -14,11 +14,11 @@ export const ACHIEVEMENTS = [
   { id: "total_football", name: "Total Football", desc: "Win a match by 5 goals or more", icon: "🧡" },
   { id: "clinical", name: "Clinical", desc: "Win a match where the opponent had more shots", icon: "🎯" },
   { id: "smash_grab", name: "Smash & Grab", desc: "Win 1-0 against the current league leaders", icon: "🦝" },
-  { id: "snoozefest", name: "Snoozefest", desc: "Watch a 0-0 with fewer than 10 commentary events", icon: "💤" },
+  { id: "snoozefest", name: "Snoozefest", desc: "Endure a dull 0-0 draw", icon: "💤" },
   { id: "fergie_time", name: "Fergie Time", desc: "Win a match with a goal in the 89th or 90th minute", icon: "⏱️" },
   { id: "last_gasp", name: "Last Gasp", desc: "Score in the 90th minute to win the match", icon: "😱" },
   { id: "comeback", name: "Back From The Brink", desc: "Win a match having been 2-0 down", icon: "🔥" },
-  { id: "early_exits", name: "Early Exits", desc: "Lose a match 5-0 or worse", icon: "🚪" },
+  { id: "early_exits", name: "Early Exits", desc: "Lose a match by 3 or more goals", icon: "🚪" },
 
   // === PLAYER MOMENTS — individual performances ===
   { id: "hat_trick", name: "One Man Army", desc: "Have a player score 3+ goals in a match", icon: "🎩" },

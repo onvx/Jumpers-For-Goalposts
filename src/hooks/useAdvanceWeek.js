@@ -303,7 +303,10 @@ export function useAdvanceWeek({
         focusOnly.forEach(id => next.add(id));
         return next;
       });
-      setAchievementQueue(prev => { const ex = new Set(prev); const f = focusOnly.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+      const toastable = focusOnly.filter(id => achievableIdsRef.current.has(id));
+      if (toastable.length > 0) {
+        setAchievementQueue(prev => { const ex = new Set(prev); const f = toastable.filter(id => !ex.has(id)); return f.length > 0 ? [...prev, ...f] : prev; });
+      }
     }
 
     const weekGains = [];

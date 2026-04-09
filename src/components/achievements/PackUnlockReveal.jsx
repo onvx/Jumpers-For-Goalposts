@@ -10,7 +10,7 @@ const hexToRgb = (hex) => {
   return `${r},${g},${b}`;
 };
 
-export function PackUnlockReveal({ pack, onDone, isOnHoliday }) {
+export function PackUnlockReveal({ pack, bankedCount = 0, onDone, isOnHoliday }) {
   const [phase, setPhase] = useState("enter");   // enter → locked → reveal → shown → exit
   const [dismissed, setDismissed] = useState(false);
   const doneCalledRef = useRef(false);
@@ -258,6 +258,16 @@ export function PackUnlockReveal({ pack, onDone, isOnHoliday }) {
       }}>
         {pack.name}
       </div>
+
+      {/* Banked achievements count */}
+      {phase === "shown" && bankedCount > 0 && (
+        <div style={{
+          fontSize: F.xs, color: pack.color, marginTop: 10,
+          letterSpacing: 1, opacity: 0.8, textAlign: "center",
+        }}>
+          {bankedCount} CARD{bankedCount !== 1 ? "S" : ""} ALREADY COLLECTED
+        </div>
+      )}
 
       {/* Tap to dismiss hint */}
       {phase === "shown" && (
