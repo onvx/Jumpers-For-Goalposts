@@ -621,7 +621,8 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
     { type: "shot", weight: 4, gen: (team, opp) => { const p = namedPlayer(team); return { text: `Good save! ${p}'s effort is tipped over the bar.`, flash: false }; }},
     { type: "chance", weight: 3, gen: (team, opp) => { const p = namedPlayer(team); return { text: `${p} breaks through on goal... but fires over!`, flash: true, flashColor: MATCH.FLASH_CHANCE }; }},
     { type: "foul", weight: 4, gen: (team, opp) => { const p = namedPlayer(opp); return { text: `Free kick. ${p} is brought down in midfield.`, flash: false }; }},
-    { type: "card", weight: 1 * (modifiers.cardFrequencyMult || 1), gen: (team, opp) => { const p = namedPlayer(team); return { text: `🟨 Yellow card! ${p} goes into the book.`, flash: true, flashColor: MATCH.FLASH_CHANCE, cardPlayer: p, cardTeamName: team.name }; }},
+    { type: "card", weight: 7 * (modifiers.cardFrequencyMult || 1), gen: (team, opp) => { const p = namedPlayer(team); return { text: `🟨 Yellow card! ${p} goes into the book.`, flash: true, flashColor: MATCH.FLASH_CHANCE, cardPlayer: p, cardTeamName: team.name }; }},
+    { type: "red_card", weight: 0.4 * (modifiers.cardFrequencyMult || 1), gen: (team, opp) => { const p = namedPlayer(team); return { text: `🟥 RED CARD! ${p} is sent off for a dangerous challenge!`, flash: true, flashColor: MATCH.FLASH_RED, cardPlayer: p, cardTeamName: team.name, isDirectRed: true }; }},
     { type: "possession", weight: 5, gen: (team, opp) => ({ text: `${team.name} building patiently from the back...`, flash: false }) },
     { type: "possession", weight: 3, gen: (team, opp) => ({ text: `Good spell of pressure from ${team.name}.`, flash: false }) },
     { type: "tackle", weight: 3, gen: (team, opp) => { const p = namedPlayer(team); return { text: `Crunching tackle from ${p}!`, flash: false }; }},
@@ -828,6 +829,10 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
         evt.type = "red_card";
         redCards.push({ minute: evt.minute, teamName: evt.cardTeamName });
       }
+    }
+    // Collect direct (straight) red cards
+    if (evt.type === "red_card" && evt.isDirectRed && evt.cardTeamName) {
+      redCards.push({ minute: evt.minute, teamName: evt.cardTeamName });
     }
   }
 

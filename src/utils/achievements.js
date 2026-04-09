@@ -188,7 +188,7 @@ export function checkAchievements(state) {
     if (!unlocked.has("bore_draw") && isDraw && playerGoals === 0) newUnlocks.push("bore_draw");
     if (!unlocked.has("score_draw") && isDraw && playerGoals >= 3 && oppGoals >= 3) newUnlocks.push("score_draw");
     if (!unlocked.has("total_football") && playerWon && playerGoals - oppGoals >= 5) newUnlocks.push("total_football");
-    if (!unlocked.has("early_exits") && playerLost && oppGoals - playerGoals >= 5) newUnlocks.push("early_exits");
+    if (!unlocked.has("early_exits") && playerLost && oppGoals - playerGoals >= 3) newUnlocks.push("early_exits");
     if (!unlocked.has("comeback") && lastMatchResult.comeback) newUnlocks.push("comeback");
 
     // Giant Killing — beat Albion
@@ -220,7 +220,7 @@ export function checkAchievements(state) {
     }
 
     // Snoozefest — 0-0 with fewer than 10 commentary events
-    if (!unlocked.has("snoozefest") && playerGoals === 0 && oppGoals === 0 && lastMatchResult.commentaryCount < 10) {
+    if (!unlocked.has("snoozefest") && playerGoals === 0 && oppGoals === 0 && lastMatchResult.commentaryCount <= 19) {
       newUnlocks.push("snoozefest");
     }
 
