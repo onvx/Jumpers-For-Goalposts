@@ -571,7 +571,9 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
         const seasonGoals = (stats?.goals || 0) + matchGoalCounts[scorerKey];
         const matchGoals = matchGoalCounts[scorerKey];
         const squadPlayer = modifiers.playerSquad?.find(p => p.name === scorer);
-        const consecutiveScoring = modifiers.playerMatchLog?.[squadPlayer?.id]?.filter(m => m.goals > 0).length || 0;
+        let consecutiveScoring = 0;
+        const log = modifiers.playerMatchLog?.[squadPlayer?.id];
+        if (log) { for (let li = log.length - 1; li >= 0; li--) { if (log[li].goals > 0) consecutiveScoring++; else break; } }
 
         if (matchGoals === 3) contextLine = " Hat-trick hero! 🎩";
         else if (matchGoals === 4) contextLine = " FOUR goals! Unstoppable!";
