@@ -5,6 +5,7 @@ import { LEAGUE_DEFS, NUM_TIERS } from "../../data/leagues.js";
 import { getEffectiveSlots, detectFormationName } from "../../utils/formation.js";
 import { displayName } from "../../utils/player.js";
 import { getVisibleMessages, getUnreadCount } from "../../utils/messageUtils.js";
+import { buildTickerBeats } from "../../utils/tickerBeats.js";
 import { useMobile } from "../../hooks/useMobile.js";
 
 export function Dashboard({
@@ -14,6 +15,8 @@ export function Dashboard({
   seasonCalendar, calendarIndex, cup,
   playerSeasonStats, playerRatingTracker, recentScorelines,
   consecutiveWins, consecutiveUnbeaten, consecutiveLosses,
+  previousLeaguePosition,
+  transferWindowOpen, transferWindowWeeksRemaining,
   seasonGoalsFor, seasonCleanSheets, seasonDraws,
   calendarResults, clubHistory,
   onOpenInbox, onOpenLeague, onOpenSquad, onAsstXI, onApplyPreset, xiPresets, onInboxChoice, setInboxMessages,
@@ -64,6 +67,13 @@ export function Dashboard({
     }
     return [];
   }, [leagueResults, matchweekIndex]);
+
+  // Context-aware ticker beats — narrative one-liners derived from game state
+  const tickerBeats = useMemo(() => buildTickerBeats({
+    league, previousLeaguePosition,
+    consecutiveWins, consecutiveUnbeaten, consecutiveLosses,
+    transferWindowOpen, transferWindowWeeksRemaining,
+  }), [league, previousLeaguePosition, consecutiveWins, consecutiveUnbeaten, consecutiveLosses, transferWindowOpen, transferWindowWeeksRemaining]);
 
   const leagueDef = LEAGUE_DEFS[leagueTier] || {};
   const leagueColor = leagueDef.color || C.textMuted;
@@ -919,7 +929,7 @@ export function Dashboard({
         display: "flex", alignItems: "center",
         fontFamily: FONT,
       }}>
-        {latestResults.length === 0 ? (
+        {latestResults.length === 0 && tickerBeats.length === 0 ? (
           <div style={{ width: "100%", textAlign: "center", fontSize: mob ? F.xs : F.sm, color: C.bgInput }}>
             No results yet
           </div>
@@ -931,6 +941,14 @@ export function Dashboard({
           }}>
             {[0, 1].map(copy => (
               <div key={copy} style={{ display: "flex", flexShrink: 0, alignItems: "center" }}>
+                {tickerBeats.map((beat, bi) => (
+                  <span key={`${copy}-beat-${bi}`} style={{ display: "inline-flex", alignItems: "center" }}>
+                    <span style={{ fontSize: F.xs, color: C.amber, fontWeight: "bold" }}>
+                      {beat}
+                    </span>
+                    <span style={{ color: RULE, margin: "0 22px" }}>{"\u00B7"}</span>
+                  </span>
+                ))}
                 {latestResults.map((match, i) => {
                   const homeTeam = league?.teams?.[match.home];
                   const awayTeam = league?.teams?.[match.away];

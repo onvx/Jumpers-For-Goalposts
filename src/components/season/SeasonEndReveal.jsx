@@ -5,7 +5,7 @@ import { F, C, FONT, Z } from "../../data/tokens";
 import { pickRandom } from "../../utils/calc.js";
 import { useMobile } from "../../hooks/useMobile.js";
 
-export function SeasonEndReveal({ info, onDone }) {
+export function SeasonEndReveal({ info, retirees = [], onDone }) {
   const [phase, setPhase] = useState(0); // 0=fade in, 1=show result
   const [confetti, setConfetti] = useState([]);
   const mob = useMobile();
@@ -174,6 +174,32 @@ export function SeasonEndReveal({ info, onDone }) {
               </span>
             </div>
           )}
+          {retirees.length > 0 && (() => {
+            const notable = retirees.filter(r => r.apps >= 100 || r.goals >= 30);
+            const routine = retirees.filter(r => !(r.apps >= 100 || r.goals >= 30));
+            return (
+              <div style={{
+                marginTop: mob ? 18 : 24,
+                paddingTop: mob ? 16 : 22,
+                borderTop: `1px solid ${C.bgInput}`,
+                fontSize: mob ? F.xs : F.sm, color: C.textDim, lineHeight: 1.7,
+              }}>
+                <div style={{ color: C.textMuted, fontSize: F.xs, letterSpacing: 2, marginBottom: 10 }}>
+                  DEPARTED
+                </div>
+                {notable.map(r => (
+                  <div key={r.name} style={{ color: C.amber, marginBottom: 6 }}>
+                    Club legend {r.name} retires after {r.seasons} season{r.seasons === 1 ? "" : "s"} — {r.apps} apps, {r.goals} goals.
+                  </div>
+                ))}
+                {routine.length > 0 && (
+                  <div style={{ color: C.textDim, marginTop: notable.length > 0 ? 8 : 0 }}>
+                    Also departed: {routine.map(r => r.name).join(", ")}.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
         <div style={{ fontSize: F.xs, color: C.slate }}>
           TAP TO CONTINUE

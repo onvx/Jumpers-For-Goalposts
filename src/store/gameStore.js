@@ -164,6 +164,7 @@ export const useGameStore = create((set, get) => ({
 
   // === Records / history ===
   halfwayPosition: null,
+  previousLeaguePosition: null,
   recentScorelines: [],
   secondPlaceFinishes: 0,
   ovrHistory: [],
@@ -338,6 +339,7 @@ export const useGameStore = create((set, get) => ({
   setConsecutiveScoreless: (val) => set(s => ({ consecutiveScoreless: typeof val === "function" ? val(s.consecutiveScoreless) : val })),
 
   setHalfwayPosition: (val) => set({ halfwayPosition: val }),
+  setPreviousLeaguePosition: (val) => set({ previousLeaguePosition: val }),
   setRecentScorelines: (val) => set(s => ({ recentScorelines: typeof val === "function" ? val(s.recentScorelines) : val })),
   setSecondPlaceFinishes: (val) => set(s => ({ secondPlaceFinishes: typeof val === "function" ? val(s.secondPlaceFinishes) : val })),
   setOvrHistory: (val) => set(s => ({ ovrHistory: typeof val === "function" ? val(s.ovrHistory) : val })),
@@ -472,6 +474,7 @@ export const useGameStore = create((set, get) => ({
     consecutiveWins: 0,
     consecutiveScoreless: 0,
     halfwayPosition: null,
+    previousLeaguePosition: null,
     recentScorelines: [],
     secondPlaceFinishes: 0,
     ovrHistory: [],
@@ -591,6 +594,7 @@ export const useGameStore = create((set, get) => ({
     consecutiveWins: 0,
     consecutiveScoreless: 0,
     halfwayPosition: null,
+    previousLeaguePosition: null,
     startingXI: [],
     bench: [],
     slotAssignments: null,

@@ -661,6 +661,14 @@ const retirementDelayed = (playerName) => ({
   color: C.red,
 });
 
+const retirementNotable = (playerName, apps, goals) => ({
+  id: `msg_retire_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+  icon: "\u{1F44F}", // 👏
+  title: `${playerName} hangs up his boots`,
+  body: `Club legend ${playerName} has retired after ${apps} appearances and ${goals} goals for the club. A true one-of-a-kind. The fans will never forget him.`,
+  color: C.amber,
+});
+
 const randomAttrBoost = (playerName, attrKey) => {
   const flavorLines = [
     `${playerName} was spotted putting in extra hours on the training ground this week. The coaching staff report a noticeable improvement in ${attrKey}.`,
@@ -959,6 +967,7 @@ export const MSG = {
   prodigalFormerLoss,
   prodigalTranscended,
   prodigalRedeemed,
+  retirementNotable,
   // Tickets
   retirementDelayed,
   randomAttrBoost,
