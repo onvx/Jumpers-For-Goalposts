@@ -81,6 +81,7 @@ export function useSaveGame({
         summerData: s.summerData,
         leagueRosters: s.leagueRosters,
         halfwayPosition: s.halfwayPosition,
+        previousLeaguePosition: s.previousLeaguePosition,
         clubHistory: s.clubHistory,
         recentScorelines: s.recentScorelines,
         secondPlaceFinishes: s.secondPlaceFinishes,
@@ -497,6 +498,7 @@ export function useSaveGame({
       const migratedRosters = s.leagueRosters ? normalizeRosters({ ...s.leagueRosters }) : null;
       store.setLeagueRosters(migratedRosters);
       store.setHalfwayPosition(s.halfwayPosition ?? null);
+      store.setPreviousLeaguePosition(s.previousLeaguePosition ?? null);
       store.setRecentScorelines(s.recentScorelines || []);
       store.setSecondPlaceFinishes(s.secondPlaceFinishes || 0);
       store.setPlayerInjuryCount(s.playerInjuryCount || {});

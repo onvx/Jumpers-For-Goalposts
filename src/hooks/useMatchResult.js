@@ -41,6 +41,14 @@ export function useMatchResult({
     const ovrCap = getOvrCap(s.prestigeLevel || 0);
 
     try {
+      // === Capture pre-match league position for ticker delta ===
+      // s.league still holds the table from BEFORE the match was applied
+      if (s.league?.table) {
+        const sortedPre = sortStandings(s.league.table);
+        const prePos = sortedPre.findIndex(r => s.league.teams[r.teamIndex]?.isPlayer) + 1;
+        if (prePos > 0) s.setPreviousLeaguePosition(prePos);
+      }
+
       // === Flush deferred league table update ===
       let currentLeague = s.league;
       if (pendingLeagueRef.current) {

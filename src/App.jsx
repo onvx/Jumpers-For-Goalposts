@@ -179,7 +179,7 @@ function FruitCigs() {
     setSeasonDraws, setSeasonHomeUnbeaten, setSeasonAwayWins, setSeasonAwayGames,
     setConsecutiveUnbeaten, setConsecutiveLosses, setConsecutiveDraws,
     setConsecutiveWins, setConsecutiveScoreless,
-    setHalfwayPosition, setRecentScorelines, setSecondPlaceFinishes,
+    setHalfwayPosition, setPreviousLeaguePosition, setRecentScorelines, setSecondPlaceFinishes,
     setOvrHistory, setClubHistory, setAllTimeLeagueStats,
     setStartingXI, setBench, setFormation, setSlotAssignments, setPrevStartingXI, setXiPresets,
     setTrialPlayer, setTrialHistory, setProdigalSon, setRetiringPlayers,
@@ -563,6 +563,7 @@ function FruitCigs() {
   const playerSeasonStats = useGameStore(s => s.playerSeasonStats);
   const beatenTeams = useGameStore(s => s.beatenTeams);
   const halfwayPosition = useGameStore(s => s.halfwayPosition);
+  const previousLeaguePosition = useGameStore(s => s.previousLeaguePosition);
   const recentScorelines = useGameStore(s => s.recentScorelines);
   const secondPlaceFinishes = useGameStore(s => s.secondPlaceFinishes);
   const playerInjuryCount = useGameStore(s => s.playerInjuryCount);
@@ -2775,6 +2776,12 @@ function FruitCigs() {
                     const capturedMWIdx = holidayCalEntry?.leagueMD;
                     const freshLeague = useGameStore.getState().league;
                     if (freshLeague && freshLeague.fixtures && capturedMWIdx != null && capturedMWIdx < freshLeague.fixtures.length) {
+                      // Capture pre-match league position for ticker delta tracking
+                      {
+                        const sortedPreH = sortStandings(freshLeague.table);
+                        const prePosH = sortedPreH.findIndex(r => freshLeague.teams[r.teamIndex]?.isPlayer) + 1;
+                        if (prePosH > 0) setPreviousLeaguePosition(prePosH);
+                      }
                       const updatedLeague = { ...freshLeague, table: freshLeague.table.map(r => ({ ...r })) };
                       const league12thMan = useGameStore.getState().twelfthManActive ? 0.15 : 0;
                       const leagueFanMod = useGameStore.getState().fanSentiment > 75 ? 0.03 : useGameStore.getState().fanSentiment < 25 ? -0.03 : 0;
@@ -4660,6 +4667,9 @@ function FruitCigs() {
         consecutiveWins={consecutiveWins}
         consecutiveUnbeaten={consecutiveUnbeaten}
         consecutiveLosses={consecutiveLosses}
+        previousLeaguePosition={previousLeaguePosition}
+        transferWindowOpen={transferWindowOpen}
+        transferWindowWeeksRemaining={transferWindowWeeksRemaining}
         seasonGoalsFor={seasonGoalsFor}
         seasonCleanSheets={seasonCleanSheets}
         seasonDraws={seasonDraws}
@@ -5635,25 +5645,43 @@ function FruitCigs() {
 
       {/* Summer break phases */}
       {summerPhase === "summary" && summerData && arcStepQueue.length === 0 && !weekTransition && (
-        <SeasonEndReveal info={{
-          type: summerData.moveType,
-          fromTier: summerData.fromTier,
-          toTier: summerData.toTier,
-          position: summerData.position,
-          leagueName: summerData.leagueName,
-          newLeagueName: summerData.newLeagueName,
-          isInvincible: summerData.isInvincible,
-          prestigeLevel,
-          miniTournamentFinish: (() => {
-            const mb = useGameStore.getState().miniTournamentBracket;
-            if (!mb || !getModifier(summerData.fromTier).miniTournament) return null;
-            if (mb.winner?.isPlayer) return "winner";
-            const ru = mb.runnerUp || (mb.winner && mb.final?.home && mb.final?.away ? (mb.winner.name === mb.final.home.name ? mb.final.away : mb.final.home) : null);
-            if (ru?.isPlayer) return "runner_up";
-            if ((mb.thirdPlaceWinner || mb.thirdPlace?.winner)?.isPlayer) return "third_place";
-            return "eliminated";
-          })(),
-        }} onDone={() => {
+        <SeasonEndReveal
+          info={{
+            type: summerData.moveType,
+            fromTier: summerData.fromTier,
+            toTier: summerData.toTier,
+            position: summerData.position,
+            leagueName: summerData.leagueName,
+            newLeagueName: summerData.newLeagueName,
+            isInvincible: summerData.isInvincible,
+            prestigeLevel,
+            miniTournamentFinish: (() => {
+              const mb = useGameStore.getState().miniTournamentBracket;
+              if (!mb || !getModifier(summerData.fromTier).miniTournament) return null;
+              if (mb.winner?.isPlayer) return "winner";
+              const ru = mb.runnerUp || (mb.winner && mb.final?.home && mb.final?.away ? (mb.winner.name === mb.final.home.name ? mb.final.away : mb.final.home) : null);
+              if (ru?.isPlayer) return "runner_up";
+              if ((mb.thirdPlaceWinner || mb.thirdPlace?.winner)?.isPlayer) return "third_place";
+              return "eliminated";
+            })(),
+          }}
+          retirees={(() => {
+            // Build retiree summaries with career stats for the Departed section
+            const retiringSquad = useGameStore.getState().squad.filter(p => retiringPlayers.has(p.id));
+            return retiringSquad.map(p => {
+              const career = clubHistory?.playerCareers?.[p.name];
+              const seasonStats = playerSeasonStats[p.name];
+              const apps = (career?.apps || 0) + (seasonStats?.apps || 0);
+              const goals = (career?.goals || 0) + (seasonStats?.goals || 0);
+              // Current season hasn't been archived to career.seasons yet, so add 1
+              // if the player actually appeared this season
+              const archivedSeasons = career?.seasons?.length || 0;
+              const playedThisSeason = (seasonStats?.apps || 0) > 0;
+              const seasons = archivedSeasons + (playedThisSeason ? 1 : 0) || 1;
+              return { name: p.name, apps, goals, seasons };
+            });
+          })()}
+          onDone={() => {
           // Process retirements
           const retirees = useGameStore.getState().squad.filter(p => retiringPlayers.has(p.id));
           // Save squad snapshot before retirements for season archiving
@@ -5678,6 +5706,20 @@ function FruitCigs() {
           if (!unlockedAchievements.has("time_dilation") && retirees.length > 0 && summerData.fromTier === 1) {
             tryUnlockAchievement("time_dilation");
           }
+          // Inbox: brief retirement notification per notable retiree
+          // (100+ apps OR 30+ goals — same threshold as the SeasonEndReveal Departed section)
+          retirees.forEach(p => {
+            const career = clubHistory?.playerCareers?.[p.name];
+            const currentStats = playerSeasonStats[p.name];
+            const apps = (career?.apps || 0) + (currentStats?.apps || 0);
+            const goals = (career?.goals || 0) + (currentStats?.goals || 0);
+            if (apps >= 100 || goals >= 30) {
+              setInboxMessages(prev => [...prev, createInboxMessage(
+                MSG.retirementNotable(p.name, apps, goals),
+                { calendarIndex, seasonNumber },
+              )]);
+            }
+          });
           if (retirees.length > 0) {
             const retireIds = new Set(retirees.map(p => p.id));
             setSquad(prev => prev.filter(p => !retireIds.has(p.id)));
@@ -6491,6 +6533,7 @@ function FruitCigs() {
               setFanSentiment(Math.round(useGameStore.getState().fanSentiment * 0.5 + 25));
               setBoardSentiment(Math.round(useGameStore.getState().boardSentiment * 0.5 + 25));
               setHalfwayPosition(null);
+              setPreviousLeaguePosition(null);
               setPlayerInjuryCount({});
               setSeasonInjuryLog({});
               setBenchStreaks({});
