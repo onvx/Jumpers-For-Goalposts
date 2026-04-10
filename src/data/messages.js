@@ -24,11 +24,13 @@ const welcome = () => ({
   color: C.blue,
 });
 
-const boardExpectations = (leagueTier) => ({
+const boardExpectations = (leagueTier, managerName = null) => ({
   id: "msg_board",
   icon: "\uD83C\uDFDF\uFE0F", // 🏟️
   title: "Board Expectations",
-  body: `The board expects a solid mid-table finish this season in ${LEAGUE_DEFS[leagueTier]?.name || "Sunday League"}. Prove them wrong.`,
+  body: managerName
+    ? `${managerName}, the board expects a solid mid-table finish this season in ${LEAGUE_DEFS[leagueTier]?.name || "Sunday League"}. Prove them wrong.`
+    : `The board expects a solid mid-table finish this season in ${LEAGUE_DEFS[leagueTier]?.name || "Sunday League"}. Prove them wrong.`,
   color: C.textMuted,
 });
 
@@ -36,54 +38,54 @@ const boardExpectations = (leagueTier) => ({
 // BOARD
 // ---------------------------------------------------------------------------
 
-const boardReward = (ticketName) => ({
+const boardReward = (ticketName, managerName = null) => ({
   id: `msg_board_ticket_${Date.now()}`,
   icon: "\uD83C\uDFAB", // 🎫
   color: C.amber,
   title: "Board Reward",
-  body: `The board are impressed with your work. They've sent over a ${ticketName} as a token of their confidence.`,
+  body: `The board are impressed with ${managerName ? managerName + "'s" : "your"} work. They've sent over a ${ticketName} as a token of their confidence.`,
 });
 
-const boardUltimatum = (target) => ({
+const boardUltimatum = (target, managerName = null) => ({
   id: `msg_ultimatum_${Date.now()}`,
   icon: "\u26A0\uFE0F", // ⚠️
   color: C.lightRed,
   title: "Board Ultimatum",
-  body: `Results have fallen well below what we expect. You have five league matches to earn at least ${target} points, or we will be forced to make a change.`,
+  body: `${managerName ? managerName + ", results" : "Results"} have fallen well below what we expect. You have five league matches to earn at least ${target} points, or we will be forced to make a change.`,
 });
 
-const boardConcern = (isSecond) => ({
+const boardConcern = (isSecond, managerName = null) => ({
   id: `msg_board_warn_${Date.now()}`,
   icon: "\uD83D\uDCCB", // 📋
   color: C.lightRed,
   title: "Board Concern",
   body: isSecond
-    ? "The board met again this morning. This is the second time we've had to raise this \u2014 results must improve immediately. Do not make us do this again."
-    : "The board has requested a meeting. Results need to improve \u2014 patience is wearing thin.",
+    ? `The board met again this morning${managerName ? ", " + managerName : ""}. This is the second time we've had to raise this \u2014 results must improve immediately. Do not make us do this again.`
+    : `The board has requested a meeting${managerName ? " with " + managerName : ""}. Results need to improve \u2014 patience is wearing thin.`,
 });
 
-const boardReprieve = () => ({
+const boardReprieve = (managerName = null) => ({
   id: `msg_reprieve_${Date.now()}`,
   icon: "\u2705", // ✅
   color: "#4ade80",
   title: "Board Reprieve",
-  body: "The board has been impressed by your response. You have their full support \u2014 for now.",
+  body: `The board has been impressed by ${managerName ? managerName + "'s" : "your"} response. ${managerName ? "Full board support \u2014 for now." : "You have their full support \u2014 for now."}`,
 });
 
-const fanRally = () => ({
+const fanRally = (managerName = null) => ({
   id: `msg_cup_hope_${Date.now()}`,
   icon: "\uD83C\uDFC6", // 🏆
   color: C.amber,
   title: "Fan Rally",
-  body: "Fan reaction to your cup run has given the board cause to reconsider.",
+  body: `Fan reaction to ${managerName ? managerName + "'s" : "your"} cup run has given the board cause to reconsider.`,
 });
 
-const cupReprieve = () => ({
+const cupReprieve = (managerName = null) => ({
   id: `msg_cup_reprieve_${Date.now()}`,
   icon: "\uD83C\uDFC6", // 🏆
   color: "#4ade80",
   title: "Board Reprieve",
-  body: "Fan reaction to your cup run has given the board cause to reconsider. Your job is safe \u2014 for now.",
+  body: `Fan reaction to ${managerName ? managerName + "'s" : "your"} cup run has given the board cause to reconsider. The job is safe \u2014 for now.`,
 });
 
 // ---------------------------------------------------------------------------
