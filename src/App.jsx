@@ -2776,6 +2776,12 @@ function FruitCigs() {
                     const capturedMWIdx = holidayCalEntry?.leagueMD;
                     const freshLeague = useGameStore.getState().league;
                     if (freshLeague && freshLeague.fixtures && capturedMWIdx != null && capturedMWIdx < freshLeague.fixtures.length) {
+                      // Capture pre-match league position for ticker delta tracking
+                      {
+                        const sortedPreH = sortStandings(freshLeague.table);
+                        const prePosH = sortedPreH.findIndex(r => freshLeague.teams[r.teamIndex]?.isPlayer) + 1;
+                        if (prePosH > 0) setPreviousLeaguePosition(prePosH);
+                      }
                       const updatedLeague = { ...freshLeague, table: freshLeague.table.map(r => ({ ...r })) };
                       const league12thMan = useGameStore.getState().twelfthManActive ? 0.15 : 0;
                       const leagueFanMod = useGameStore.getState().fanSentiment > 75 ? 0.03 : useGameStore.getState().fanSentiment < 25 ? -0.03 : 0;
@@ -5667,7 +5673,11 @@ function FruitCigs() {
               const seasonStats = playerSeasonStats[p.name];
               const apps = (career?.apps || 0) + (seasonStats?.apps || 0);
               const goals = (career?.goals || 0) + (seasonStats?.goals || 0);
-              const seasons = career?.seasons?.length || 1;
+              // Current season hasn't been archived to career.seasons yet, so add 1
+              // if the player actually appeared this season
+              const archivedSeasons = career?.seasons?.length || 0;
+              const playedThisSeason = (seasonStats?.apps || 0) > 0;
+              const seasons = archivedSeasons + (playedThisSeason ? 1 : 0) || 1;
               return { name: p.name, apps, goals, seasons };
             });
           })()}
