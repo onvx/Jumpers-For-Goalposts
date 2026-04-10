@@ -69,7 +69,7 @@ const boardReprieve = (managerName = null) => ({
   icon: "\u2705", // ✅
   color: "#4ade80",
   title: "Board Reprieve",
-  body: `The board has been impressed by ${managerName ? managerName + "'s" : "your"} response. ${managerName || "You"} ${managerName ? "has" : "have"} their full support \u2014 for now.`,
+  body: `The board has been impressed by ${managerName ? managerName + "'s" : "your"} response. ${managerName ? "Full board support \u2014 for now." : "You have their full support \u2014 for now."}`,
 });
 
 const fanRally = (managerName = null) => ({
@@ -85,7 +85,7 @@ const cupReprieve = (managerName = null) => ({
   icon: "\uD83C\uDFC6", // 🏆
   color: "#4ade80",
   title: "Board Reprieve",
-  body: `Fan reaction to ${managerName ? managerName + "'s" : "your"} cup run has given the board cause to reconsider. ${managerName ? "His" : "Your"} job is safe \u2014 for now.`,
+  body: `Fan reaction to ${managerName ? managerName + "'s" : "your"} cup run has given the board cause to reconsider. The job is safe \u2014 for now.`,
 });
 
 // ---------------------------------------------------------------------------
