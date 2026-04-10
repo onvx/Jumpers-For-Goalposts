@@ -811,7 +811,7 @@ export function useAdvanceWeek({
         const _pick = pickRandom(_picks);
         s.setTickets(prev => [...prev, { id: `ticket_board_${Date.now()}`, type: _pick }]);
         s.setInboxMessages(prev => [...prev, createInboxMessage(
-          MSG.boardReward(TICKET_DEFS[_pick]?.name || "gift"),
+          MSG.boardReward(TICKET_DEFS[_pick]?.name || "gift", useGameStore.getState().managerName),
           { calendarIndex, seasonNumber },
         )]);
       }
@@ -830,14 +830,14 @@ export function useAdvanceWeek({
           s.setUltimatumGamesLeft(5);
           s.setUltimatumActive(true);
           s.setInboxMessages(prev => [...prev, createInboxMessage(
-            MSG.boardUltimatum(target),
+            MSG.boardUltimatum(target, useGameStore.getState().managerName),
             { calendarIndex, seasonNumber },
           )]);
         } else {
           // Warning 1 or 2: concern message with escalating tone
           const isSecond = isIronman && nextCount === 2;
           s.setInboxMessages(prev => [...prev, createInboxMessage(
-            MSG.boardConcern(isSecond),
+            MSG.boardConcern(isSecond, useGameStore.getState().managerName),
             { calendarIndex, seasonNumber },
           )]);
           if (isIronman) s.setBoardWarnCount(nextCount);

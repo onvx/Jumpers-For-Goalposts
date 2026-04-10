@@ -233,6 +233,8 @@ export const useGameStore = create((set, get) => ({
   teamName: null,
   newspaperName: null,
   reporterName: null,
+  managerName: null,
+  managerAvatar: null,
 
   // === Transfers & relationships ===
   clubRelationships: {},
@@ -397,6 +399,8 @@ export const useGameStore = create((set, get) => ({
   setTeamName: (val) => set(s => ({ teamName: typeof val === "function" ? val(s.teamName) : val })),
   setNewspaperName: (val) => set(s => ({ newspaperName: typeof val === "function" ? val(s.newspaperName) : val })),
   setReporterName: (val) => set(s => ({ reporterName: typeof val === "function" ? val(s.reporterName) : val })),
+  setManagerName: (val) => set(s => ({ managerName: typeof val === "function" ? val(s.managerName) : val })),
+  setManagerAvatar: (val) => set(s => ({ managerAvatar: typeof val === "function" ? val(s.managerAvatar) : val })),
 
   setClubRelationships: (val) => set(s => ({ clubRelationships: typeof val === "function" ? val(s.clubRelationships) : val })),
   setTransferFocus: (val) => set(s => ({ transferFocus: typeof val === "function" ? val(s.transferFocus) : val })),
@@ -533,6 +537,8 @@ export const useGameStore = create((set, get) => ({
     teamName: null,
     newspaperName: null,
     reporterName: null,
+    managerName: null,
+    managerAvatar: null,
     clubRelationships: {},
     transferFocus: [],
     transferWindowOpen: false,

@@ -16,6 +16,7 @@ import { simulateMatchweek } from "../utils/match.js";
 import { normalizeRosters, initLeague, initAILeague, buildSeasonCalendar, computeCalendarIndex, initCup } from "../utils/league.js";
 import { seedMessageSeq, getMessageSeq } from "../utils/messageUtils.js";
 import { checkAchievements } from "../utils/achievements.js";
+import { randomAvatar } from "../components/ui/ManagerAvatar.jsx";
 
 /**
  * Extracts save/load/export/import/delete/sacking callbacks.
@@ -50,6 +51,7 @@ export function useSaveGame({
       const saveData = serializeState({
         version: 2,
         teamName, newspaperName: s.newspaperName, reporterName: s.reporterName,
+        managerName: s.managerName, managerAvatar: s.managerAvatar,
         squad: s.squad, league, matchweekIndex: s.matchweekIndex,
         startingXI: s.startingXI, bench: s.bench,
         unlockedAchievements: s.unlockedAchievements, unlockedPacks: s.unlockedPacks,
@@ -180,6 +182,9 @@ export function useSaveGame({
       store.setTeamName(s.teamName);
       store.setNewspaperName(s.newspaperName || generateNewspaperName(s.teamName));
       store.setReporterName(s.reporterName || generateReporterName());
+      // Manager identity (legacy saves: leave name null, give avatar a random fallback)
+      store.setManagerName(s.managerName || null);
+      store.setManagerAvatar(s.managerAvatar || randomAvatar());
       // Migrate: add nationality, statProgress, and potential to existing players if missing
       const loadOvrCap = getOvrCap(s.prestigeLevel || 0);
       const migratedSquad = (s.squad || []).map(p => {

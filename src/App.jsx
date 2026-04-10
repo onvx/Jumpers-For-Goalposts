@@ -59,6 +59,7 @@ import { TacticsPanel } from "./components/player/TacticsPanel.jsx";
 import { Dashboard } from "./components/ui/Dashboard.jsx";
 import { ProfileSelectScreen } from "./components/ui/ProfileSelectScreen.jsx";
 import { ModeSelectScreen } from "./components/ui/ModeSelectScreen.jsx";
+import { ManagerIdentityScreen } from "./components/ui/ManagerIdentityScreen.jsx";
 import { SackingScreen } from "./components/ui/SackingScreen.jsx";
 import { MuseumScreen } from "./components/ui/MuseumScreen.jsx";
 import { buildAIFiveASide } from "./components/match/FiveASidePicker.jsx";
@@ -143,6 +144,11 @@ function generateNewspaperName(teamName) {
   const tpl = pickRandom(NEWSPAPER_TEMPLATES);
   return tpl(short);
 }
+const MANAGER_FIRST = ["Brian","Roy","Gareth","Sven","Pep","Sam","Harry","Neil","Sean","Eddie","Steve","Dave","Tony","Ron","Howard","Kevin","Mick","Jurgen","Carlo","Jose","Arsene","Walter","Bobby","Stuart","Glenn"];
+const MANAGER_LAST = ["Clough","Ferguson","Allardyce","Pulis","Wenger","Hodgson","Redknapp","Warnock","Dyche","Lampard","Bruce","Moyes","Pardew","Benitez","Hughes","Mourinho","McCarthy","Megson","Curbishley","Holloway","Coppell","Smith","Robson","McLaren","Pearce"];
+function generateManagerName() {
+  return `${pickRandom(MANAGER_FIRST)} ${pickRandom(MANAGER_LAST)}`;
+}
 const DEFAULT_SEASON_LENGTH = 48;
 const DEFAULT_FIXTURE_COUNT = 18;
 const SQUAD_CAP = 25;
@@ -193,7 +199,7 @@ function FruitCigs() {
     setHolidayMatchesThisSeason, setFastMatchesThisSeason, setGkCleanSheets,
     setTotalShortlisted, setPrevSeasonSquadIds, setTradesMadeInWindow,
     setTradedWithClubs, setSeasonCards, setReadsThisWeek,
-    setTeamName, setNewspaperName, setReporterName,
+    setTeamName, setNewspaperName, setReporterName, setManagerName, setManagerAvatar,
     setClubRelationships, setTransferFocus, setTransferWindowOpen,
     setTransferWindowWeeksRemaining, setTransferOffers, setLoanedOutPlayers,
     setLoanedInPlayers, setTransferHistory, setPendingTradeTarget, setShortlist,
@@ -480,6 +486,9 @@ function FruitCigs() {
   const [profilesLoaded, setProfilesLoaded] = useState(false);
   const gameMode = useGameStore(s => s.gameMode);
   const [showModeSelect, setShowModeSelect] = useState(false);
+  const [showManagerSelect, setShowManagerSelect] = useState(false);
+  const managerName = useGameStore(s => s.managerName);
+  const managerAvatar = useGameStore(s => s.managerAvatar);
   const gameOver = useGameStore(s => s.gameOver);
   const [viewingMuseumCareer, setViewingMuseumCareer] = useState(null); // career object from profile.museum
   const [viewingMuseumList, setViewingMuseumList] = useState(null); // { entries: [...] } — museum career picker
@@ -664,7 +673,7 @@ function FruitCigs() {
       setBoardWarnCount(0);
       setBoardSentiment(Math.max(50, useGameStore.getState().boardSentiment));
       setInboxMessages(prev => [...prev, createInboxMessage(
-        MSG.boardReprieve(),
+        MSG.boardReprieve(useGameStore.getState().managerName),
         { calendarIndex: _curWeek - 1, seasonNumber: prev[prev.length - 1]?.season || 1 },
       )]);
     } else if (newGames <= 0 || maxPossible < target) {
@@ -674,7 +683,7 @@ function FruitCigs() {
         // Still in cup — hold sacking, cup is the last lifeline
         setUltimatumCupPending(true);
         setInboxMessages(prev => [...prev, createInboxMessage(
-          MSG.fanRally(),
+          MSG.fanRally(useGameStore.getState().managerName),
           { calendarIndex: _curWeek - 1, seasonNumber: prev[prev.length - 1]?.season || 1 },
         )]);
       } else {
@@ -808,7 +817,7 @@ function FruitCigs() {
       seedMessageSeq(0);
       setInboxMessages([
         createInboxMessage(MSG.welcome(), { calendarIndex: 0, seasonNumber: 1 }),
-        createInboxMessage(MSG.boardExpectations(leagueTier), { calendarIndex: 0, seasonNumber: 1 }),
+        createInboxMessage(MSG.boardExpectations(leagueTier, useGameStore.getState().managerName), { calendarIndex: 0, seasonNumber: 1 }),
         createInboxMessage(MSG.trialOffer(trialP, trialWeek), { calendarIndex: 0, seasonNumber: 1 }),
       ]);
       // Asst Manager intro — training onboarding
@@ -1699,8 +1708,24 @@ function FruitCigs() {
       return (
         <ModeSelectScreen
           slotNumber={activeSaveSlot}
-          onSelect={(mode) => { setGameMode(mode); setShowModeSelect(false); }}
+          onSelect={(mode) => { setGameMode(mode); setShowModeSelect(false); setShowManagerSelect(true); }}
           onBack={() => { setShowModeSelect(false); setActiveSaveSlot(null); }}
+        />
+      );
+    }
+
+    // Manager identity (between mode select and team name input)
+    if (showManagerSelect) {
+      return (
+        <ManagerIdentityScreen
+          slotNumber={activeSaveSlot}
+          generateName={generateManagerName}
+          onConfirm={({ managerName: mn, managerAvatar: ma }) => {
+            setManagerName(mn);
+            setManagerAvatar(ma);
+            setShowManagerSelect(false);
+          }}
+          onBack={() => { setShowManagerSelect(false); setShowModeSelect(true); }}
         />
       );
     }
@@ -3214,6 +3239,8 @@ function FruitCigs() {
           ovrCap={ovrCap}
           gameMode={gameMode}
           activeProfileName={profileList.find(p => p.id === activeProfileId)?.name || null}
+          managerName={managerName}
+          managerAvatar={managerAvatar}
           onAchievementCheck={(achId) => {
             tryUnlockAchievement(achId);
           }}
@@ -5624,7 +5651,7 @@ function FruitCigs() {
                 setBoardWarnCount(0);
                 setBoardSentiment(Math.max(50, useGameStore.getState().boardSentiment));
                 setInboxMessages(prev => [...prev, createInboxMessage(
-                  MSG.cupReprieve(),
+                  MSG.cupReprieve(useGameStore.getState().managerName),
                   { calendarIndex: useGameStore.getState().calendarIndex, seasonNumber },
                 )]);
               } else if (playerEliminated2) {

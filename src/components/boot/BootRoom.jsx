@@ -6,8 +6,9 @@ import { F, C, FONT, BTN, MODAL, CARD, Z } from "../../data/tokens";
 import { LEAGUE_DEFS } from "../../data/leagues.js";
 import { isMessageVisible, getUnreadCount, getVisibleMessages } from "../../utils/messageUtils.js";
 import { useMobile } from "../../hooks/useMobile.js";
+import { ManagerAvatar } from "../ui/ManagerAvatar.jsx";
 
-export function BootRoom({ settings, save, debug, inbox, calendar, calendarIndex, league, cup, calendarResults, seasonNumber, week, onExitToMenu, storyArcs, setStoryArcs, squad, setSquad, prodigalSon, leagueTier, initialTab, onAchievementCheck, onHoliday, matchweekIndex, prestigeLevel, ovrCap, gameMode = "casual", activeProfileName = null }) {
+export function BootRoom({ settings, save, debug, inbox, calendar, calendarIndex, league, cup, calendarResults, seasonNumber, week, onExitToMenu, storyArcs, setStoryArcs, squad, setSquad, prodigalSon, leagueTier, initialTab, onAchievementCheck, onHoliday, matchweekIndex, prestigeLevel, ovrCap, gameMode = "casual", activeProfileName = null, managerName = null, managerAvatar = null }) {
   const { matchSpeed, setMatchSpeed, soundEnabled, setSoundEnabled, autoSaveEnabled, setAutoSaveEnabled, trainingCardSpeed, setTrainingCardSpeed, matchDetail, setMatchDetail, musicEnabled, setMusicEnabled, musicVolume, setMusicVolume, disabledTracks, setDisabledTracks, instantMatch, setInstantMatch } = settings;
   const { saveGame, saveStatus, activeSaveSlot, exportSave, importSave, deleteSave, importStatus } = save;
   const { onDebugJumpTier, onDebugSetSquadOvr, onDebugWinLeague, onDebugSetPrestige } = debug;
@@ -77,6 +78,18 @@ export function BootRoom({ settings, save, debug, inbox, calendar, calendarIndex
         {/* ===== INBOX TAB ===== */}
         {activeTab === "inbox" && (
           <div style={{ padding: mob ? "21px 14px" : "26px" }}>
+            {managerName && managerAvatar && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 12, marginBottom: 18,
+                paddingBottom: 14, borderBottom: `1px solid ${C.bgInput}`,
+              }}>
+                <ManagerAvatar avatar={managerAvatar} size={mob ? 40 : 48} />
+                <div>
+                  <div style={{ fontSize: mob ? F.sm : F.md, color: C.text, letterSpacing: 1 }}>{managerName}</div>
+                  <div style={{ fontSize: F.micro, color: C.textDim, letterSpacing: 1, marginTop: 3 }}>MANAGER</div>
+                </div>
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 9 }}>
               <div style={{ fontSize: mob ? F.lg : F.xl, color: C.blue, letterSpacing: 1 }}>📨 MANAGER'S INBOX</div>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
