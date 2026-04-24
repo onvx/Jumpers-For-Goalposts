@@ -7,6 +7,7 @@ import { AITeamPanel } from "../league/AITeamPanel.jsx";
 import { POSITION_ORDER } from "../../data/positions.js";
 import { F, C, FONT, Z } from "../../data/tokens";
 import { useMobile } from "../../hooks/useMobile.js";
+import { ScorerStrip } from "./ScorerStrip.jsx";
 
 export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpeedChange, competitionLabel, matchDetail, instantMatch, isOnHoliday, onPlayerClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, ovrCap = 20, formation, slotAssignments, startingXI }) {
   const [visible, setVisible] = useState(false);
@@ -315,6 +316,14 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
             {resultText}
           </div>
         </div>
+
+        {/* Scorer/assister strip — persistent under scoreline, all modes */}
+        <ScorerStrip
+          events={shownEvents}
+          homeIsPlayer={!!homeTeam?.isPlayer}
+          awayIsPlayer={!!awayTeam?.isPlayer}
+          isMobile={mob}
+        />
 
         {/* Speed controls — fixed slot */}
         <div style={{ display: "flex", justifyContent: "center", gap: 9, marginBottom: isHighlights ? 5 : 14, minHeight: isHighlights ? 0 : 32, flexShrink: 0 }}>
