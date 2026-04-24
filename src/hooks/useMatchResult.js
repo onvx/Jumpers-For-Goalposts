@@ -280,6 +280,12 @@ export function useMatchResult({
           )]);
         }
 
+        // Compute next benchStreaks once so both the achievement check and
+        // the setter see the same post-match value (previously the check ran
+        // against stale data and benchwarmer fired one match late).
+        const nextBenchStreaks = {};
+        if (s.bench) s.bench.forEach(id => { nextBenchStreaks[id] = (s.benchStreaks?.[id] || 0) + 1; });
+
         const newUnlocks = checkAchievements({
           squad: s.squad, unlocked: s.unlockedAchievements, achievableIds: achievableIdsRef.current,
           lastMatchResult: matchResult, league: currentLeague, weekGains: null,
@@ -303,7 +309,7 @@ export function useMatchResult({
           recentScorelines: [...s.recentScorelines.slice(-2), [playerGoals, oppGoals]],
           secondPlaceFinishes: s.secondPlaceFinishes,
           playerInjuryCount: s.playerInjuryCount,
-          benchStreaks: s.benchStreaks,
+          benchStreaks: nextBenchStreaks,
           highScoringMatches: s.highScoringMatches + ((playerGoals + oppGoals >= 5) ? 1 : 0),
           trialHistory: s.trialHistory,
           playerSeasonStats: s.playerSeasonStats, clubHistory: s.clubHistory, consecutiveScoreless: playerGoals === 0 ? s.consecutiveScoreless + 1 : 0,
@@ -472,11 +478,7 @@ export function useMatchResult({
 
         if (wasAlwaysFast) s.setFastMatchesThisSeason(prev => prev + 1);
 
-        s.setBenchStreaks(prev => {
-          const next = {};
-          if (s.bench) { s.bench.forEach(id => { next[id] = (prev[id] || 0) + 1; }); }
-          return next;
-        });
+        s.setBenchStreaks(nextBenchStreaks);
 
         const newConsWins = playerWon ? s.consecutiveWins + 1 : 0;
         const newConsUnbeaten = playerLost ? 0 : s.consecutiveUnbeaten + 1;

@@ -152,6 +152,15 @@ function generateManagerName() {
 const DEFAULT_SEASON_LENGTH = 48;
 const DEFAULT_FIXTURE_COUNT = 18;
 const SQUAD_CAP = 25;
+// Bench-restlessness tiers — derived display state only, never stored.
+// Top tier aligns with the Benchwarmer achievement at 10.
+const RESTLESS_BENCH_STREAK = 5;
+function getBenchRestlessness(streak) {
+  if (!streak || streak < RESTLESS_BENCH_STREAK) return null;
+  if (streak >= 10) return { level: "benchwarmer", label: "BENCHWARMER", color: "#ef4444" };
+  if (streak >= 8) return { level: "frustrated", label: "FRUSTRATED", color: "#f97316" };
+  return { level: "restless", label: "RESTLESS", color: "#f59e0b" };
+}
 const AUTO_TRAINING = {
   GK: "balanced", CB: "defending", LB: "physical", RB: "pace",
   CM: "physical", AM: "passing", LW: "pace", RW: "shooting", ST: "shooting",
@@ -4217,7 +4226,24 @@ function FruitCigs() {
                   fontSize: F.xs, color: getPosColor(player.position), opacity: 0.6,
                   fontFamily: FONT, flexShrink: 0,
                 }}>{player.position}</span>
-                {isInjured ? <span style={{ fontSize: F.xs, color: C.red, flexShrink: 0, background: "rgba(239,68,68,0.15)", padding: "2px 6px", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 2 }}>INJ {player.injury.weeksLeft}w</span> : ""}{retiringPlayers.has(player.id) ? <span style={{ fontSize: F.xs, color: "#ef444488", flexShrink: 0 }}>RET</span> : ""}{player.isLegend ? <span style={{ fontSize: F.xs, color: C.amber, flexShrink: 0, background: "rgba(251,191,36,0.15)", padding: "2px 6px", border: "1px solid rgba(251,191,36,0.3)" }}>{isMobile ? "" : "LGN "}{12 - (player.legendAppearances || 0)}</span> : ""}{player.isTrial ? <span style={{ fontSize: F.xs, color: C.green, flexShrink: 0, background: "rgba(74,222,128,0.15)", padding: "2px 6px", border: "1px solid #4ade8044" }}>TRIAL {player.trialWeeksLeft}w</span> : ""}
+                {isInjured ? <span style={{ fontSize: F.xs, color: C.red, flexShrink: 0, background: "rgba(239,68,68,0.15)", padding: "2px 6px", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 2 }}>INJ {player.injury.weeksLeft}w</span> : ""}{retiringPlayers.has(player.id) ? <span style={{ fontSize: F.xs, color: "#ef444488", flexShrink: 0 }}>RET</span> : ""}{player.isLegend ? <span style={{ fontSize: F.xs, color: C.amber, flexShrink: 0, background: "rgba(251,191,36,0.15)", padding: "2px 6px", border: "1px solid rgba(251,191,36,0.3)" }}>{isMobile ? "" : "LGN "}{12 - (player.legendAppearances || 0)}</span> : ""}{player.isTrial ? <span style={{ fontSize: F.xs, color: C.green, flexShrink: 0, background: "rgba(74,222,128,0.15)", padding: "2px 6px", border: "1px solid #4ade8044" }}>TRIAL {player.trialWeeksLeft}w</span> : ""}{(() => {
+                  if (section !== "bench") return null;
+                  const streak = benchStreaks?.[player.id] || 0;
+                  const r = getBenchRestlessness(streak);
+                  if (!r) return null;
+                  return (
+                    <span
+                      title={`${streak} consecutive matchdays on the bench`}
+                      style={{
+                        fontSize: F.xs, color: r.color, flexShrink: 0,
+                        background: `${r.color}22`, padding: "2px 6px",
+                        border: `1px solid ${r.color}55`, borderRadius: 2,
+                      }}
+                    >
+                      {isMobile ? `${r.label[0]}${streak}w` : `${r.label} ${streak}w`}
+                    </span>
+                  );
+                })()}
               </span>
               {isMobile ? (
                 <>
