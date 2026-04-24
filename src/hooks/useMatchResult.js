@@ -186,6 +186,13 @@ export function useMatchResult({
         }
       }
 
+      // === Post-match benchStreaks ===
+      // Computed once in outer scope so the achievement check inside the
+      // `try` below AND the setter further down share one source of truth,
+      // fixing the one-match lag the Benchwarmer achievement had.
+      const nextBenchStreaks = {};
+      if (s.bench) s.bench.forEach(id => { nextBenchStreaks[id] = (s.benchStreaks?.[id] || 0) + 1; });
+
       // === Achievements ===
       let stScored = false;
       try {
@@ -279,12 +286,6 @@ export function useMatchResult({
             { calendarIndex: s.calendarIndex, seasonNumber: s.seasonNumber },
           )]);
         }
-
-        // Compute next benchStreaks once so both the achievement check and
-        // the setter see the same post-match value (previously the check ran
-        // against stale data and benchwarmer fired one match late).
-        const nextBenchStreaks = {};
-        if (s.bench) s.bench.forEach(id => { nextBenchStreaks[id] = (s.benchStreaks?.[id] || 0) + 1; });
 
         const newUnlocks = checkAchievements({
           squad: s.squad, unlocked: s.unlockedAchievements, achievableIds: achievableIdsRef.current,
