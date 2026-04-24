@@ -186,6 +186,13 @@ export function useMatchResult({
         }
       }
 
+      // === Post-match benchStreaks ===
+      // Computed once in outer scope so the achievement check inside the
+      // `try` below AND the setter further down share one source of truth,
+      // fixing the one-match lag the Benchwarmer achievement had.
+      const nextBenchStreaks = {};
+      if (s.bench) s.bench.forEach(id => { nextBenchStreaks[id] = (s.benchStreaks?.[id] || 0) + 1; });
+
       // === Achievements ===
       let stScored = false;
       try {
@@ -303,7 +310,7 @@ export function useMatchResult({
           recentScorelines: [...s.recentScorelines.slice(-2), [playerGoals, oppGoals]],
           secondPlaceFinishes: s.secondPlaceFinishes,
           playerInjuryCount: s.playerInjuryCount,
-          benchStreaks: s.benchStreaks,
+          benchStreaks: nextBenchStreaks,
           highScoringMatches: s.highScoringMatches + ((playerGoals + oppGoals >= 5) ? 1 : 0),
           trialHistory: s.trialHistory,
           playerSeasonStats: s.playerSeasonStats, clubHistory: s.clubHistory, consecutiveScoreless: playerGoals === 0 ? s.consecutiveScoreless + 1 : 0,
@@ -472,11 +479,7 @@ export function useMatchResult({
 
         if (wasAlwaysFast) s.setFastMatchesThisSeason(prev => prev + 1);
 
-        s.setBenchStreaks(prev => {
-          const next = {};
-          if (s.bench) { s.bench.forEach(id => { next[id] = (prev[id] || 0) + 1; }); }
-          return next;
-        });
+        s.setBenchStreaks(nextBenchStreaks);
 
         const newConsWins = playerWon ? s.consecutiveWins + 1 : 0;
         const newConsUnbeaten = playerLost ? 0 : s.consecutiveUnbeaten + 1;
