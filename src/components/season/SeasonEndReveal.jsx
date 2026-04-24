@@ -194,7 +194,7 @@ export function SeasonEndReveal({ info, retirees = [], onDone }) {
                 ))}
                 {routine.length > 0 && (
                   <div style={{ color: C.textDim, marginTop: notable.length > 0 ? 8 : 0 }}>
-                    Also departed: {routine.map(r => r.name).join(", ")}.
+                    {notable.length > 0 ? "Also departed: " : ""}{routine.map(r => r.name).join(", ")}.
                   </div>
                 )}
               </div>
