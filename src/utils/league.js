@@ -52,7 +52,7 @@ export function sortStandings(table) {
 
 // Shared season-end achievement logic (called from 2 code paths: league-end + cup-end)
 // currentTrackId: optional, replaces BGM.getCurrentTrackId() which is not available outside App.jsx
-export function collectSeasonEndAchievements({ position, currentTier, moveType, newTier, lastSeasonMove, league, leagueResults, playerSeasonStats, beatenTeams, unlockedAchievements, clubHistory, wonCupThisSeason, squad, prevSeasonSquadIds, seasonNumber, dynastyCupBracket, cup }, currentTrackId = null) {
+export function collectSeasonEndAchievements({ position, currentTier, moveType, newTier, lastSeasonMove, league, leagueResults, playerSeasonStats, seasonLeagueStats, beatenTeams, unlockedAchievements, clubHistory, wonCupThisSeason, squad, prevSeasonSquadIds, seasonNumber, dynastyCupBracket, cup }, currentTrackId = null) {
   const achs = [];
   if (moveType === "promoted") { achs.push("promoted"); if (lastSeasonMove === "promoted") achs.push("back_to_back"); }
   if (moveType === "relegated") { achs.push("relegated"); if (lastSeasonMove === "promoted") achs.push("yo_yo"); if (lastSeasonMove === "relegated") achs.push("free_fall"); }
@@ -68,21 +68,24 @@ export function collectSeasonEndAchievements({ position, currentTier, moveType, 
       if (pGD < maxGD) achs.push("efficient_machine");
     }
   }
-  // Tactical Foul
-  if (!unlockedAchievements.has("tactical_foul")) {
-    const ac = {};
-    Object.values(leagueResults || {}).forEach(mw => { (mw || []).forEach(m => { (m.cardRecipients || []).forEach(c => { ac[`${c.name}|${c.teamIdx}`] = (ac[`${c.name}|${c.teamIdx}`] || 0) + 1; }); }); });
-    if (playerSeasonStats) Object.entries(playerSeasonStats).forEach(([n, s]) => { const t = (s.yellows || 0) + (s.reds || 0); if (t > 0) ac[`${n}|0`] = t; });
-    const sc = Object.entries(ac).sort((a, b) => b[1] - a[1]);
-    if (sc.length > 0 && sc[0][0].endsWith("|0")) achs.push("tactical_foul");
+  // Tactical Foul + Bag Man — read canonical seasonLeagueStats. Top scorer
+  // and most-booked (yellows + reds) are direct picks from the canonical
+  // store; the player's team is identified by teamId === player team index.
+  const playerTeamIdx = league?.teams?.findIndex(t => t?.isPlayer);
+  const playerCanonicalTeamId = playerTeamIdx != null && playerTeamIdx >= 0 ? playerTeamIdx : null;
+  const canonicalPlayers = seasonLeagueStats?.players ? Object.values(seasonLeagueStats.players) : [];
+  if (!unlockedAchievements.has("tactical_foul") && canonicalPlayers.length > 0) {
+    const sortedCards = [...canonicalPlayers]
+      .map(p => ({ ...p, cards: (p.yellows || 0) + (p.reds || 0) }))
+      .filter(p => p.cards > 0)
+      .sort((a, b) => b.cards - a.cards);
+    if (sortedCards[0]?.teamId === playerCanonicalTeamId) achs.push("tactical_foul");
   }
-  // Bag Man
-  if (!unlockedAchievements.has("bag_man")) {
-    const as2 = {};
-    Object.values(leagueResults || {}).forEach(mw => { (mw || []).forEach(m => { (m.goalScorers || []).forEach(g => { const ti = g.side === "home" ? m.home : m.away; as2[`${g.name}|${ti}`] = (as2[`${g.name}|${ti}`] || 0) + 1; }); }); });
-    if (playerSeasonStats) Object.entries(playerSeasonStats).forEach(([n, s]) => { if (s.goals > 0) as2[`${n}|0`] = s.goals; });
-    const ss = Object.entries(as2).sort((a, b) => b[1] - a[1]);
-    if (ss.length > 0 && ss[0][0].endsWith("|0")) achs.push("bag_man");
+  if (!unlockedAchievements.has("bag_man") && canonicalPlayers.length > 0) {
+    const sortedGoals = [...canonicalPlayers]
+      .filter(p => (p.goals || 0) > 0)
+      .sort((a, b) => b.goals - a.goals);
+    if (sortedGoals[0]?.teamId === playerCanonicalTeamId) achs.push("bag_man");
   }
   // AGÜEROOOO!
   if (position === 1 && !unlockedAchievements.has("aguero") && league?.table) {

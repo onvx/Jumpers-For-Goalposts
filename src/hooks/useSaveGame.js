@@ -105,7 +105,7 @@ export function useSaveGame({
         lopsidedWarned: s.lopsidedWarned,
         ovrHistory: s.ovrHistory,
         storyArcs: s.storyArcs,
-        allTimeLeagueStats: s.allTimeLeagueStats,
+        allTimeLeagueStatsByTier: s.allTimeLeagueStatsByTier,
         seasonLeagueStats: s.seasonLeagueStats,
         seasonLeagueStatsAvailable: s.seasonLeagueStatsAvailable,
         seasonCupStats: s.seasonCupStats,
@@ -560,7 +560,18 @@ export function useSaveGame({
         loadedArcs._arcRewardV3 = true;
       }
       store.setStoryArcs(loadedArcs);
-      store.setAllTimeLeagueStats(s.allTimeLeagueStats || { scorers: {}, assisters: {}, cards: {} });
+      // All-time league stats are tier-scoped. If the save already has
+      // `allTimeLeagueStatsByTier`, use it. Otherwise start empty:
+      // pre-tier-scoped saves don't record which tier the goals were
+      // scored in, so attributing them to the loaded `leagueTier` would
+      // invent false precision. Old saves' tier record books begin empty
+      // and become accurate from this point onward. (A future career/club
+      // record store can preserve old totals separately if we want them.)
+      if (s.allTimeLeagueStatsByTier && typeof s.allTimeLeagueStatsByTier === "object") {
+        store.setAllTimeLeagueStatsByTier(s.allTimeLeagueStatsByTier);
+      } else {
+        store.setAllTimeLeagueStatsByTier({});
+      }
       const hasCanonicalStats = !!(s.seasonLeagueStats && s.seasonLeagueStats.players);
       store.setSeasonLeagueStats(hasCanonicalStats ? s.seasonLeagueStats : emptyCompetitionStats());
       // Legacy detection: a save without canonical stats whose season has
@@ -657,16 +668,10 @@ export function useSaveGame({
       store.setTradesMadeInWindow(s.tradesMadeInWindow || 0);
       store.setTradedWithClubs(s.tradedWithClubs || new Set());
       store.setPrestigeLevel(s.prestigeLevel || 0);
-      // Migration: seed allTimeLeagueStats from clubHistory
-      if (!s.allTimeLeagueStats && s.clubHistory?.playerCareers) {
-        const seeded = { scorers: {}, assisters: {}, cards: {} };
-        Object.entries(s.clubHistory.playerCareers).forEach(([name, c]) => {
-          if (c.goals > 0) seeded.scorers[`${name}|${s.teamName}`] = c.goals;
-          if (c.assists > 0) seeded.assisters[`${name}|${s.teamName}`] = c.assists;
-          if ((c.yellows || 0) + (c.reds || 0) > 0) seeded.cards[`${name}|${s.teamName}`] = (c.yellows || 0) + (c.reds || 0);
-        });
-        store.setAllTimeLeagueStats(seeded);
-      }
+      // (No clubHistory → tier-scoped seed. clubHistory.playerCareers spans
+      // tiers/clubs/cups by design; attributing those totals to one tier
+      // would corrupt that tier's record book. If we want to surface those
+      // career totals, that belongs in a separate career/club record store.)
       // Migration: backfill initial OVR snapshot
       if (!s.ovrHistory || s.ovrHistory.length === 0) {
         const snap = {};

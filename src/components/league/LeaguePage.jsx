@@ -10,7 +10,7 @@ import { F, C, FONT } from "../../data/tokens";
 import { useMobile } from "../../hooks/useMobile.js";
 import { getTopScorers, getTopAssisters, getMostYellows, getMostReds } from "../../utils/competitionStats.js";
 
-export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, playerSeasonStats, playerRatingTracker, squad, startingXI, bench, seasonNumber, clubHistory, allTimeLeagueStats, allLeagueStates, leagueTier: leagueTierProp, onPlayerClick, onTeamClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, dynastyCupBracket, miniTournamentBracket, ovrCap = 20, seasonLeagueStats = null, seasonLeagueStatsAvailable = true }) {
+export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, playerSeasonStats, playerRatingTracker, squad, startingXI, bench, seasonNumber, clubHistory, allTimeLeagueStatsByTier, allLeagueStates, leagueTier: leagueTierProp, onPlayerClick, onTeamClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, dynastyCupBracket, miniTournamentBracket, ovrCap = 20, seasonLeagueStats = null, seasonLeagueStatsAvailable = true }) {
   const [activeTab, setActiveTab] = useState("leagues");
   const [selectedMD, setSelectedMD] = useState(Math.max(0, matchweekIndex - 1));
   const [viewTeamData, setViewTeamData] = useState(null); // { team, tableRow, seasonGoals, seasonAssists }
@@ -35,42 +35,23 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
   // Tiers 5–11 always visible; tiers 1–4 unlock once the player has reached them
   const visibleTiers = Array.from({ length: NUM_TIERS }, (_, i) => i + 1).filter(t2 => t2 >= 5 || t2 >= highestTierReached).reverse();
 
-  // Aggregate league-wide stats from stored results
+  // Local "name|teamIdx" maps derived from the canonical seasonLeagueStats
+  // store. Kept for the TOTS heuristic and AI-team panel which were originally
+  // written against this shape.
   const leagueStats = React.useMemo(() => {
-    const scorers = {}; // "PlayerName|teamIdx" → goals
-    const assisters = {}; // "PlayerName|teamIdx" → assists
-    const cards = {};   // "PlayerName|teamIdx" → cards
-    Object.values(leagueResults || {}).forEach(mwResults => {
-      (mwResults || []).forEach(match => {
-        (match.goalScorers || []).forEach(g => {
-          const teamIdx = g.side === "home" ? match.home : match.away;
-          // Skip player's team (index 0) — use playerSeasonStats for them instead
-          if (teamIdx === 0) return;
-          const key = `${g.name}|${teamIdx}`;
-          scorers[key] = (scorers[key] || 0) + 1;
-          if (g.assister) {
-            const aKey = `${g.assister}|${teamIdx}`;
-            assisters[aKey] = (assisters[aKey] || 0) + 1;
-          }
-        });
-        (match.cardRecipients || []).forEach(c => {
-          if (c.teamIdx === 0) return;
-          const key = `${c.name}|${c.teamIdx}`;
-          cards[key] = (cards[key] || 0) + 1;
-        });
-      });
-    });
-    // Add player's team stats from playerSeasonStats (the authoritative source)
-    if (playerSeasonStats) {
-      Object.entries(playerSeasonStats).forEach(([name, s]) => {
-        const key = `${name}|0`;
-        if (s.goals > 0) scorers[key] = s.goals;
-        if (s.assists > 0) assisters[key] = s.assists;
-        if ((s.yellows || 0) + (s.reds || 0) > 0) cards[key] = (s.yellows || 0) + (s.reds || 0);
-      });
+    const scorers = {}, assisters = {}, cards = {};
+    const players = seasonLeagueStats?.players || {};
+    for (const p of Object.values(players)) {
+      const teamIdx = p.teamId;
+      if (teamIdx == null) continue;
+      const key = `${p.name}|${teamIdx}`;
+      if (p.goals > 0) scorers[key] = p.goals;
+      if (p.assists > 0) assisters[key] = p.assists;
+      const totalCards = (p.yellows || 0) + (p.reds || 0);
+      if (totalCards > 0) cards[key] = totalCards;
     }
     return { scorers, assisters, cards };
-  }, [leagueResults, playerSeasonStats]);
+  }, [seasonLeagueStats]);
 
   // Stats tab is canonical-only. When seasonLeagueStatsAvailable is false
   // (legacy save mid-season), the tab shows an unavailable notice instead.
@@ -840,63 +821,42 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
         })()}
 
         {activeTab === "alltime" && (() => {
-          // Merge persisted allTimeLeagueStats with current season data
-          const merged = { scorers: { ...(allTimeLeagueStats?.scorers || {}) }, assisters: { ...(allTimeLeagueStats?.assisters || {}) }, cards: { ...(allTimeLeagueStats?.cards || {}) } };
+          // All-time league records are tier-scoped: read only the current
+          // tier's slot from allTimeLeagueStatsByTier and merge in the
+          // current season's canonical seasonLeagueStats (player-tier only).
+          // No team-name filter — the tier slot itself defines what counts
+          // as a Div N record. Promoted/relegated team entries stay where
+          // they were earned, regardless of which division they're in now.
+          const currentTier = league?.tier || tier;
+          const tierAllTime = allTimeLeagueStatsByTier?.[currentTier] || null;
+          const merged = {};
+          const acc = (entry) => {
+            const key = entry.key;
+            if (!merged[key]) {
+              merged[key] = { ...entry, goals: 0, assists: 0, yellows: 0, reds: 0 };
+            }
+            const m = merged[key];
+            m.goals += entry.goals || 0;
+            m.assists += entry.assists || 0;
+            m.yellows += entry.yellows || 0;
+            m.reds += entry.reds || 0;
+            // Refresh display fields from the most-recent source.
+            if (entry.name) m.name = entry.name;
+            if (entry.teamName) m.teamName = entry.teamName;
+          };
+          Object.values(tierAllTime?.players || {}).forEach(acc);
+          Object.values(seasonLeagueStats?.players || {}).forEach(acc);
 
-          // Add current season AI stats from leagueResults
-          Object.values(leagueResults || {}).forEach(mwResults => {
-            (mwResults || []).forEach(match => {
-              (match.goalScorers || []).forEach(g => {
-                const teamIdx = g.side === "home" ? match.home : match.away;
-                const team = league?.teams?.[teamIdx];
-                if (!team || team.isPlayer) return; // skip player team here
-                const key = `${g.name}|${team.name}`;
-                merged.scorers[key] = (merged.scorers[key] || 0) + 1;
-                if (g.assister) {
-                  const aKey = `${g.assister}|${team.name}`;
-                  merged.assisters[aKey] = (merged.assisters[aKey] || 0) + 1;
-                }
-              });
-              (match.cardRecipients || []).forEach(c => {
-                const team = league?.teams?.[c.teamIdx];
-                if (!team || team.isPlayer) return;
-                const key = `${c.name}|${team.name}`;
-                merged.cards[key] = (merged.cards[key] || 0) + 1;
-              });
-            });
-          });
+          const rows = Object.values(merged).map(p => ({
+            name: p.name, teamName: p.teamName,
+            goals: p.goals, assists: p.assists,
+            cards: (p.yellows || 0) + (p.reds || 0),
+            isPlayerTeam: p.teamName === teamName,
+          }));
 
-          // Add player team current season from playerSeasonStats (not clubHistory — that spans all tiers)
-          if (playerSeasonStats) {
-            Object.entries(playerSeasonStats).forEach(([name, s]) => {
-              const key = `${name}|${teamName}`;
-              if (s.goals > 0) merged.scorers[key] = (merged.scorers[key] || 0) + (s.goals || 0);
-              if (s.assists > 0) merged.assisters[key] = (merged.assisters[key] || 0) + (s.assists || 0);
-              const cards = (s.yellows || 0) + (s.reds || 0);
-              if (cards > 0) merged.cards[key] = (merged.cards[key] || 0) + cards;
-            });
-          }
-
-          // Filter to current league teams only — records are per-division
-          const leagueTeamNames = new Set((league?.teams || []).map(t => t.name));
-          const inLeague = ([key]) => { const team = key.split("|")[1]; return leagueTeamNames.has(team); };
-
-          // Build sorted lists
-          const scorerList = Object.entries(merged.scorers).filter(inLeague)
-            .map(([key, goals]) => { const [name, team] = key.split("|"); return { name, teamName: team, goals, isPlayerTeam: team === teamName }; })
-            .sort((a, b) => b.goals - a.goals)
-            .slice(0, 20);
-          const assisterList = Object.entries(merged.assisters).filter(inLeague)
-            .map(([key, assists]) => { const [name, team] = key.split("|"); return { name, teamName: team, assists, isPlayerTeam: team === teamName }; })
-            .sort((a, b) => b.assists - a.assists)
-            .slice(0, 20);
-          const cardList = Object.entries(merged.cards).filter(inLeague)
-            .map(([key, cards]) => { const [name, team] = key.split("|"); return { name, teamName: team, cards, isPlayerTeam: team === teamName }; })
-            .sort((a, b) => b.cards - a.cards)
-            .slice(0, 20);
-
-          const hasData = scorerList.length > 0 || cardList.length > 0;
-          const isFirstSeason = (seasonNumber || 1) <= 1 && !allTimeLeagueStats?.scorers;
+          const scorerList = rows.filter(r => r.goals > 0).sort((a, b) => b.goals - a.goals).slice(0, 20);
+          const assisterList = rows.filter(r => r.assists > 0).sort((a, b) => b.assists - a.assists).slice(0, 20);
+          const cardList = rows.filter(r => r.cards > 0).sort((a, b) => b.cards - a.cards).slice(0, 20);
 
           const renderAllTimeList = (title, icon, list, valueFn, unitLabel) => (
             <div style={{ marginBottom: 24 }}>

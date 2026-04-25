@@ -16,7 +16,7 @@ import { resolveSeasonEndArcs } from "./utils/arcs.js";
 import { buildAssistantLineup, buildPresetLineup } from "./utils/lineup.js";
 import { simulateMatch, generatePenaltyShootout, simulateMatchweek } from "./utils/match.js";
 import { initLeagueRosters, sortStandings, collectSeasonEndAchievements, processSeasonSwaps, initLeague, initAILeague, buildSeasonCalendar, initCup, advanceCupRound, buildNextCupRound } from "./utils/league.js";
-import { accumulateMatchStats, accumulateCupMatch, makeCupAIMatchHandler, leagueMatchId, emptyCompetitionStats } from "./utils/competitionStats.js";
+import { accumulateMatchStats, accumulateCupMatch, makeCupAIMatchHandler, leagueMatchId, emptyCompetitionStats, rollIntoAllTime, creditAllTimeScorers, getTopScorers } from "./utils/competitionStats.js";
 import { checkBreakouts } from "./utils/breakouts.js";
 import { SFX, BGM } from "./utils/sfx.js";
 import * as Tone from "tone";
@@ -153,6 +153,31 @@ function generateManagerName() {
 const DEFAULT_SEASON_LENGTH = 48;
 const DEFAULT_FIXTURE_COUNT = 18;
 const SQUAD_CAP = 25;
+// Roll the current season's league canonical stats into the closing tier's
+// all-time slot before the season-end paths clear the season store. Also
+// runs the Etched In Stone check against the post-roll *current tier* blob
+// (Option A: top of this division's all-time chart).
+//
+// Cup all-time roll-up is deliberately not handled here — the cup-scoped
+// model (`allTimeCupStatsByCup[cupKey]`) lands in the follow-up PR.
+function finalizeSeasonStatsIntoAllTime({
+  setAllTimeLeagueStatsByTier,
+  seasonLeagueStats,
+  closingTier, teamName, unlockedAchievements, tryUnlockAchievement,
+}) {
+  setAllTimeLeagueStatsByTier(prev => {
+    const tierBlob = prev?.[closingTier] || emptyCompetitionStats();
+    const nextTierBlob = rollIntoAllTime(tierBlob, seasonLeagueStats);
+    if (tryUnlockAchievement && !unlockedAchievements?.has?.("all_time_top")) {
+      const top = getTopScorers(nextTierBlob, 1)[0];
+      if (top && top.teamName === teamName) {
+        tryUnlockAchievement("all_time_top");
+      }
+    }
+    return { ...(prev || {}), [closingTier]: nextTierBlob };
+  });
+}
+
 // Run the canonical league-stats accumulator over a completed matchweek's
 // `simulateMatchweek` results. Pure — returns a new seasonLeagueStats
 // object with each match's deltas chained in. Idempotent per matchId.
@@ -217,7 +242,7 @@ function FruitCigs() {
     setConsecutiveUnbeaten, setConsecutiveLosses, setConsecutiveDraws,
     setConsecutiveWins, setConsecutiveScoreless,
     setHalfwayPosition, setPreviousLeaguePosition, setRecentScorelines, setSecondPlaceFinishes,
-    setOvrHistory, setClubHistory, setAllTimeLeagueStats, setSeasonLeagueStats, setSeasonLeagueStatsAvailable,
+    setOvrHistory, setClubHistory, setAllTimeLeagueStatsByTier, setSeasonLeagueStats, setSeasonLeagueStatsAvailable,
     setSeasonCupStats, setSeasonCupStatsAvailable,
     setStartingXI, setBench, setFormation, setSlotAssignments, setPrevStartingXI, setXiPresets,
     setTrialPlayer, setTrialHistory, setProdigalSon, setRetiringPlayers,
@@ -614,7 +639,7 @@ function FruitCigs() {
   const highScoringMatches = useGameStore(s => s.highScoringMatches);
   // All-time league-wide stats (accumulated at end of each season)
   // { scorers: { "PlayerName|TeamName": goals }, cards: { "PlayerName|TeamName": cards } }
-  const allTimeLeagueStats = useGameStore(s => s.allTimeLeagueStats);
+  const allTimeLeagueStatsByTier = useGameStore(s => s.allTimeLeagueStatsByTier);
   const seasonLeagueStats = useGameStore(s => s.seasonLeagueStats);
   const seasonLeagueStatsAvailable = useGameStore(s => s.seasonLeagueStatsAvailable);
   const seasonCupStats = useGameStore(s => s.seasonCupStats);
@@ -2462,7 +2487,7 @@ function FruitCigs() {
           bench={bench}
           seasonNumber={seasonNumber}
           clubHistory={clubHistory}
-          allTimeLeagueStats={allTimeLeagueStats}
+          allTimeLeagueStatsByTier={allTimeLeagueStatsByTier}
           seasonLeagueStats={seasonLeagueStats}
           seasonLeagueStatsAvailable={seasonLeagueStatsAvailable}
           allLeagueStates={allLeagueStates}
@@ -2953,8 +2978,10 @@ function FruitCigs() {
                           }
                         }
                         // matchweekIndex derived from calendarIndex — no explicit increment needed
-                        // Capture AI tier scorer data for all-time stats (holiday path)
-                        const holAIMWScorers = [];
+                        // Capture AI tier scorer data for all-time stats (holiday path).
+                        // Grouped by tier+MW so each batch gets a deterministic creditId
+                        // and won't double-count if the path retries.
+                        const holAIBatches = []; // [{ tier, mw, events: [{name, assister, teamName}] }]
                         setAllLeagueStates(prev => {
                           if (!prev || Object.keys(prev).length === 0) return prev;
                           const next = {};
@@ -2964,34 +2991,33 @@ function FruitCigs() {
                             } else {
                               const copy = { ...aiLeague, table: aiLeague.table.map(r => ({ ...r })) };
                               const aiResults = simulateMatchweek(copy, aiLeague.matchweekIndex, null, null, null, null, null);
+                              const events = [];
                               if (aiResults) {
                                 for (const r of aiResults) {
                                   for (const e of (r.events || [])) {
                                     if (e.type === "goal") {
                                       const teamIdx = e.side === "home" ? r.home : r.away;
                                       const team = copy.teams?.[teamIdx];
-                                      if (team) holAIMWScorers.push({ name: e.player, assister: e.assister, teamName: team.name });
+                                      if (team) events.push({ name: e.player, assister: e.assister, teamName: team.name });
                                     }
                                   }
                                 }
+                              }
+                              if (events.length > 0) {
+                                holAIBatches.push({ tier: t, mw: aiLeague.matchweekIndex, events });
                               }
                               next[t] = { ...copy, matchweekIndex: aiLeague.matchweekIndex + 1 };
                             }
                           }
                           return next;
                         });
-                        if (holAIMWScorers.length > 0) {
-                          setAllTimeLeagueStats(prev => {
-                            const next = { scorers: { ...prev.scorers }, assisters: { ...(prev.assisters || {}) }, cards: { ...prev.cards } };
-                            for (const g of holAIMWScorers) {
-                              const key = `${g.name}|${g.teamName}`;
-                              next.scorers[key] = (next.scorers[key] || 0) + 1;
-                              if (g.assister) {
-                                const aKey = `${g.assister}|${g.teamName}`;
-                                next.assisters[aKey] = (next.assisters[aKey] || 0) + 1;
-                              }
-                            }
-                            return next;
+                        for (const batch of holAIBatches) {
+                          const creditId = `alltime-ai-league:S${seasonNumber}:T${batch.tier}:MD${batch.mw}`;
+                          const tierKey = batch.tier;
+                          setAllTimeLeagueStatsByTier(prev => {
+                            const tierBlob = prev?.[tierKey] || emptyCompetitionStats();
+                            const next = creditAllTimeScorers(tierBlob, creditId, batch.events);
+                            return next === tierBlob ? prev : { ...(prev || {}), [tierKey]: next };
                           });
                         }
                         if (playerMatch) {
@@ -3647,9 +3673,10 @@ function FruitCigs() {
                       .filter(o => o.expiresWeeks > 0)
                     );
                   }
-                  // Advance every AI league by one matchweek in parallel
-                  // Capture scorer data for all-time stats accumulation
-                  const aiMWScorers = [];
+                  // Advance every AI league by one matchweek in parallel.
+                  // Group scorer events by tier+MW so each batch gets a
+                  // deterministic creditId and can't double-count on retry.
+                  const aiBatches = []; // [{ tier, mw, events }]
                   setAllLeagueStates(prev => {
                     if (!prev || Object.keys(prev).length === 0) return prev;
                     const next = {};
@@ -3659,35 +3686,33 @@ function FruitCigs() {
                       } else {
                         const copy = { ...aiLeague, table: aiLeague.table.map(r => ({ ...r })) };
                         const aiResults = simulateMatchweek(copy, aiLeague.matchweekIndex, null, null, null, null, null);
+                        const events = [];
                         if (aiResults) {
                           for (const r of aiResults) {
                             for (const e of (r.events || [])) {
                               if (e.type === "goal") {
                                 const teamIdx = e.side === "home" ? r.home : r.away;
                                 const team = copy.teams?.[teamIdx];
-                                if (team) aiMWScorers.push({ name: e.player, assister: e.assister, teamName: team.name });
+                                if (team) events.push({ name: e.player, assister: e.assister, teamName: team.name });
                               }
                             }
                           }
+                        }
+                        if (events.length > 0) {
+                          aiBatches.push({ tier: t, mw: aiLeague.matchweekIndex, events });
                         }
                         next[t] = { ...copy, matchweekIndex: aiLeague.matchweekIndex + 1 };
                       }
                     }
                     return next;
                   });
-                  // Accumulate AI tier scorer data into all-time stats
-                  if (aiMWScorers.length > 0) {
-                    setAllTimeLeagueStats(prev => {
-                      const next = { scorers: { ...prev.scorers }, assisters: { ...(prev.assisters || {}) }, cards: { ...prev.cards } };
-                      for (const g of aiMWScorers) {
-                        const key = `${g.name}|${g.teamName}`;
-                        next.scorers[key] = (next.scorers[key] || 0) + 1;
-                        if (g.assister) {
-                          const aKey = `${g.assister}|${g.teamName}`;
-                          next.assisters[aKey] = (next.assisters[aKey] || 0) + 1;
-                        }
-                      }
-                      return next;
+                  for (const batch of aiBatches) {
+                    const creditId = `alltime-ai-league:S${seasonNumber}:T${batch.tier}:MD${batch.mw}`;
+                    const tierKey = batch.tier;
+                    setAllTimeLeagueStatsByTier(prev => {
+                      const tierBlob = prev?.[tierKey] || emptyCompetitionStats();
+                      const next = creditAllTimeScorers(tierBlob, creditId, batch.events);
+                      return next === tierBlob ? prev : { ...(prev || {}), [tierKey]: next };
                     });
                   }
                   if (playerMatch) {
@@ -5567,7 +5592,8 @@ function FruitCigs() {
 
               const newSeasonUnlocks2 = collectSeasonEndAchievements({
                 position, currentTier, moveType, newTier, lastSeasonMove, league, leagueResults,
-                playerSeasonStats, beatenTeams, unlockedAchievements, clubHistory,
+                playerSeasonStats, seasonLeagueStats,
+                beatenTeams, unlockedAchievements, clubHistory,
                 wonCupThisSeason: unlockedAchievements.has("cup_winner") || cupAchs.includes("cup_winner"),
                 squad: useGameStore.getState().squad, prevSeasonSquadIds, seasonNumber,
                 dynastyCupBracket: useGameStore.getState().dynastyCupBracket, cup: useGameStore.getState().cup,
@@ -5997,6 +6023,16 @@ function FruitCigs() {
             setSeasonCalendar(cal);
             setCalendarIndex(0);
             setCalendarResults({});
+            // Prestige is a real season-end too — fold the closing season's
+            // canonical stats into all-time before wiping the season stores.
+            // The closing tier is the current `leagueTier` (the prestige tier
+            // change to NUM_TIERS happens further down).
+            finalizeSeasonStatsIntoAllTime({
+              setAllTimeLeagueStatsByTier,
+              seasonLeagueStats,
+              closingTier: leagueTier,
+              teamName, unlockedAchievements, tryUnlockAchievement,
+            });
             setLeagueResults({});
             setSeasonLeagueStats(emptyCompetitionStats());
             setSeasonLeagueStatsAvailable(true);
@@ -6587,41 +6623,11 @@ function FruitCigs() {
               setSeasonCalendar(newCal);
               setCalendarIndex(0);
               setCalendarResults({});
-              // Accumulate league-wide all-time stats before wiping
-              setAllTimeLeagueStats(prev => {
-                const next = { scorers: { ...prev.scorers }, assisters: { ...(prev.assisters || {}) }, cards: { ...prev.cards } };
-                // AI teams from leagueResults
-                Object.values(leagueResults || {}).forEach(mwResults => {
-                  (mwResults || []).forEach(match => {
-                    (match.goalScorers || []).forEach(g => {
-                      const teamIdx = g.side === "home" ? match.home : match.away;
-                      const team = league?.teams?.[teamIdx];
-                      if (!team) return;
-                      const key = `${g.name}|${team.name}`;
-                      next.scorers[key] = (next.scorers[key] || 0) + 1;
-                      if (g.assister) {
-                        const aKey = `${g.assister}|${team.name}`;
-                        next.assisters[aKey] = (next.assisters[aKey] || 0) + 1;
-                      }
-                    });
-                    (match.cardRecipients || []).forEach(c => {
-                      const team = league?.teams?.[c.teamIdx];
-                      if (!team) return;
-                      const key = `${c.name}|${team.name}`;
-                      next.cards[key] = (next.cards[key] || 0) + 1;
-                    });
-                  });
-                });
-                // Player's team stats are already captured in leagueResults above
-                // (simulateMatchweek includes the player's match). No separate override needed.
-                // Etched In Stone — check if player's team tops all-time scorers
-                if (!unlockedAchievements.has("all_time_top")) {
-                  const sortedAllTime = Object.entries(next.scorers).sort((a, b) => b[1] - a[1]);
-                  if (sortedAllTime.length > 0 && sortedAllTime[0][0].endsWith(`|${teamName}`)) {
-                    tryUnlockAchievement("all_time_top");
-                  }
-                }
-                return next;
+              finalizeSeasonStatsIntoAllTime({
+                setAllTimeLeagueStatsByTier,
+                seasonLeagueStats,
+                closingTier: summerData?.fromTier || leagueTier,
+                teamName, unlockedAchievements, tryUnlockAchievement,
               });
               setLeagueResults({});
               setSeasonLeagueStats(emptyCompetitionStats());

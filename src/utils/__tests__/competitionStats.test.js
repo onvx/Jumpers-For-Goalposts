@@ -3,6 +3,8 @@ import {
   emptyCompetitionStats,
   accumulateMatchStats,
   accumulateCupMatch,
+  rollIntoAllTime,
+  creditAllTimeScorers,
   getTopScorers,
   getTopAssisters,
   getMostYellows,
@@ -321,6 +323,113 @@ describe("cupMatchId", () => {
     const a = cupMatchId({ season: 1, cupName: "Cup", roundIdx: 0, home: "A", away: "B" });
     const b = cupMatchId({ season: 1, cupName: "Cup", roundIdx: 0, home: "B", away: "A" });
     expect(a).not.toBe(b);
+  });
+});
+
+describe("rollIntoAllTime", () => {
+  function seasonWith(players) {
+    return { players, processedMatches: {} };
+  }
+
+  it("folds a season's player entries into an empty all-time blob", () => {
+    const season = seasonWith({
+      "p1": { key: "p1", playerId: "p1", name: "Alice", teamId: 0, teamName: "City",
+              goals: 5, assists: 2, yellows: 1, reds: 0, position: "ST" },
+    });
+    const allTime = rollIntoAllTime(emptyCompetitionStats(), season);
+    expect(allTime.players["p1"].goals).toBe(5);
+    expect(allTime.players["p1"].assists).toBe(2);
+    expect(allTime.players["p1"].yellows).toBe(1);
+    expect(allTime.players["p1"].teamName).toBe("City");
+  });
+
+  it("adds onto existing all-time totals for the same key", () => {
+    let allTime = rollIntoAllTime(emptyCompetitionStats(), seasonWith({
+      "p1": { key: "p1", playerId: "p1", name: "Alice", teamId: 0, teamName: "City",
+              goals: 5, assists: 2, yellows: 1, reds: 0 },
+    }));
+    allTime = rollIntoAllTime(allTime, seasonWith({
+      "p1": { key: "p1", playerId: "p1", name: "Alice", teamId: 0, teamName: "City",
+              goals: 7, assists: 3, yellows: 0, reds: 1 },
+    }));
+    expect(allTime.players["p1"].goals).toBe(12);
+    expect(allTime.players["p1"].assists).toBe(5);
+    expect(allTime.players["p1"].yellows).toBe(1);
+    expect(allTime.players["p1"].reds).toBe(1);
+  });
+
+  it("returns the same all-time reference when the season is empty", () => {
+    const allTime = emptyCompetitionStats();
+    expect(rollIntoAllTime(allTime, emptyCompetitionStats())).toBe(allTime);
+  });
+
+  it("does not carry processedMatches from season", () => {
+    const allTime = emptyCompetitionStats();
+    const season = { players: { "p1": { key: "p1", name: "A", goals: 1, assists: 0, yellows: 0, reds: 0 } }, processedMatches: { "match-x": true } };
+    const next = rollIntoAllTime(allTime, season);
+    expect(next.processedMatches["match-x"]).toBeUndefined();
+  });
+});
+
+describe("creditAllTimeScorers", () => {
+  const mw0 = "alltime-ai-league:S1:T3:MD0";
+  const mw1 = "alltime-ai-league:S1:T3:MD1";
+
+  it("credits goals + assists by composite key", () => {
+    const next = creditAllTimeScorers(emptyCompetitionStats(), mw0, [
+      { teamName: "Rovers", name: "Joe", assister: "Mike" },
+      { teamName: "Rovers", name: "Joe" },
+    ]);
+    const joeKey = Object.keys(next.players).find(k => next.players[k].name === "Joe");
+    const mikeKey = Object.keys(next.players).find(k => next.players[k].name === "Mike");
+    expect(next.players[joeKey].goals).toBe(2);
+    expect(next.players[mikeKey].assists).toBe(1);
+    expect(next.processedMatches[mw0]).toBe(true);
+  });
+
+  it("is idempotent across the same creditId — same input returns same reference", () => {
+    let stats = creditAllTimeScorers(emptyCompetitionStats(), mw0, [
+      { teamName: "Rovers", name: "Joe" },
+    ]);
+    const same = creditAllTimeScorers(stats, mw0, [
+      { teamName: "Rovers", name: "Joe" },
+    ]);
+    expect(same).toBe(stats);
+    const joeKey = Object.keys(stats.players).find(k => stats.players[k].name === "Joe");
+    expect(stats.players[joeKey].goals).toBe(1);
+  });
+
+  it("processes different creditIds independently", () => {
+    let stats = creditAllTimeScorers(emptyCompetitionStats(), mw0, [{ teamName: "R", name: "Joe" }]);
+    stats = creditAllTimeScorers(stats, mw1, [{ teamName: "R", name: "Joe" }]);
+    const joeKey = Object.keys(stats.players).find(k => stats.players[k].name === "Joe");
+    expect(stats.players[joeKey].goals).toBe(2);
+  });
+
+  it("returns the input when events array is empty, missing, or creditId omitted", () => {
+    const stats = emptyCompetitionStats();
+    expect(creditAllTimeScorers(stats, mw0, [])).toBe(stats);
+    expect(creditAllTimeScorers(stats, mw0, null)).toBe(stats);
+    expect(creditAllTimeScorers(stats, null, [{ teamName: "R", name: "X" }])).toBe(stats);
+  });
+});
+
+describe("rollIntoAllTime — tier-scoped usage", () => {
+  // The store now keeps a tier-scoped map (`allTimeLeagueStatsByTier`); the
+  // tests below pin the contract that callers compose by passing the right
+  // tier slot in/out. Different tiers are completely isolated.
+  it("crediting a season into one tier slot does not affect a different tier", () => {
+    const byTier = {
+      7: { players: { "p1": { key: "p1", name: "Rookie", teamName: "Athletic",
+                              goals: 4, assists: 0, yellows: 0, reds: 0 } }, processedMatches: {} },
+    };
+    const seasonAtTier8 = { players: { "p2": { key: "p2", name: "Vet", teamName: "City",
+                                               goals: 3, assists: 0, yellows: 0, reds: 0 } }, processedMatches: {} };
+    const next = { ...byTier, 8: rollIntoAllTime(byTier[8], seasonAtTier8) };
+    expect(next[7].players["p1"].goals).toBe(4);
+    expect(next[8].players["p2"].goals).toBe(3);
+    expect(next[7].players["p2"]).toBeUndefined();
+    expect(next[8].players["p1"]).toBeUndefined();
   });
 });
 

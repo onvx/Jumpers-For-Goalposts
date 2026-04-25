@@ -176,7 +176,13 @@ export const useGameStore = create((set, get) => ({
     biggestWin: null, worstDefeat: null, bestSeasonFinish: null, bestSeasonPoints: 0,
     playerCareers: {}, allTimeXI: {}, seasonArchive: [], cupHistory: [],
   },
-  allTimeLeagueStats: { scorers: {}, assisters: {}, cards: {} },
+  // Canonical all-time league stats — tier-scoped. Each entry is a full
+  // competitionStats blob for that tier. Tier scoping prevents promoted/
+  // relegated teams from carrying old-division stats into the wrong
+  // division's record book. Rolled up at season end via rollIntoAllTime
+  // into allTimeLeagueStatsByTier[currentTier].
+  allTimeLeagueStatsByTier: {},
+  // (allTimeCupStatsByCup lands in the follow-up cup-scoped PR.)
   // Canonical season-wide league stats. Source of truth for the LeaguePage
   // Stats tab. Cleared at season end.
   seasonLeagueStats: emptyCompetitionStats(),
@@ -358,7 +364,7 @@ export const useGameStore = create((set, get) => ({
   setSecondPlaceFinishes: (val) => set(s => ({ secondPlaceFinishes: typeof val === "function" ? val(s.secondPlaceFinishes) : val })),
   setOvrHistory: (val) => set(s => ({ ovrHistory: typeof val === "function" ? val(s.ovrHistory) : val })),
   setClubHistory: (val) => set(s => ({ clubHistory: typeof val === "function" ? val(s.clubHistory) : val })),
-  setAllTimeLeagueStats: (val) => set(s => ({ allTimeLeagueStats: typeof val === "function" ? val(s.allTimeLeagueStats) : val })),
+  setAllTimeLeagueStatsByTier: (val) => set(s => ({ allTimeLeagueStatsByTier: typeof val === "function" ? val(s.allTimeLeagueStatsByTier) : val })),
   setSeasonLeagueStats: (val) => set(s => ({ seasonLeagueStats: typeof val === "function" ? val(s.seasonLeagueStats) : val })),
   setSeasonLeagueStatsAvailable: (val) => set(s => ({ seasonLeagueStatsAvailable: typeof val === "function" ? val(s.seasonLeagueStatsAvailable) : val })),
   setSeasonCupStats: (val) => set(s => ({ seasonCupStats: typeof val === "function" ? val(s.seasonCupStats) : val })),
@@ -505,7 +511,7 @@ export const useGameStore = create((set, get) => ({
       biggestWin: null, worstDefeat: null, bestSeasonFinish: null, bestSeasonPoints: 0,
       playerCareers: {}, allTimeXI: {}, seasonArchive: [], cupHistory: [],
     },
-    allTimeLeagueStats: { scorers: {}, assisters: {}, cards: {} },
+    allTimeLeagueStatsByTier: {},
     seasonLeagueStats: emptyCompetitionStats(),
     seasonLeagueStatsAvailable: true,
     seasonCupStats: emptyCompetitionStats(),
@@ -656,7 +662,7 @@ export const useGameStore = create((set, get) => ({
     dynastyCupQualifiers: null,
     fiveASideSquad: null,
     matchweekIndex: 0,
-    // NOTE: seasonNumber, leagueTier, leagueWins, prestigeLevel, totalGains, totalMatches, secondPlaceFinishes, ovrHistory, clubHistory, allTimeLeagueStats, recentScorelines, formation are intentionally preserved.
+    // NOTE: seasonNumber, leagueTier, leagueWins, prestigeLevel, totalGains, totalMatches, secondPlaceFinishes, ovrHistory, clubHistory, allTimeLeagueStatsByTier, recentScorelines, formation are intentionally preserved.
     // NOTE: trialHistory, careerMilestones are career-spanning and intentionally preserved.
     // NOTE: squad, fanSentiment, boardSentiment, gameMode, activeProfileId,
     // gameOver are intentionally preserved.
