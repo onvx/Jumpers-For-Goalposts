@@ -824,11 +824,11 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
           // All-time league records are tier-scoped: read only the current
           // tier's slot from allTimeLeagueStatsByTier and merge in the
           // current season's canonical seasonLeagueStats (player-tier only).
-          // Then filter to the teams currently in this division so newly
-          // promoted teams don't appear with zero entries on day one.
+          // No team-name filter — the tier slot itself defines what counts
+          // as a Div N record. Promoted/relegated team entries stay where
+          // they were earned, regardless of which division they're in now.
           const currentTier = league?.tier || tier;
           const tierAllTime = allTimeLeagueStatsByTier?.[currentTier] || null;
-          const leagueTeamNames = new Set((league?.teams || []).map(t => t.name));
           const merged = {};
           const acc = (entry) => {
             const key = entry.key;
@@ -847,14 +847,12 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
           Object.values(tierAllTime?.players || {}).forEach(acc);
           Object.values(seasonLeagueStats?.players || {}).forEach(acc);
 
-          const rows = Object.values(merged)
-            .filter(p => leagueTeamNames.has(p.teamName))
-            .map(p => ({
-              name: p.name, teamName: p.teamName,
-              goals: p.goals, assists: p.assists,
-              cards: (p.yellows || 0) + (p.reds || 0),
-              isPlayerTeam: p.teamName === teamName,
-            }));
+          const rows = Object.values(merged).map(p => ({
+            name: p.name, teamName: p.teamName,
+            goals: p.goals, assists: p.assists,
+            cards: (p.yellows || 0) + (p.reds || 0),
+            isPlayerTeam: p.teamName === teamName,
+          }));
 
           const scorerList = rows.filter(r => r.goals > 0).sort((a, b) => b.goals - a.goals).slice(0, 20);
           const assisterList = rows.filter(r => r.assists > 0).sort((a, b) => b.assists - a.assists).slice(0, 20);

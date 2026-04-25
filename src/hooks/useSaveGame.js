@@ -16,7 +16,7 @@ import { simulateMatchweek } from "../utils/match.js";
 import { normalizeRosters, initLeague, initAILeague, buildSeasonCalendar, computeCalendarIndex, initCup } from "../utils/league.js";
 import { seedMessageSeq, getMessageSeq } from "../utils/messageUtils.js";
 import { checkAchievements } from "../utils/achievements.js";
-import { emptyCompetitionStats, migrateLegacyAllTimeStats } from "../utils/competitionStats.js";
+import { emptyCompetitionStats } from "../utils/competitionStats.js";
 import { randomAvatar } from "../components/ui/ManagerAvatar.jsx";
 
 /**
@@ -561,18 +561,15 @@ export function useSaveGame({
         loadedArcs._arcRewardV3 = true;
       }
       store.setStoryArcs(loadedArcs);
-      // All-time league stats are now tier-scoped. If the save already has
-      // `allTimeLeagueStatsByTier`, use it. Otherwise fall back to the
-      // single-blob `allTimeLeagueStats` (canonical or legacy shape) and
-      // attribute it to the loaded leagueTier — lossy but the only honest
-      // option since the old shape didn't track which tier the goals were
-      // scored in.
+      // All-time league stats are tier-scoped. If the save already has
+      // `allTimeLeagueStatsByTier`, use it. Otherwise start empty:
+      // pre-tier-scoped saves don't record which tier the goals were
+      // scored in, so attributing them to the loaded `leagueTier` would
+      // invent false precision. Old saves' tier record books begin empty
+      // and become accurate from this point onward. (A future career/club
+      // record store can preserve old totals separately if we want them.)
       if (s.allTimeLeagueStatsByTier && typeof s.allTimeLeagueStatsByTier === "object") {
         store.setAllTimeLeagueStatsByTier(s.allTimeLeagueStatsByTier);
-      } else if (s.allTimeLeagueStats) {
-        const migrated = migrateLegacyAllTimeStats(s.allTimeLeagueStats);
-        const tierKey = s.leagueTier || NUM_TIERS;
-        store.setAllTimeLeagueStatsByTier({ [tierKey]: migrated });
       } else {
         store.setAllTimeLeagueStatsByTier({});
       }
@@ -673,24 +670,10 @@ export function useSaveGame({
       store.setTradesMadeInWindow(s.tradesMadeInWindow || 0);
       store.setTradedWithClubs(s.tradedWithClubs || new Set());
       store.setPrestigeLevel(s.prestigeLevel || 0);
-      // Migration: seed allTimeLeagueStatsByTier from clubHistory if both
-      // canonical and legacy stat fields are missing. We can only attribute
-      // these career-level totals to the loaded tier — same lossy compromise
-      // as the legacy single-blob migration above.
-      if (!s.allTimeLeagueStatsByTier && !s.allTimeLeagueStats && s.clubHistory?.playerCareers) {
-        const seeded = migrateLegacyAllTimeStats({
-          scorers: {}, assisters: {}, cards: {},
-          ...Object.entries(s.clubHistory.playerCareers).reduce((acc, [name, c]) => {
-            if (c.goals > 0) acc.scorers[`${name}|${s.teamName}`] = c.goals;
-            if (c.assists > 0) acc.assisters[`${name}|${s.teamName}`] = c.assists;
-            const cards = (c.yellows || 0) + (c.reds || 0);
-            if (cards > 0) acc.cards[`${name}|${s.teamName}`] = cards;
-            return acc;
-          }, { scorers: {}, assisters: {}, cards: {} }),
-        });
-        const tierKey = s.leagueTier || NUM_TIERS;
-        store.setAllTimeLeagueStatsByTier({ [tierKey]: seeded });
-      }
+      // (No clubHistory → tier-scoped seed. clubHistory.playerCareers spans
+      // tiers/clubs/cups by design; attributing those totals to one tier
+      // would corrupt that tier's record book. If we want to surface those
+      // career totals, that belongs in a separate career/club record store.)
       // Migration: backfill initial OVR snapshot
       if (!s.ovrHistory || s.ovrHistory.length === 0) {
         const snap = {};

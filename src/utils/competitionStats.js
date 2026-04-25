@@ -325,50 +325,5 @@ export function creditAllTimeScorers(allTime, creditId, events) {
   };
 }
 
-/**
- * Migrate the legacy allTimeLeagueStats shape `{ scorers, assisters, cards }`
- * (string-keyed `name|teamName` → count) into the canonical competitionStats
- * shape. Lossy: legacy `cards` lumped yellows + reds together, so all are
- * credited as yellows in the migration.
- */
-export function migrateLegacyAllTimeStats(legacy) {
-  if (!legacy) return emptyCompetitionStats();
-  // Already canonical-shaped — pass through.
-  if (legacy.players && typeof legacy.players === "object") return legacy;
-  const players = {};
-  const ensure = (key, name, teamName) => {
-    if (!players[key]) {
-      players[key] = {
-        key, playerId: null, name, teamId: teamName, teamName, position: null,
-        goals: 0, assists: 0, yellows: 0, reds: 0,
-      };
-    }
-    return players[key];
-  };
-  const parse = (k) => {
-    const idx = k.lastIndexOf("|");
-    if (idx < 0) return [k, ""];
-    return [k.slice(0, idx), k.slice(idx + 1)];
-  };
-  for (const [k, count] of Object.entries(legacy.scorers || {})) {
-    const [name, teamName] = parse(k);
-    const key = compositeFallbackKey(teamName, name, null);
-    ensure(key, name, teamName).goals += count;
-  }
-  for (const [k, count] of Object.entries(legacy.assisters || {})) {
-    const [name, teamName] = parse(k);
-    const key = compositeFallbackKey(teamName, name, null);
-    ensure(key, name, teamName).assists += count;
-  }
-  for (const [k, count] of Object.entries(legacy.cards || {})) {
-    const [name, teamName] = parse(k);
-    const key = compositeFallbackKey(teamName, name, null);
-    // Old shape stored combined yellow + red — credit as yellows since we
-    // can't separate them retroactively.
-    ensure(key, name, teamName).yellows += count;
-  }
-  return { players, processedMatches: {} };
-}
-
 // Internal — exposed only for tests
 export const __test = { playerKey, compositeFallbackKey };

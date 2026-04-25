@@ -5,7 +5,6 @@ import {
   accumulateCupMatch,
   rollIntoAllTime,
   creditAllTimeScorers,
-  migrateLegacyAllTimeStats,
   getTopScorers,
   getTopAssisters,
   getMostYellows,
@@ -412,34 +411,6 @@ describe("creditAllTimeScorers", () => {
     expect(creditAllTimeScorers(stats, mw0, [])).toBe(stats);
     expect(creditAllTimeScorers(stats, mw0, null)).toBe(stats);
     expect(creditAllTimeScorers(stats, null, [{ teamName: "R", name: "X" }])).toBe(stats);
-  });
-});
-
-describe("migrateLegacyAllTimeStats", () => {
-  it("converts the legacy {scorers, assisters, cards} shape to canonical players", () => {
-    const legacy = {
-      scorers: { "Joe|Rovers": 5, "Mike|City": 3 },
-      assisters: { "Mike|City": 2 },
-      cards: { "Joe|Rovers": 1 },
-    };
-    const next = migrateLegacyAllTimeStats(legacy);
-    expect(next.processedMatches).toEqual({});
-    const joe = Object.values(next.players).find(p => p.name === "Joe");
-    const mike = Object.values(next.players).find(p => p.name === "Mike");
-    expect(joe.goals).toBe(5);
-    expect(joe.yellows).toBe(1); // legacy cards lumped into yellows
-    expect(joe.teamName).toBe("Rovers");
-    expect(mike.goals).toBe(3);
-    expect(mike.assists).toBe(2);
-  });
-
-  it("passes through canonical-shape input unchanged", () => {
-    const canonical = { players: { "p1": { key: "p1", name: "X", goals: 1, assists: 0, yellows: 0, reds: 0 } }, processedMatches: {} };
-    expect(migrateLegacyAllTimeStats(canonical)).toBe(canonical);
-  });
-
-  it("returns empty stats when input is null/undefined", () => {
-    expect(migrateLegacyAllTimeStats(null)).toEqual({ players: {}, processedMatches: {} });
   });
 });
 
