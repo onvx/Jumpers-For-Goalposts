@@ -108,7 +108,8 @@ export function useSaveGame({
         allTimeLeagueStatsByTier: s.allTimeLeagueStatsByTier,
         seasonLeagueStatsByTier: s.seasonLeagueStatsByTier,
         seasonLeagueStatsAvailable: s.seasonLeagueStatsAvailable,
-        seasonCupStats: s.seasonCupStats,
+        seasonCupStatsByCup: s.seasonCupStatsByCup,
+        allTimeCupStatsByCup: s.allTimeCupStatsByCup,
         seasonCupStatsAvailable: s.seasonCupStatsAvailable,
         formation: s.formation,
         slotAssignments: s.slotAssignments,
@@ -593,16 +594,25 @@ export function useSaveGame({
         ? explicitFlag
         : (hasAnyTierData || !matchweekProgressed);
       store.setSeasonLeagueStatsAvailable(available);
-      // Cup stats: same legacy detection, gated on whether the cup has
-      // resolved any matches yet (currentRound > 0 or any result populated).
-      const hasCanonicalCupStats = !!(s.seasonCupStats && s.seasonCupStats.players);
-      store.setSeasonCupStats(hasCanonicalCupStats ? s.seasonCupStats : emptyCompetitionStats());
+      // Cup stats are now per-cup. New saves persist seasonCupStatsByCup
+      // and allTimeCupStatsByCup directly. Older canonical saves persisted
+      // a single seasonCupStats blob — we don't fake-attribute that to a
+      // cup key (same reasoning as the league legacy migration), so old
+      // saves start with empty cup stores and the legacy availability flag
+      // marks them unavailable for this season.
+      const seasonCupByCup = (s.seasonCupStatsByCup && typeof s.seasonCupStatsByCup === "object")
+        ? s.seasonCupStatsByCup : {};
+      const allTimeCupByCup = (s.allTimeCupStatsByCup && typeof s.allTimeCupStatsByCup === "object")
+        ? s.allTimeCupStatsByCup : {};
+      store.setSeasonCupStatsByCup(seasonCupByCup);
+      store.setAllTimeCupStatsByCup(allTimeCupByCup);
       const cupProgressed = !!(s.cup && (s.cup.currentRound > 0
         || s.cup.rounds?.some(r => r.matches?.some(m => m.result && !m.result.bye))));
+      const hasAnyCupData = Object.keys(seasonCupByCup).length > 0;
       const explicitCupFlag = typeof s.seasonCupStatsAvailable === "boolean" ? s.seasonCupStatsAvailable : null;
       const cupAvailable = explicitCupFlag != null
         ? explicitCupFlag
-        : (hasCanonicalCupStats || !cupProgressed);
+        : (hasAnyCupData || !cupProgressed);
       store.setSeasonCupStatsAvailable(cupAvailable);
       // Load formation
       if (s.formation && s.formation.length === 11) {

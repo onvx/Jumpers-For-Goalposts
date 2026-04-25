@@ -291,7 +291,7 @@ export function useGainPopupHandler({
       const entry = s.seasonCalendar[ci];
       if (entry?.type === "cup") {
         const cupLookup = (name, tier) => (tier === s.leagueTier ? s.league : s.allLeagueStates?.[tier])?.teams?.find(t => t.name === name) || null;
-        const cupHandler = makeCupAIMatchHandler(s.setSeasonCupStats, s.seasonNumber, s.cup?.cupName || "Cup");
+        const cupHandler = makeCupAIMatchHandler(s.setSeasonCupStatsByCup, s.seasonNumber, s.cup?.cupName || "Cup");
         if (s.cup.playerEliminated) {
           const updatedCup = advanceCupRound(s.cup, appliedSquad, s.startingXI, s.bench, cupLookup, cupHandler);
           let finCup = updatedCup;

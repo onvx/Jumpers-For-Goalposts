@@ -10,6 +10,8 @@ import {
   getMostReds,
   leagueMatchId,
   cupMatchId,
+  cupKey,
+  makeCupAIMatchHandler,
 } from "../competitionStats.js";
 
 // Test fixtures ---------------------------------------------------------------
@@ -322,6 +324,62 @@ describe("cupMatchId", () => {
     const a = cupMatchId({ season: 1, cupName: "Cup", roundIdx: 0, home: "A", away: "B" });
     const b = cupMatchId({ season: 1, cupName: "Cup", roundIdx: 0, home: "B", away: "A" });
     expect(a).not.toBe(b);
+  });
+});
+
+describe("cupKey", () => {
+  it("slugs the cup name into a stable index key", () => {
+    expect(cupKey("Clubman Cup")).toBe("Clubman_Cup");
+    expect(cupKey("Sub Money Cup")).toBe("Sub_Money_Cup");
+    expect(cupKey("Global Cup")).toBe("Global_Cup");
+  });
+
+  it("collapses non-alphanumerics", () => {
+    expect(cupKey("FA-Cup!")).toBe("FA_Cup");
+    expect(cupKey("  Padded  ")).toBe("Padded");
+  });
+
+  it("handles missing names without throwing", () => {
+    expect(cupKey(undefined)).toBe("_");
+    expect(cupKey(null)).toBe("_");
+  });
+});
+
+describe("makeCupAIMatchHandler — routes by cupKey", () => {
+  it("writes events into seasonCupStatsByCup[cupKey] for the named cup", () => {
+    const home = { name: "Athletic", squad: [{ id: "ah1", name: "Iker", position: "ST" }] };
+    const away = { name: "Sporting", squad: [{ id: "sa1", name: "Diogo", position: "CM" }] };
+    let store = {};
+    const setSeasonCupStatsByCup = (updater) => { store = updater(store); };
+    const handler = makeCupAIMatchHandler(setSeasonCupStatsByCup, 1, "Clubman Cup");
+    handler(home, away, {
+      homeGoals: 2, awayGoals: 0,
+      events: [
+        { type: "goal", side: "home", playerId: "ah1", player: "Iker", minute: 30 },
+        { type: "goal", side: "home", playerId: "ah1", player: "Iker", minute: 70 },
+      ],
+    }, 0);
+    expect(store["Clubman_Cup"].players["ah1"].goals).toBe(2);
+    expect(store["Sub_Money_Cup"]).toBeUndefined();
+  });
+
+  it("different cup names accumulate into different slots", () => {
+    const home = { name: "City", squad: [{ id: "p1", name: "Joe", position: "ST" }] };
+    const away = { name: "Rovers", squad: [{ id: "p2", name: "Mike", position: "ST" }] };
+    let store = {};
+    const set = (u) => { store = u(store); };
+    makeCupAIMatchHandler(set, 1, "Clubman Cup")(home, away, {
+      homeGoals: 1, awayGoals: 0,
+      events: [{ type: "goal", side: "home", playerId: "p1", player: "Joe", minute: 30 }],
+    }, 0);
+    makeCupAIMatchHandler(set, 1, "Sub Money Cup")(home, away, {
+      homeGoals: 0, awayGoals: 1,
+      events: [{ type: "goal", side: "away", playerId: "p2", player: "Mike", minute: 60 }],
+    }, 0);
+    expect(store["Clubman_Cup"].players["p1"].goals).toBe(1);
+    expect(store["Sub_Money_Cup"].players["p2"].goals).toBe(1);
+    expect(store["Clubman_Cup"].players["p2"]).toBeUndefined();
+    expect(store["Sub_Money_Cup"].players["p1"]).toBeUndefined();
   });
 });
 

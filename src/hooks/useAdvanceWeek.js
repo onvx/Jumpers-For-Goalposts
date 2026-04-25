@@ -970,7 +970,7 @@ export function useAdvanceWeek({
               ?.teams
               ?.find(t => t.name === name) || null;
           };
-          const cupHandler = makeCupAIMatchHandler(s.setSeasonCupStats, s.seasonNumber, useGameStore.getState().cup?.cupName || "Cup");
+          const cupHandler = makeCupAIMatchHandler(s.setSeasonCupStatsByCup, s.seasonNumber, useGameStore.getState().cup?.cupName || "Cup");
           if (useGameStore.getState().cup.playerEliminated) {
             // Auto-skip: resolve AI matches and advance calendar past this cup entry
             const updatedCup = advanceCupRound(useGameStore.getState().cup, newSquad, startingXI, bench, cupLookup, cupHandler);

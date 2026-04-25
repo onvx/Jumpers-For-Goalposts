@@ -90,7 +90,7 @@ export function useMatchResult({
       while (newCalIdx < cal.length && cal[newCalIdx]?.type === "cup" && s.cup?.playerEliminated) {
         if (s.cup && s.cup.currentRound < s.cup.rounds.length) {
           const skipLookup = (name, tier) => (tier === s.leagueTier ? currentLeague : s.allLeagueStates?.[tier])?.teams?.find(t => t.name === name) || null;
-          const skipCupHandler = makeCupAIMatchHandler(s.setSeasonCupStats, s.seasonNumber, s.cup?.cupName || "Cup");
+          const skipCupHandler = makeCupAIMatchHandler(s.setSeasonCupStatsByCup, s.seasonNumber, s.cup?.cupName || "Cup");
           const skipCup = advanceCupRound(s.cup, s.squad, s.startingXI, s.bench, skipLookup, skipCupHandler);
           let finCup = skipCup;
           if (finCup.pendingPlayerMatch) {

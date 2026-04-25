@@ -199,6 +199,15 @@ function slug(s) {
 }
 
 /**
+ * Deterministic key for indexing per-cup stats stores. The cup name (e.g.
+ * "Clubman Cup", "Sub Money Cup") is the natural identity — slug it so
+ * non-alphanumerics don't break object keys.
+ */
+export function cupKey(cupName) {
+  return slug(cupName);
+}
+
+/**
  * Canonical cup match id for the current season.
  * Format: cup:S{season}:{cupSlug}:R{roundIdx}:{homeSlug}-{awaySlug}
  *
@@ -226,13 +235,20 @@ export function accumulateCupMatch(prev, { home, away, result, season, cupName, 
 
 /**
  * Build a callback for advanceCupRound that funnels each AI cup-match sim
- * result into the canonical seasonCupStats via the supplied setter.
+ * result into the canonical seasonCupStatsByCup store via the supplied
+ * setter. The cup's events are routed into seasonCupStatsByCup[cupKey].
  */
-export function makeCupAIMatchHandler(setSeasonCupStats, season, cupName) {
+export function makeCupAIMatchHandler(setSeasonCupStatsByCup, season, cupName) {
+  const key = cupKey(cupName);
   return (homeTeam, awayTeam, simResult, roundIdx) => {
-    setSeasonCupStats(prev => accumulateCupMatch(prev, {
-      home: homeTeam, away: awayTeam, result: simResult, season, cupName, roundIdx,
-    }));
+    setSeasonCupStatsByCup(prev => {
+      const cupBlob = (prev || {})[key] || emptyCompetitionStats();
+      const next = accumulateCupMatch(cupBlob, {
+        home: homeTeam, away: awayTeam, result: simResult, season, cupName, roundIdx,
+      });
+      if (next === cupBlob) return prev || {};
+      return { ...(prev || {}), [key]: next };
+    });
   };
 }
 
