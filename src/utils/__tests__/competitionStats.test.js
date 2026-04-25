@@ -64,136 +64,132 @@ describe("emptyCompetitionStats", () => {
 
 describe("accumulateMatchStats — basic counting", () => {
   it("counts goals for both teams", () => {
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, baseInput([
+    const next = accumulateMatchStats(emptyCompetitionStats(), baseInput([
       goalEvent({ playerId: "p1", player: "John Smith", side: "home", minute: 10 }),
       goalEvent({ playerId: "p4", player: "Kevin Smith", side: "away", minute: 60 }),
     ]));
-    expect(stats.players["p1"].goals).toBe(1);
-    expect(stats.players["p4"].goals).toBe(1);
-    expect(stats.players["p1"].teamId).toBe(0);
-    expect(stats.players["p4"].teamId).toBe(1);
+    expect(next.players["p1"].goals).toBe(1);
+    expect(next.players["p4"].goals).toBe(1);
+    expect(next.players["p1"].teamId).toBe(0);
+    expect(next.players["p4"].teamId).toBe(1);
   });
 
   it("counts assists separately from goals", () => {
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, baseInput([
+    const next = accumulateMatchStats(emptyCompetitionStats(), baseInput([
       goalEvent({ playerId: "p1", player: "John Smith", assisterId: "p2", assister: "Roy Keane" }),
     ]));
-    expect(stats.players["p1"].goals).toBe(1);
-    expect(stats.players["p1"].assists).toBe(0);
-    expect(stats.players["p2"].assists).toBe(1);
-    expect(stats.players["p2"].goals).toBe(0);
+    expect(next.players["p1"].goals).toBe(1);
+    expect(next.players["p1"].assists).toBe(0);
+    expect(next.players["p2"].assists).toBe(1);
+    expect(next.players["p2"].goals).toBe(0);
   });
 
   it("separates yellow and red cards", () => {
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, baseInput([
+    const next = accumulateMatchStats(emptyCompetitionStats(), baseInput([
       cardEvent({ cardPlayerId: "p1", cardPlayer: "John Smith", minute: 20 }),
       cardEvent({ type: "red_card", cardPlayerId: "p2", cardPlayer: "Roy Keane", minute: 80 }),
     ]));
-    expect(stats.players["p1"].yellows).toBe(1);
-    expect(stats.players["p1"].reds).toBe(0);
-    expect(stats.players["p2"].yellows).toBe(0);
-    expect(stats.players["p2"].reds).toBe(1);
+    expect(next.players["p1"].yellows).toBe(1);
+    expect(next.players["p1"].reds).toBe(0);
+    expect(next.players["p2"].yellows).toBe(0);
+    expect(next.players["p2"].reds).toBe(1);
   });
 
   it("counts second-yellow red as one yellow + one red (countsAsYellow: true)", () => {
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, baseInput([
+    const next = accumulateMatchStats(emptyCompetitionStats(), baseInput([
       cardEvent({ cardPlayerId: "p1", cardPlayer: "John Smith", minute: 20 }),
       cardEvent({ type: "red_card", cardPlayerId: "p1", cardPlayer: "John Smith",
                   redReason: "second_yellow", countsAsYellow: true, minute: 75 }),
     ]));
-    expect(stats.players["p1"].yellows).toBe(2);
-    expect(stats.players["p1"].reds).toBe(1);
+    expect(next.players["p1"].yellows).toBe(2);
+    expect(next.players["p1"].reds).toBe(1);
   });
 
   it("direct red is red only, no yellow", () => {
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, baseInput([
+    const next = accumulateMatchStats(emptyCompetitionStats(), baseInput([
       cardEvent({ type: "red_card", cardPlayerId: "p1", cardPlayer: "John Smith",
                   isDirectRed: true, minute: 40 }),
     ]));
-    expect(stats.players["p1"].yellows).toBe(0);
-    expect(stats.players["p1"].reds).toBe(1);
+    expect(next.players["p1"].yellows).toBe(0);
+    expect(next.players["p1"].reds).toBe(1);
   });
 
   it("VAR-upgraded red (no countsAsYellow flag) is red only", () => {
-    // VAR-upgraded yellows count as red only unless countsAsYellow is set.
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, baseInput([
+    const next = accumulateMatchStats(emptyCompetitionStats(), baseInput([
       cardEvent({ type: "red_card", cardPlayerId: "p1", cardPlayer: "John Smith", minute: 60 }),
     ]));
-    expect(stats.players["p1"].yellows).toBe(0);
-    expect(stats.players["p1"].reds).toBe(1);
+    expect(next.players["p1"].yellows).toBe(0);
+    expect(next.players["p1"].reds).toBe(1);
   });
 });
 
-describe("accumulateMatchStats — apps and starts", () => {
-  it("credits apps and starts to all squad players when no starters list provided", () => {
+describe("accumulateMatchStats — purity", () => {
+  it("does not mutate the input stats object", () => {
     const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, baseInput([]));
-    homeTeam.squad.forEach(p => {
-      expect(stats.players[p.id].apps).toBe(1);
-      expect(stats.players[p.id].starts).toBe(1);
-    });
+    const before = JSON.stringify(stats);
+    const next = accumulateMatchStats(stats, baseInput([
+      goalEvent({ playerId: "p1", player: "John Smith" }),
+    ]));
+    expect(JSON.stringify(stats)).toBe(before);
+    expect(next).not.toBe(stats);
+    expect(next.players).not.toBe(stats.players);
+    expect(next.processedMatches).not.toBe(stats.processedMatches);
   });
 
-  it("respects an explicit starters list for starts", () => {
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, {
-      ...baseInput([]),
-      starters: [
-        { id: "p1", side: "home" },
-        { id: "p2", side: "home" },
-        { id: "p4", side: "away" },
-      ],
-    });
-    expect(stats.players["p1"].starts).toBe(1);
-    expect(stats.players["p2"].starts).toBe(1);
-    expect(stats.players["p3"].starts).toBe(0); // GK on bench
-    expect(stats.players["p3"].apps).toBe(1);   // still played (in squad)
-    expect(stats.players["p4"].starts).toBe(1);
-    expect(stats.players["p5"].starts).toBe(0); // bench
+  it("returns a fresh object with copy-on-write players", () => {
+    const stats = accumulateMatchStats(emptyCompetitionStats(), baseInput([
+      goalEvent({ playerId: "p1", player: "John Smith" }),
+    ], "league:S1:T7:MD0:M0"));
+    const beforeP1 = stats.players["p1"];
+    const next = accumulateMatchStats(stats, baseInput([
+      goalEvent({ playerId: "p1", player: "John Smith" }),
+    ], "league:S1:T7:MD1:M0"));
+    expect(next.players["p1"]).not.toBe(beforeP1);
+    expect(next.players["p1"].goals).toBe(2);
+    expect(beforeP1.goals).toBe(1);
+  });
+
+  it("returns the same reference when matchId already processed", () => {
+    const stats = accumulateMatchStats(emptyCompetitionStats(), baseInput([
+      goalEvent({ playerId: "p1" }),
+    ], "league:S1:T7:MD0:M0"));
+    const same = accumulateMatchStats(stats, baseInput([
+      goalEvent({ playerId: "p1" }),
+    ], "league:S1:T7:MD0:M0"));
+    expect(same).toBe(stats);
   });
 });
 
 describe("accumulateMatchStats — idempotency", () => {
   it("ignores the same matchId twice", () => {
-    const stats = emptyCompetitionStats();
     const events = [goalEvent({ playerId: "p1", player: "John Smith" })];
-    accumulateMatchStats(stats, baseInput(events, "league:S1:T7:MD0:M0"));
-    accumulateMatchStats(stats, baseInput(events, "league:S1:T7:MD0:M0"));
+    let stats = accumulateMatchStats(emptyCompetitionStats(), baseInput(events, "league:S1:T7:MD0:M0"));
+    stats = accumulateMatchStats(stats, baseInput(events, "league:S1:T7:MD0:M0"));
     expect(stats.players["p1"].goals).toBe(1);
-    expect(stats.players["p1"].apps).toBe(1);
   });
 
   it("processes different matchIds independently", () => {
-    const stats = emptyCompetitionStats();
     const events = [goalEvent({ playerId: "p1", player: "John Smith" })];
-    accumulateMatchStats(stats, baseInput(events, "league:S1:T7:MD0:M0"));
-    accumulateMatchStats(stats, baseInput(events, "league:S1:T7:MD1:M0"));
+    let stats = accumulateMatchStats(emptyCompetitionStats(), baseInput(events, "league:S1:T7:MD0:M0"));
+    stats = accumulateMatchStats(stats, baseInput(events, "league:S1:T7:MD1:M0"));
     expect(stats.players["p1"].goals).toBe(2);
-    expect(stats.players["p1"].apps).toBe(2);
   });
 
   it("marks a malformed match as processed so it isn't retried", () => {
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, { matchId: "league:S1:T7:MD0:M0", result: null, homeTeam, awayTeam });
-    expect(stats.processedMatches["league:S1:T7:MD0:M0"]).toBe(true);
+    const next = accumulateMatchStats(emptyCompetitionStats(), {
+      matchId: "league:S1:T7:MD0:M0", result: null, homeTeam, awayTeam,
+    });
+    expect(next.processedMatches["league:S1:T7:MD0:M0"]).toBe(true);
   });
 });
 
 describe("accumulateMatchStats — duplicate names", () => {
   it("handles two players with identical names but different IDs", () => {
-    // John Smith on home team, John Smith on away team — different ids.
     const altAway = {
       id: 1, name: "Rovers",
       squad: [{ id: "p99", name: "John Smith", position: "ST" }],
     };
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, {
+    const next = accumulateMatchStats(emptyCompetitionStats(), {
       matchId: "league:S1:T7:MD0:M0",
       result: buildResult([
         goalEvent({ playerId: "p1", player: "John Smith", side: "home" }),
@@ -201,42 +197,36 @@ describe("accumulateMatchStats — duplicate names", () => {
       ]),
       homeTeam, awayTeam: altAway,
     });
-    expect(stats.players["p1"].goals).toBe(1);
-    expect(stats.players["p99"].goals).toBe(1);
-    expect(stats.players["p1"].teamName).toBe("City");
-    expect(stats.players["p99"].teamName).toBe("Rovers");
+    expect(next.players["p1"].goals).toBe(1);
+    expect(next.players["p99"].goals).toBe(1);
+    expect(next.players["p1"].teamName).toBe("City");
+    expect(next.players["p99"].teamName).toBe("Rovers");
   });
 });
 
 describe("accumulateMatchStats — graceful fallbacks", () => {
   it("falls back to a composite key when an event has no id", () => {
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, baseInput([
-      // Name-only event (no playerId) — tolerated via composite key
+    const next = accumulateMatchStats(emptyCompetitionStats(), baseInput([
       { type: "goal", side: "home", player: "Some Mystery", minute: 30 },
     ]));
-    // Composite key should be created
-    const compositeKey = Object.keys(stats.players).find(k => k.startsWith("c|"));
+    const compositeKey = Object.keys(next.players).find(k => k.startsWith("c|"));
     expect(compositeKey).toBeTruthy();
-    expect(stats.players[compositeKey].goals).toBe(1);
-    expect(stats.players[compositeKey].name).toBe("Some Mystery");
+    expect(next.players[compositeKey].goals).toBe(1);
+    expect(next.players[compositeKey].name).toBe("Some Mystery");
   });
 
   it("ignores events with neither id nor name", () => {
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, baseInput([
-      { type: "goal", side: "home", minute: 30 }, // no player at all
+    const next = accumulateMatchStats(emptyCompetitionStats(), baseInput([
+      { type: "goal", side: "home", minute: 30 },
     ]));
-    // No goal recorded — but apps still credit from squad
-    expect(Object.values(stats.players).every(p => p.goals === 0)).toBe(true);
+    expect(Object.keys(next.players).length).toBe(0);
   });
 
   it("ignores events with unknown side", () => {
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, baseInput([
+    const next = accumulateMatchStats(emptyCompetitionStats(), baseInput([
       { type: "goal", side: "neutral", playerId: "p1", player: "John Smith", minute: 30 },
     ]));
-    expect(stats.players["p1"]?.goals || 0).toBe(0);
+    expect(next.players["p1"]?.goals || 0).toBe(0);
   });
 
   it("does not throw on null stats input", () => {
@@ -245,16 +235,14 @@ describe("accumulateMatchStats — graceful fallbacks", () => {
 
   it("requires matchId — silently ignores without one", () => {
     const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, { result: buildResult([goalEvent()]), homeTeam, awayTeam });
-    expect(Object.keys(stats.players).length).toBe(0);
-    expect(Object.keys(stats.processedMatches).length).toBe(0);
+    const next = accumulateMatchStats(stats, { result: buildResult([goalEvent()]), homeTeam, awayTeam });
+    expect(next).toBe(stats);
   });
 });
 
 describe("selectors", () => {
   function buildSeason() {
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, baseInput([
+    return accumulateMatchStats(emptyCompetitionStats(), baseInput([
       goalEvent({ playerId: "p1", player: "John Smith" }),
       goalEvent({ playerId: "p1", player: "John Smith", minute: 60 }),
       goalEvent({ playerId: "p4", player: "Kevin Smith", side: "away", minute: 80 }),
@@ -262,23 +250,20 @@ describe("selectors", () => {
       cardEvent({ type: "red_card", cardPlayerId: "p5", cardPlayer: "Watkins", side: "away",
                   cardTeamName: "Rovers", minute: 70 }),
     ], "league:S1:T7:MD0:M0"));
-    return stats;
   }
 
   it("getTopScorers sorts goals desc with deterministic tie-break", () => {
-    const stats = buildSeason();
-    const top = getTopScorers(stats);
+    const top = getTopScorers(buildSeason());
     expect(top[0].playerId).toBe("p1");
     expect(top[0].goals).toBe(2);
     expect(top[1].playerId).toBe("p4");
   });
 
   it("getTopAssisters returns assist leaders only (filters zero)", () => {
-    const stats = emptyCompetitionStats();
-    accumulateMatchStats(stats, baseInput([
+    const next = accumulateMatchStats(emptyCompetitionStats(), baseInput([
       goalEvent({ playerId: "p1", player: "John Smith", assisterId: "p2", assister: "Roy Keane" }),
     ]));
-    const top = getTopAssisters(stats);
+    const top = getTopAssisters(next);
     expect(top.map(p => p.playerId)).toEqual(["p2"]);
   });
 
@@ -293,23 +278,22 @@ describe("selectors", () => {
     for (let i = 0; i < 25; i++) {
       const id = `dummy${i}`;
       stats.players[id] = { key: id, playerId: id, name: `P${i}`, goals: 25 - i,
-        assists: 0, yellows: 0, reds: 0, apps: 1, starts: 0, teamName: "X", teamId: 0, position: null };
+        assists: 0, yellows: 0, reds: 0, teamName: "X", teamId: 0, position: null };
     }
     expect(getTopScorers(stats, 5).length).toBe(5);
     expect(getTopScorers(stats, 5)[0].name).toBe("P0");
   });
 
-  it("ties break by fewer apps then name asc", () => {
+  it("ties break by name asc", () => {
     const stats = emptyCompetitionStats();
-    // Both score 5, B has fewer apps so ranks higher
     stats.players["a"] = { key: "a", playerId: "a", name: "Alpha", goals: 5, assists: 0,
-      yellows: 0, reds: 0, apps: 10, starts: 10, teamName: "X", teamId: 0 };
+      yellows: 0, reds: 0, teamName: "X", teamId: 0 };
     stats.players["b"] = { key: "b", playerId: "b", name: "Beta",  goals: 5, assists: 0,
-      yellows: 0, reds: 0, apps: 5,  starts: 5,  teamName: "X", teamId: 0 };
+      yellows: 0, reds: 0, teamName: "X", teamId: 0 };
     stats.players["c"] = { key: "c", playerId: "c", name: "Carl",  goals: 5, assists: 0,
-      yellows: 0, reds: 0, apps: 5,  starts: 5,  teamName: "X", teamId: 0 };
+      yellows: 0, reds: 0, teamName: "X", teamId: 0 };
     const top = getTopScorers(stats);
-    expect(top.map(p => p.name)).toEqual(["Beta", "Carl", "Alpha"]);
+    expect(top.map(p => p.name)).toEqual(["Alpha", "Beta", "Carl"]);
   });
 });
 

@@ -1094,33 +1094,35 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
   const homeShotsCount = events.filter(e => (e.type === "shot" || e.type === "chance") && e.side === "home").length;
   const awayShotsCount = events.filter(e => (e.type === "shot" || e.type === "chance") && e.side === "away").length;
 
-  // Name → ID lookups for both teams
+  // Name → ID fallback for events that lack a canonical id (composite/legacy).
   const nameToId = {};
   for (const p of homeTeam.squad) { if (p.name && p.id) nameToId[`home|${p.name}`] = p.id; }
   for (const p of awayTeam.squad) { if (p.name && p.id) nameToId[`away|${p.name}`] = p.id; }
 
-  // Scorer tracking — by name (legacy) and by ID (for growth systems)
+  // Scorer tracking — by name (legacy) and by ID (for growth systems).
+  // Prefer the event's own playerId; only fall back to the name lookup if
+  // an older event slipped through without one.
   const scorers = {};
   const scorersByID = {};
   for (const g of goalEvents) {
     if (g.player) {
       const nameKey = `${g.side}|${g.player}`;
       scorers[nameKey] = (scorers[nameKey] || 0) + 1;
-      const id = nameToId[nameKey];
-      if (id) { const idKey = `${g.side}|${id}`; scorersByID[idKey] = (scorersByID[idKey] || 0) + 1; }
     }
+    const id = g.playerId || nameToId[`${g.side}|${g.player}`];
+    if (id) { const idKey = `${g.side}|${id}`; scorersByID[idKey] = (scorersByID[idKey] || 0) + 1; }
   }
 
-  // Assister tracking — by name (legacy) and by ID (for growth systems)
+  // Assister tracking — same pattern.
   const assisters = {};
   const assistersByID = {};
   for (const g of goalEvents) {
     if (g.assister) {
       const nameKey = `${g.side}|${g.assister}`;
       assisters[nameKey] = (assisters[nameKey] || 0) + 1;
-      const id = nameToId[nameKey];
-      if (id) { const idKey = `${g.side}|${id}`; assistersByID[idKey] = (assistersByID[idKey] || 0) + 1; }
     }
+    const id = g.assisterId || (g.assister ? nameToId[`${g.side}|${g.assister}`] : null);
+    if (id) { const idKey = `${g.side}|${id}`; assistersByID[idKey] = (assistersByID[idKey] || 0) + 1; }
   }
 
   // Commentary event count (for snoozefest)

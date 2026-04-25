@@ -154,16 +154,17 @@ const DEFAULT_SEASON_LENGTH = 48;
 const DEFAULT_FIXTURE_COUNT = 18;
 const SQUAD_CAP = 25;
 // Run the canonical league-stats accumulator over a completed matchweek's
-// `simulateMatchweek` results. Mutates `prev` (a seasonLeagueStats blob)
-// in place via the accumulator. Idempotent per matchId.
+// `simulateMatchweek` results. Pure — returns a new seasonLeagueStats
+// object with each match's deltas chained in. Idempotent per matchId.
 function accumulateLeagueMatchweek(prev, { results, league, season, tier, matchweekIdx }) {
-  if (!prev || !Array.isArray(results) || !league?.teams) return prev || emptyCompetitionStats();
-  const next = prev || emptyCompetitionStats();
+  const base = prev || emptyCompetitionStats();
+  if (!Array.isArray(results) || !league?.teams) return base;
+  let next = base;
   results.forEach((r, fixtureIdx) => {
     const home = league.teams[r.home];
     const away = league.teams[r.away];
     if (!home || !away) return;
-    accumulateMatchStats(next, {
+    next = accumulateMatchStats(next, {
       matchId: leagueMatchId({ season, tier, matchweekIdx, fixtureIdx }),
       result: r,
       homeTeam: { id: r.home, name: home.name, squad: home.squad || [] },
@@ -216,7 +217,7 @@ function FruitCigs() {
     setConsecutiveUnbeaten, setConsecutiveLosses, setConsecutiveDraws,
     setConsecutiveWins, setConsecutiveScoreless,
     setHalfwayPosition, setPreviousLeaguePosition, setRecentScorelines, setSecondPlaceFinishes,
-    setOvrHistory, setClubHistory, setAllTimeLeagueStats, setSeasonLeagueStats,
+    setOvrHistory, setClubHistory, setAllTimeLeagueStats, setSeasonLeagueStats, setSeasonLeagueStatsAvailable,
     setStartingXI, setBench, setFormation, setSlotAssignments, setPrevStartingXI, setXiPresets,
     setTrialPlayer, setTrialHistory, setProdigalSon, setRetiringPlayers,
     setPendingFreeAgent, setScoutedPlayers,
@@ -614,6 +615,7 @@ function FruitCigs() {
   // { scorers: { "PlayerName|TeamName": goals }, cards: { "PlayerName|TeamName": cards } }
   const allTimeLeagueStats = useGameStore(s => s.allTimeLeagueStats);
   const seasonLeagueStats = useGameStore(s => s.seasonLeagueStats);
+  const seasonLeagueStatsAvailable = useGameStore(s => s.seasonLeagueStatsAvailable);
   const trainedThisWeek = useGameStore(s => s.trainedThisWeek);
   const [injuryWarning, setInjuryWarning] = useState(0);
   const [squadFullAlert, setSquadFullAlert] = useState(false);
@@ -2459,6 +2461,7 @@ function FruitCigs() {
           clubHistory={clubHistory}
           allTimeLeagueStats={allTimeLeagueStats}
           seasonLeagueStats={seasonLeagueStats}
+          seasonLeagueStatsAvailable={seasonLeagueStatsAvailable}
           allLeagueStates={allLeagueStates}
           leagueTier={leagueTier}
           onPlayerClick={resolveAnyPlayer}
@@ -5972,6 +5975,7 @@ function FruitCigs() {
             setCalendarResults({});
             setLeagueResults({});
             setSeasonLeagueStats(emptyCompetitionStats());
+            setSeasonLeagueStatsAvailable(true);
             setMatchPending(false);
             setSummerPhase(null);
             setSummerData(null);
@@ -6595,6 +6599,7 @@ function FruitCigs() {
               });
               setLeagueResults({});
               setSeasonLeagueStats(emptyCompetitionStats());
+              setSeasonLeagueStatsAvailable(true);
               setSeasonCards(0);
               setSeasonCleanSheets(0);
               setSeasonGoalsFor(0);

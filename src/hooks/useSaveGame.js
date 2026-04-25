@@ -107,6 +107,7 @@ export function useSaveGame({
         storyArcs: s.storyArcs,
         allTimeLeagueStats: s.allTimeLeagueStats,
         seasonLeagueStats: s.seasonLeagueStats,
+        seasonLeagueStatsAvailable: s.seasonLeagueStatsAvailable,
         formation: s.formation,
         slotAssignments: s.slotAssignments,
         xiPresets: s.xiPresets,
@@ -558,7 +559,17 @@ export function useSaveGame({
       }
       store.setStoryArcs(loadedArcs);
       store.setAllTimeLeagueStats(s.allTimeLeagueStats || { scorers: {}, assisters: {}, cards: {} });
-      store.setSeasonLeagueStats(s.seasonLeagueStats && s.seasonLeagueStats.players ? s.seasonLeagueStats : emptyCompetitionStats());
+      const hasCanonicalStats = !!(s.seasonLeagueStats && s.seasonLeagueStats.players);
+      store.setSeasonLeagueStats(hasCanonicalStats ? s.seasonLeagueStats : emptyCompetitionStats());
+      // Legacy detection: a save without canonical stats whose season has
+      // already started cannot be reconstructed reliably. Mark unavailable
+      // so the Stats tab shows a notice instead of misleading partials.
+      const matchweekProgressed = (s.matchweekIndex || 0) > 0;
+      const explicitFlag = typeof s.seasonLeagueStatsAvailable === "boolean" ? s.seasonLeagueStatsAvailable : null;
+      const available = explicitFlag != null
+        ? explicitFlag
+        : (hasCanonicalStats || !matchweekProgressed);
+      store.setSeasonLeagueStatsAvailable(available);
       // Load formation
       if (s.formation && s.formation.length === 11) {
         store.setFormation(s.formation.map(slot => ({...slot})));
