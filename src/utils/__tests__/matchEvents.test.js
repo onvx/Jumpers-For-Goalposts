@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatScorerName, buildGoalStrip } from "../matchEvents.js";
+import { formatScorerName, buildGoalStrip, buildScorerDisplayMap, getSurname, getInitial } from "../matchEvents.js";
 
 describe("formatScorerName", () => {
   it("converts 'First Last' to 'F. Last'", () => {
@@ -94,5 +94,101 @@ describe("buildGoalStrip", () => {
   it("tolerates a missing assister", () => {
     const strip = buildGoalStrip([awayGoal]);
     expect(strip.away[0].assister).toBeNull();
+  });
+});
+
+describe("getSurname", () => {
+  it("returns the last word", () => {
+    expect(getSurname("Dwight Yorke")).toBe("Yorke");
+    expect(getSurname("Paul van Dijk")).toBe("Dijk");
+  });
+  it("returns the whole string for single-word names", () => {
+    expect(getSurname("Pele")).toBe("Pele");
+  });
+  it("returns empty for empty/invalid input", () => {
+    expect(getSurname("")).toBe("");
+    expect(getSurname(null)).toBe("");
+  });
+});
+
+describe("getInitial", () => {
+  it("uppercases the first letter of the first word", () => {
+    expect(getInitial("dwight Yorke")).toBe("D");
+    expect(getInitial("Paul van Dijk")).toBe("P");
+  });
+  it("returns empty for single-word names", () => {
+    expect(getInitial("Pele")).toBe("");
+  });
+});
+
+describe("buildScorerDisplayMap", () => {
+  const goal = (player) => ({ type: "goal", side: "home", player, minute: 30 });
+
+  it("returns surname-only when no collision", () => {
+    const events = [goal("Dwight Yorke")];
+    const players = [
+      { name: "Dwight Yorke", position: "ST" },
+      { name: "Roy Keane",    position: "CM" },
+    ];
+    expect(buildScorerDisplayMap(events, players)["Dwight Yorke"]).toBe("Yorke");
+  });
+
+  it("uses Initial. Surname when surname collides but initials differ", () => {
+    const events = [goal("John Smith"), goal("Kevin Smith")];
+    const players = [
+      { name: "John Smith",  position: "ST" },
+      { name: "Kevin Smith", position: "CB" },
+    ];
+    const map = buildScorerDisplayMap(events, players);
+    expect(map["John Smith"]).toBe("J. Smith");
+    expect(map["Kevin Smith"]).toBe("K. Smith");
+  });
+
+  it("falls back to position tag when initial+surname still collides", () => {
+    const events = [goal("John Smith"), goal("Jacob Smith")];
+    const players = [
+      { name: "John Smith",  position: "ST" },
+      { name: "Jacob Smith", position: "CB" },
+    ];
+    const map = buildScorerDisplayMap(events, players);
+    expect(map["John Smith"]).toBe("J. Smith (ST)");
+    expect(map["Jacob Smith"]).toBe("J. Smith (CB)");
+  });
+
+  it("handles surnames colliding across opposing teams", () => {
+    const homeGoal = { type: "goal", side: "home", player: "John Smith", minute: 10 };
+    const awayGoal = { type: "goal", side: "away", player: "Kevin Smith", minute: 50 };
+    const players = [
+      { name: "John Smith",  position: "ST" },
+      { name: "Kevin Smith", position: "GK" },
+    ];
+    const map = buildScorerDisplayMap([homeGoal, awayGoal], players);
+    expect(map["John Smith"]).toBe("J. Smith");
+    expect(map["Kevin Smith"]).toBe("K. Smith");
+  });
+
+  it("returns full name when a single-word scorer collides with another player", () => {
+    // Edge case: single-name scorer can't be initialised.
+    const events = [goal("Pele")];
+    const players = [
+      { name: "Pele",         position: "ST" },
+      { name: "Diego Pele",   position: "CM" },
+    ];
+    expect(buildScorerDisplayMap(events, players)["Pele"]).toBe("Pele");
+  });
+
+  it("returns empty map for no events", () => {
+    expect(buildScorerDisplayMap([], [{ name: "X", position: "ST" }])).toEqual({});
+  });
+
+  it("tolerates null squad input", () => {
+    const map = buildScorerDisplayMap([goal("Dwight Yorke")], null);
+    expect(map["Dwight Yorke"]).toBe("Yorke");
+  });
+
+  it("ignores non-goal events", () => {
+    const card = { type: "card", side: "home", cardPlayer: "John Smith", minute: 20 };
+    const map = buildScorerDisplayMap([card], [{ name: "John Smith", position: "ST" }]);
+    expect(map).toEqual({});
   });
 });

@@ -258,7 +258,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}
               >{homeTeam.name}</div>
-              {homeTeam.trait && TEAM_TRAITS[homeTeam.trait] && (
+              {!mob && homeTeam.trait && TEAM_TRAITS[homeTeam.trait] && (
                 <div style={{ fontSize: F.xs, color: C.textDim }}>{TEAM_TRAITS[homeTeam.trait].label}</div>
               )}
             </div>
@@ -290,7 +290,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}
               >{awayTeam.name}</div>
-              {awayTeam.trait && TEAM_TRAITS[awayTeam.trait] && (
+              {!mob && awayTeam.trait && TEAM_TRAITS[awayTeam.trait] && (
                 <div style={{ fontSize: F.xs, color: C.textDim }}>{TEAM_TRAITS[awayTeam.trait].label}</div>
               )}
             </div>
@@ -306,20 +306,36 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
             </div>
           )}
 
-          {/* Result badge */}
-          <div style={{
-            fontSize: F.xl, color: resultColor, fontWeight: "bold",
-            textShadow: `0 0 10px ${resultColor}88`,
-            letterSpacing: 3, marginBottom: 4,
-            transition: "color 0.5s ease",
-          }}>
-            {resultText}
-          </div>
+          {/* Result badge — full headline on desktop, compact pill on mobile */}
+          {mob ? (
+            <div style={{
+              display: "inline-block",
+              fontSize: F.xs, color: resultColor, fontWeight: "bold",
+              letterSpacing: 1, marginBottom: 4,
+              padding: "2px 8px",
+              border: `1px solid ${resultColor}66`,
+              background: `${resultColor}15`,
+              transition: "color 0.5s ease, border-color 0.5s ease",
+            }}>
+              {resultText}
+            </div>
+          ) : (
+            <div style={{
+              fontSize: F.xl, color: resultColor, fontWeight: "bold",
+              textShadow: `0 0 10px ${resultColor}88`,
+              letterSpacing: 3, marginBottom: 4,
+              transition: "color 0.5s ease",
+            }}>
+              {resultText}
+            </div>
+          )}
         </div>
 
         {/* Scorer/assister strip — persistent under scoreline, all modes */}
         <ScorerStrip
           events={shownEvents}
+          homeSquad={homeTeam?.squad}
+          awaySquad={awayTeam?.squad}
           homeIsPlayer={!!homeTeam?.isPlayer}
           awayIsPlayer={!!awayTeam?.isPlayer}
           isMobile={mob}
@@ -352,8 +368,8 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
           )}
         </div>
 
-        {/* Flash event — fixed height reserved slot (hidden in highlights mode) */}
-        {!isHighlights && (
+        {/* Flash event — desktop reserves a 58px slot; mobile only renders when an event exists */}
+        {!isHighlights && !mob && (
         <div style={{ minHeight: 58, marginBottom: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {flashEvent ? (
             <div style={{
@@ -378,6 +394,21 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
             </div>
           )}
         </div>
+        )}
+        {/* Mobile flash event — compact strip, only renders when active */}
+        {!isHighlights && mob && flashEvent && (
+          <div style={{
+            marginBottom: 8, flexShrink: 0,
+            padding: "8px 12px",
+            background: `${flashEvent.flashColor}15`,
+            border: `1px solid ${flashEvent.flashColor}`,
+            textAlign: "center",
+            animation: "pulse 0.5s ease 3",
+          }}>
+            <div style={{ fontSize: F.sm, color: flashEvent.flashColor, lineHeight: 1.4 }}>
+              {flashEvent.text}
+            </div>
+          </div>
         )}
 
         {/* Tab buttons — always visible */}
@@ -412,7 +443,10 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
                        evt.type === "halftime" || evt.type === "fulltime" ? C.textMuted :
                        evt.type === "card" ? C.amber :
                        evt.flash ? C.text : C.slate,
-                background: evt.type === "goal" ? `${evt.flashColor}08` :
+                // On mobile, drop the tinted goal background — the persistent
+                // scorer strip already carries that signal. Keep colour + weight.
+                background: mob && evt.type === "goal" ? "transparent" :
+                            evt.type === "goal" ? `${evt.flashColor}08` :
                             evt.type === "motm" ? "rgba(96,165,250,0.06)" :
                             evt.type === "red_card" ? "rgba(239,68,68,0.06)" : "transparent",
                 fontWeight: evt.type === "goal" || evt.type === "motm" || evt.type === "red_card" ? "bold" : "normal",
