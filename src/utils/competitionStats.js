@@ -236,5 +236,130 @@ export function makeCupAIMatchHandler(setSeasonCupStats, season, cupName) {
   };
 }
 
+// === All-time roll-up ===
+
+/**
+ * Fold a season's stats into an all-time stats blob. Both objects share the
+ * competitionStats shape. Pure — returns a new all-time object.
+ *
+ * `processedMatches` from the season is NOT carried over into all-time
+ * (all-time tracks cumulative totals, not individual match ids).
+ */
+export function rollIntoAllTime(allTime, season) {
+  const base = allTime || emptyCompetitionStats();
+  if (!season || !season.players || Object.keys(season.players).length === 0) {
+    return base;
+  }
+  const newPlayers = { ...(base.players || {}) };
+  for (const [key, sEntry] of Object.entries(season.players)) {
+    const prev = newPlayers[key];
+    if (!prev) {
+      newPlayers[key] = {
+        key,
+        playerId: sEntry.playerId || null,
+        name: sEntry.name || "",
+        teamId: sEntry.teamId ?? null,
+        teamName: sEntry.teamName || "",
+        position: sEntry.position || null,
+        goals: sEntry.goals || 0,
+        assists: sEntry.assists || 0,
+        yellows: sEntry.yellows || 0,
+        reds: sEntry.reds || 0,
+      };
+      continue;
+    }
+    newPlayers[key] = {
+      ...prev,
+      // Refresh display fields with the most recent identity
+      name: sEntry.name || prev.name,
+      teamId: sEntry.teamId != null ? sEntry.teamId : prev.teamId,
+      teamName: sEntry.teamName || prev.teamName,
+      position: sEntry.position || prev.position,
+      goals: (prev.goals || 0) + (sEntry.goals || 0),
+      assists: (prev.assists || 0) + (sEntry.assists || 0),
+      yellows: (prev.yellows || 0) + (sEntry.yellows || 0),
+      reds: (prev.reds || 0) + (sEntry.reds || 0),
+    };
+  }
+  return {
+    players: newPlayers,
+    processedMatches: base.processedMatches || {},
+  };
+}
+
+/**
+ * Credit a list of scorer events directly to an all-time stats blob.
+ * Used for non-player-tier AI matchweeks where we don't maintain a per-tier
+ * season store, so credits happen per matchweek rather than via the
+ * idempotent match accumulator. Composite-keyed by team name + scorer name.
+ *
+ * `events` shape: [{ teamName, name, assister?, position? }, ...]
+ */
+export function creditAllTimeScorers(allTime, events) {
+  if (!Array.isArray(events) || events.length === 0) return allTime || emptyCompetitionStats();
+  const base = allTime || emptyCompetitionStats();
+  const newPlayers = { ...(base.players || {}) };
+  const bump = (teamName, name, position, field) => {
+    const key = compositeFallbackKey(teamName, name, position || null);
+    const prev = newPlayers[key] || {
+      key, playerId: null, name, teamId: teamName, teamName,
+      position: position || null,
+      goals: 0, assists: 0, yellows: 0, reds: 0,
+    };
+    newPlayers[key] = { ...prev, [field]: (prev[field] || 0) + 1 };
+  };
+  for (const e of events) {
+    if (!e) continue;
+    if (e.name) bump(e.teamName || "", e.name, e.position, "goals");
+    if (e.assister) bump(e.teamName || "", e.assister, null, "assists");
+  }
+  return { players: newPlayers, processedMatches: base.processedMatches || {} };
+}
+
+/**
+ * Migrate the legacy allTimeLeagueStats shape `{ scorers, assisters, cards }`
+ * (string-keyed `name|teamName` → count) into the canonical competitionStats
+ * shape. Lossy: legacy `cards` lumped yellows + reds together, so all are
+ * credited as yellows in the migration.
+ */
+export function migrateLegacyAllTimeStats(legacy) {
+  if (!legacy) return emptyCompetitionStats();
+  // Already canonical-shaped — pass through.
+  if (legacy.players && typeof legacy.players === "object") return legacy;
+  const players = {};
+  const ensure = (key, name, teamName) => {
+    if (!players[key]) {
+      players[key] = {
+        key, playerId: null, name, teamId: teamName, teamName, position: null,
+        goals: 0, assists: 0, yellows: 0, reds: 0,
+      };
+    }
+    return players[key];
+  };
+  const parse = (k) => {
+    const idx = k.lastIndexOf("|");
+    if (idx < 0) return [k, ""];
+    return [k.slice(0, idx), k.slice(idx + 1)];
+  };
+  for (const [k, count] of Object.entries(legacy.scorers || {})) {
+    const [name, teamName] = parse(k);
+    const key = compositeFallbackKey(teamName, name, null);
+    ensure(key, name, teamName).goals += count;
+  }
+  for (const [k, count] of Object.entries(legacy.assisters || {})) {
+    const [name, teamName] = parse(k);
+    const key = compositeFallbackKey(teamName, name, null);
+    ensure(key, name, teamName).assists += count;
+  }
+  for (const [k, count] of Object.entries(legacy.cards || {})) {
+    const [name, teamName] = parse(k);
+    const key = compositeFallbackKey(teamName, name, null);
+    // Old shape stored combined yellow + red — credit as yellows since we
+    // can't separate them retroactively.
+    ensure(key, name, teamName).yellows += count;
+  }
+  return { players, processedMatches: {} };
+}
+
 // Internal — exposed only for tests
 export const __test = { playerKey, compositeFallbackKey };

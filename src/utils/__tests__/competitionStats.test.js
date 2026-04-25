@@ -3,6 +3,9 @@ import {
   emptyCompetitionStats,
   accumulateMatchStats,
   accumulateCupMatch,
+  rollIntoAllTime,
+  creditAllTimeScorers,
+  migrateLegacyAllTimeStats,
   getTopScorers,
   getTopAssisters,
   getMostYellows,
@@ -321,6 +324,98 @@ describe("cupMatchId", () => {
     const a = cupMatchId({ season: 1, cupName: "Cup", roundIdx: 0, home: "A", away: "B" });
     const b = cupMatchId({ season: 1, cupName: "Cup", roundIdx: 0, home: "B", away: "A" });
     expect(a).not.toBe(b);
+  });
+});
+
+describe("rollIntoAllTime", () => {
+  function seasonWith(players) {
+    return { players, processedMatches: {} };
+  }
+
+  it("folds a season's player entries into an empty all-time blob", () => {
+    const season = seasonWith({
+      "p1": { key: "p1", playerId: "p1", name: "Alice", teamId: 0, teamName: "City",
+              goals: 5, assists: 2, yellows: 1, reds: 0, position: "ST" },
+    });
+    const allTime = rollIntoAllTime(emptyCompetitionStats(), season);
+    expect(allTime.players["p1"].goals).toBe(5);
+    expect(allTime.players["p1"].assists).toBe(2);
+    expect(allTime.players["p1"].yellows).toBe(1);
+    expect(allTime.players["p1"].teamName).toBe("City");
+  });
+
+  it("adds onto existing all-time totals for the same key", () => {
+    let allTime = rollIntoAllTime(emptyCompetitionStats(), seasonWith({
+      "p1": { key: "p1", playerId: "p1", name: "Alice", teamId: 0, teamName: "City",
+              goals: 5, assists: 2, yellows: 1, reds: 0 },
+    }));
+    allTime = rollIntoAllTime(allTime, seasonWith({
+      "p1": { key: "p1", playerId: "p1", name: "Alice", teamId: 0, teamName: "City",
+              goals: 7, assists: 3, yellows: 0, reds: 1 },
+    }));
+    expect(allTime.players["p1"].goals).toBe(12);
+    expect(allTime.players["p1"].assists).toBe(5);
+    expect(allTime.players["p1"].yellows).toBe(1);
+    expect(allTime.players["p1"].reds).toBe(1);
+  });
+
+  it("returns the same all-time reference when the season is empty", () => {
+    const allTime = emptyCompetitionStats();
+    expect(rollIntoAllTime(allTime, emptyCompetitionStats())).toBe(allTime);
+  });
+
+  it("does not carry processedMatches from season", () => {
+    const allTime = emptyCompetitionStats();
+    const season = { players: { "p1": { key: "p1", name: "A", goals: 1, assists: 0, yellows: 0, reds: 0 } }, processedMatches: { "match-x": true } };
+    const next = rollIntoAllTime(allTime, season);
+    expect(next.processedMatches["match-x"]).toBeUndefined();
+  });
+});
+
+describe("creditAllTimeScorers", () => {
+  it("credits goals + assists by composite key", () => {
+    const next = creditAllTimeScorers(emptyCompetitionStats(), [
+      { teamName: "Rovers", name: "Joe", assister: "Mike" },
+      { teamName: "Rovers", name: "Joe" },
+    ]);
+    const joeKey = Object.keys(next.players).find(k => next.players[k].name === "Joe");
+    const mikeKey = Object.keys(next.players).find(k => next.players[k].name === "Mike");
+    expect(next.players[joeKey].goals).toBe(2);
+    expect(next.players[mikeKey].assists).toBe(1);
+  });
+
+  it("returns the input when events array is empty or missing", () => {
+    const stats = emptyCompetitionStats();
+    expect(creditAllTimeScorers(stats, [])).toBe(stats);
+    expect(creditAllTimeScorers(stats, null)).toBe(stats);
+  });
+});
+
+describe("migrateLegacyAllTimeStats", () => {
+  it("converts the legacy {scorers, assisters, cards} shape to canonical players", () => {
+    const legacy = {
+      scorers: { "Joe|Rovers": 5, "Mike|City": 3 },
+      assisters: { "Mike|City": 2 },
+      cards: { "Joe|Rovers": 1 },
+    };
+    const next = migrateLegacyAllTimeStats(legacy);
+    expect(next.processedMatches).toEqual({});
+    const joe = Object.values(next.players).find(p => p.name === "Joe");
+    const mike = Object.values(next.players).find(p => p.name === "Mike");
+    expect(joe.goals).toBe(5);
+    expect(joe.yellows).toBe(1); // legacy cards lumped into yellows
+    expect(joe.teamName).toBe("Rovers");
+    expect(mike.goals).toBe(3);
+    expect(mike.assists).toBe(2);
+  });
+
+  it("passes through canonical-shape input unchanged", () => {
+    const canonical = { players: { "p1": { key: "p1", name: "X", goals: 1, assists: 0, yellows: 0, reds: 0 } }, processedMatches: {} };
+    expect(migrateLegacyAllTimeStats(canonical)).toBe(canonical);
+  });
+
+  it("returns empty stats when input is null/undefined", () => {
+    expect(migrateLegacyAllTimeStats(null)).toEqual({ players: {}, processedMatches: {} });
   });
 });
 

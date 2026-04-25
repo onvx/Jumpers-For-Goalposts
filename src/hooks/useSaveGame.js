@@ -16,7 +16,7 @@ import { simulateMatchweek } from "../utils/match.js";
 import { normalizeRosters, initLeague, initAILeague, buildSeasonCalendar, computeCalendarIndex, initCup } from "../utils/league.js";
 import { seedMessageSeq, getMessageSeq } from "../utils/messageUtils.js";
 import { checkAchievements } from "../utils/achievements.js";
-import { emptyCompetitionStats } from "../utils/competitionStats.js";
+import { emptyCompetitionStats, migrateLegacyAllTimeStats } from "../utils/competitionStats.js";
 import { randomAvatar } from "../components/ui/ManagerAvatar.jsx";
 
 /**
@@ -106,6 +106,7 @@ export function useSaveGame({
         ovrHistory: s.ovrHistory,
         storyArcs: s.storyArcs,
         allTimeLeagueStats: s.allTimeLeagueStats,
+        allTimeCupStats: s.allTimeCupStats,
         seasonLeagueStats: s.seasonLeagueStats,
         seasonLeagueStatsAvailable: s.seasonLeagueStatsAvailable,
         seasonCupStats: s.seasonCupStats,
@@ -560,7 +561,8 @@ export function useSaveGame({
         loadedArcs._arcRewardV3 = true;
       }
       store.setStoryArcs(loadedArcs);
-      store.setAllTimeLeagueStats(s.allTimeLeagueStats || { scorers: {}, assisters: {}, cards: {} });
+      store.setAllTimeLeagueStats(migrateLegacyAllTimeStats(s.allTimeLeagueStats));
+      store.setAllTimeCupStats(s.allTimeCupStats && s.allTimeCupStats.players ? s.allTimeCupStats : emptyCompetitionStats());
       const hasCanonicalStats = !!(s.seasonLeagueStats && s.seasonLeagueStats.players);
       store.setSeasonLeagueStats(hasCanonicalStats ? s.seasonLeagueStats : emptyCompetitionStats());
       // Legacy detection: a save without canonical stats whose season has
@@ -657,13 +659,17 @@ export function useSaveGame({
       store.setTradesMadeInWindow(s.tradesMadeInWindow || 0);
       store.setTradedWithClubs(s.tradedWithClubs || new Set());
       store.setPrestigeLevel(s.prestigeLevel || 0);
-      // Migration: seed allTimeLeagueStats from clubHistory
+      // Migration: seed allTimeLeagueStats from clubHistory if missing
       if (!s.allTimeLeagueStats && s.clubHistory?.playerCareers) {
-        const seeded = { scorers: {}, assisters: {}, cards: {} };
-        Object.entries(s.clubHistory.playerCareers).forEach(([name, c]) => {
-          if (c.goals > 0) seeded.scorers[`${name}|${s.teamName}`] = c.goals;
-          if (c.assists > 0) seeded.assisters[`${name}|${s.teamName}`] = c.assists;
-          if ((c.yellows || 0) + (c.reds || 0) > 0) seeded.cards[`${name}|${s.teamName}`] = (c.yellows || 0) + (c.reds || 0);
+        const seeded = migrateLegacyAllTimeStats({
+          scorers: {}, assisters: {}, cards: {},
+          ...Object.entries(s.clubHistory.playerCareers).reduce((acc, [name, c]) => {
+            if (c.goals > 0) acc.scorers[`${name}|${s.teamName}`] = c.goals;
+            if (c.assists > 0) acc.assisters[`${name}|${s.teamName}`] = c.assists;
+            const cards = (c.yellows || 0) + (c.reds || 0);
+            if (cards > 0) acc.cards[`${name}|${s.teamName}`] = cards;
+            return acc;
+          }, { scorers: {}, assisters: {}, cards: {} }),
         });
         store.setAllTimeLeagueStats(seeded);
       }
