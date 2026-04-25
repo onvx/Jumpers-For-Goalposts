@@ -10,7 +10,7 @@ import { F, C, FONT } from "../../data/tokens";
 import { useMobile } from "../../hooks/useMobile.js";
 import { getTopScorers, getTopAssisters, getMostYellows, getMostReds } from "../../utils/competitionStats.js";
 
-export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, playerSeasonStats, playerRatingTracker, squad, startingXI, bench, seasonNumber, clubHistory, allTimeLeagueStats, allLeagueStates, leagueTier: leagueTierProp, onPlayerClick, onTeamClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, dynastyCupBracket, miniTournamentBracket, ovrCap = 20, seasonLeagueStats = null, seasonLeagueStatsAvailable = true }) {
+export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, playerSeasonStats, playerRatingTracker, squad, startingXI, bench, seasonNumber, clubHistory, allTimeLeagueStatsByTier, allLeagueStates, leagueTier: leagueTierProp, onPlayerClick, onTeamClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, dynastyCupBracket, miniTournamentBracket, ovrCap = 20, seasonLeagueStats = null, seasonLeagueStatsAvailable = true }) {
   const [activeTab, setActiveTab] = useState("leagues");
   const [selectedMD, setSelectedMD] = useState(Math.max(0, matchweekIndex - 1));
   const [viewTeamData, setViewTeamData] = useState(null); // { team, tableRow, seasonGoals, seasonAssists }
@@ -821,12 +821,13 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
         })()}
 
         {activeTab === "alltime" && (() => {
-          // All-time records merge canonical allTimeLeagueStats with the
-          // current season's canonical seasonLeagueStats, then filter to the
-          // teams currently in the player's league. The underlying store is
-          // a single global blob — entries aren't tier-scoped, so this is a
-          // "records for current league teams across all seasons" view, not
-          // a strict per-division ledger.
+          // All-time league records are tier-scoped: read only the current
+          // tier's slot from allTimeLeagueStatsByTier and merge in the
+          // current season's canonical seasonLeagueStats (player-tier only).
+          // Then filter to the teams currently in this division so newly
+          // promoted teams don't appear with zero entries on day one.
+          const currentTier = league?.tier || tier;
+          const tierAllTime = allTimeLeagueStatsByTier?.[currentTier] || null;
           const leagueTeamNames = new Set((league?.teams || []).map(t => t.name));
           const merged = {};
           const acc = (entry) => {
@@ -843,7 +844,7 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
             if (entry.name) m.name = entry.name;
             if (entry.teamName) m.teamName = entry.teamName;
           };
-          Object.values(allTimeLeagueStats?.players || {}).forEach(acc);
+          Object.values(tierAllTime?.players || {}).forEach(acc);
           Object.values(seasonLeagueStats?.players || {}).forEach(acc);
 
           const rows = Object.values(merged)

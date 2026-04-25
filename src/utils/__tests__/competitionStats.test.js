@@ -443,6 +443,25 @@ describe("migrateLegacyAllTimeStats", () => {
   });
 });
 
+describe("rollIntoAllTime — tier-scoped usage", () => {
+  // The store now keeps a tier-scoped map (`allTimeLeagueStatsByTier`); the
+  // tests below pin the contract that callers compose by passing the right
+  // tier slot in/out. Different tiers are completely isolated.
+  it("crediting a season into one tier slot does not affect a different tier", () => {
+    const byTier = {
+      7: { players: { "p1": { key: "p1", name: "Rookie", teamName: "Athletic",
+                              goals: 4, assists: 0, yellows: 0, reds: 0 } }, processedMatches: {} },
+    };
+    const seasonAtTier8 = { players: { "p2": { key: "p2", name: "Vet", teamName: "City",
+                                               goals: 3, assists: 0, yellows: 0, reds: 0 } }, processedMatches: {} };
+    const next = { ...byTier, 8: rollIntoAllTime(byTier[8], seasonAtTier8) };
+    expect(next[7].players["p1"].goals).toBe(4);
+    expect(next[8].players["p2"].goals).toBe(3);
+    expect(next[7].players["p2"]).toBeUndefined();
+    expect(next[8].players["p1"]).toBeUndefined();
+  });
+});
+
 describe("accumulateCupMatch", () => {
   const cupHome = {
     name: "Athletic", squad: [{ id: "ah1", name: "Iker", position: "ST" }],

@@ -154,24 +154,26 @@ const DEFAULT_SEASON_LENGTH = 48;
 const DEFAULT_FIXTURE_COUNT = 18;
 const SQUAD_CAP = 25;
 // Roll the current season's league + cup canonical stats into all-time
-// before the season-end paths clear the season stores. Also runs the
-// Etched In Stone check on the post-roll all-time blob. Used by both the
-// normal new-season transition and the prestige reset, so neither path
-// silently drops a final season's stats.
+// before the season-end paths clear the season stores. League all-time is
+// tier-scoped (allTimeLeagueStatsByTier[closingTier]); cup all-time is a
+// single global blob keyed by cup name elsewhere. Also runs the Etched In
+// Stone check against the post-roll *current tier* blob (Option A: top of
+// this division's all-time chart).
 function finalizeSeasonStatsIntoAllTime({
-  setAllTimeLeagueStats, setAllTimeCupStats,
+  setAllTimeLeagueStatsByTier, setAllTimeCupStats,
   seasonLeagueStats, seasonCupStats,
-  teamName, unlockedAchievements, tryUnlockAchievement,
+  closingTier, teamName, unlockedAchievements, tryUnlockAchievement,
 }) {
-  setAllTimeLeagueStats(prev => {
-    const next = rollIntoAllTime(prev, seasonLeagueStats);
+  setAllTimeLeagueStatsByTier(prev => {
+    const tierBlob = prev?.[closingTier] || emptyCompetitionStats();
+    const nextTierBlob = rollIntoAllTime(tierBlob, seasonLeagueStats);
     if (tryUnlockAchievement && !unlockedAchievements?.has?.("all_time_top")) {
-      const top = getTopScorers(next, 1)[0];
+      const top = getTopScorers(nextTierBlob, 1)[0];
       if (top && top.teamName === teamName) {
         tryUnlockAchievement("all_time_top");
       }
     }
-    return next;
+    return { ...(prev || {}), [closingTier]: nextTierBlob };
   });
   setAllTimeCupStats(prev => rollIntoAllTime(prev, seasonCupStats));
 }
@@ -240,7 +242,7 @@ function FruitCigs() {
     setConsecutiveUnbeaten, setConsecutiveLosses, setConsecutiveDraws,
     setConsecutiveWins, setConsecutiveScoreless,
     setHalfwayPosition, setPreviousLeaguePosition, setRecentScorelines, setSecondPlaceFinishes,
-    setOvrHistory, setClubHistory, setAllTimeLeagueStats, setAllTimeCupStats, setSeasonLeagueStats, setSeasonLeagueStatsAvailable,
+    setOvrHistory, setClubHistory, setAllTimeLeagueStatsByTier, setAllTimeCupStats, setSeasonLeagueStats, setSeasonLeagueStatsAvailable,
     setSeasonCupStats, setSeasonCupStatsAvailable,
     setStartingXI, setBench, setFormation, setSlotAssignments, setPrevStartingXI, setXiPresets,
     setTrialPlayer, setTrialHistory, setProdigalSon, setRetiringPlayers,
@@ -637,7 +639,7 @@ function FruitCigs() {
   const highScoringMatches = useGameStore(s => s.highScoringMatches);
   // All-time league-wide stats (accumulated at end of each season)
   // { scorers: { "PlayerName|TeamName": goals }, cards: { "PlayerName|TeamName": cards } }
-  const allTimeLeagueStats = useGameStore(s => s.allTimeLeagueStats);
+  const allTimeLeagueStatsByTier = useGameStore(s => s.allTimeLeagueStatsByTier);
   const seasonLeagueStats = useGameStore(s => s.seasonLeagueStats);
   const seasonLeagueStatsAvailable = useGameStore(s => s.seasonLeagueStatsAvailable);
   const seasonCupStats = useGameStore(s => s.seasonCupStats);
@@ -2485,7 +2487,7 @@ function FruitCigs() {
           bench={bench}
           seasonNumber={seasonNumber}
           clubHistory={clubHistory}
-          allTimeLeagueStats={allTimeLeagueStats}
+          allTimeLeagueStatsByTier={allTimeLeagueStatsByTier}
           seasonLeagueStats={seasonLeagueStats}
           seasonLeagueStatsAvailable={seasonLeagueStatsAvailable}
           allLeagueStates={allLeagueStates}
@@ -3011,7 +3013,12 @@ function FruitCigs() {
                         });
                         for (const batch of holAIBatches) {
                           const creditId = `alltime-ai-league:S${seasonNumber}:T${batch.tier}:MD${batch.mw}`;
-                          setAllTimeLeagueStats(prev => creditAllTimeScorers(prev, creditId, batch.events));
+                          const tierKey = batch.tier;
+                          setAllTimeLeagueStatsByTier(prev => {
+                            const tierBlob = prev?.[tierKey] || emptyCompetitionStats();
+                            const next = creditAllTimeScorers(tierBlob, creditId, batch.events);
+                            return next === tierBlob ? prev : { ...(prev || {}), [tierKey]: next };
+                          });
                         }
                         if (playerMatch) {
                           // === HOLIDAY: process stats inline, skip MatchResultScreen ===
@@ -3701,7 +3708,12 @@ function FruitCigs() {
                   });
                   for (const batch of aiBatches) {
                     const creditId = `alltime-ai-league:S${seasonNumber}:T${batch.tier}:MD${batch.mw}`;
-                    setAllTimeLeagueStats(prev => creditAllTimeScorers(prev, creditId, batch.events));
+                    const tierKey = batch.tier;
+                    setAllTimeLeagueStatsByTier(prev => {
+                      const tierBlob = prev?.[tierKey] || emptyCompetitionStats();
+                      const next = creditAllTimeScorers(tierBlob, creditId, batch.events);
+                      return next === tierBlob ? prev : { ...(prev || {}), [tierKey]: next };
+                    });
                   }
                   if (playerMatch) {
                     playerMatch._playedMatchweekIndex = capturedMWIdx;
@@ -6013,9 +6025,12 @@ function FruitCigs() {
             setCalendarResults({});
             // Prestige is a real season-end too — fold the closing season's
             // canonical stats into all-time before wiping the season stores.
+            // The closing tier is the current `leagueTier` (the prestige tier
+            // change to NUM_TIERS happens further down).
             finalizeSeasonStatsIntoAllTime({
-              setAllTimeLeagueStats, setAllTimeCupStats,
+              setAllTimeLeagueStatsByTier, setAllTimeCupStats,
               seasonLeagueStats, seasonCupStats,
+              closingTier: leagueTier,
               teamName, unlockedAchievements, tryUnlockAchievement,
             });
             setLeagueResults({});
@@ -6609,8 +6624,9 @@ function FruitCigs() {
               setCalendarIndex(0);
               setCalendarResults({});
               finalizeSeasonStatsIntoAllTime({
-                setAllTimeLeagueStats, setAllTimeCupStats,
+                setAllTimeLeagueStatsByTier, setAllTimeCupStats,
                 seasonLeagueStats, seasonCupStats,
+                closingTier: summerData?.fromTier || leagueTier,
                 teamName, unlockedAchievements, tryUnlockAchievement,
               });
               setLeagueResults({});
