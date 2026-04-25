@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { getLeagueMatchdaysPlayed } from "../utils/league.js";
 import { DEFAULT_FORMATION } from "../data/formations.js";
 import { initStoryArcs } from "../utils/arcs.js";
+import { emptyCompetitionStats } from "../utils/competitionStats.js";
 
 /**
  * Core game state store — replaces the useState + useRef mirror pattern.
@@ -176,6 +177,9 @@ export const useGameStore = create((set, get) => ({
     playerCareers: {}, allTimeXI: {}, seasonArchive: [], cupHistory: [],
   },
   allTimeLeagueStats: { scorers: {}, assisters: {}, cards: {} },
+  // #215 phase 1 — canonical season-wide league stats. Source of truth
+  // for the LeaguePage Stats tab. Cleared at season end.
+  seasonLeagueStats: emptyCompetitionStats(),
 
   // === Squad composition ===
   startingXI: [],
@@ -347,6 +351,7 @@ export const useGameStore = create((set, get) => ({
   setOvrHistory: (val) => set(s => ({ ovrHistory: typeof val === "function" ? val(s.ovrHistory) : val })),
   setClubHistory: (val) => set(s => ({ clubHistory: typeof val === "function" ? val(s.clubHistory) : val })),
   setAllTimeLeagueStats: (val) => set(s => ({ allTimeLeagueStats: typeof val === "function" ? val(s.allTimeLeagueStats) : val })),
+  setSeasonLeagueStats: (val) => set(s => ({ seasonLeagueStats: typeof val === "function" ? val(s.seasonLeagueStats) : val })),
 
   setStartingXI: (val) => set(s => ({ startingXI: typeof val === "function" ? val(s.startingXI) : val })),
   setBench: (val) => set(s => ({ bench: typeof val === "function" ? val(s.bench) : val })),
@@ -490,6 +495,7 @@ export const useGameStore = create((set, get) => ({
       playerCareers: {}, allTimeXI: {}, seasonArchive: [], cupHistory: [],
     },
     allTimeLeagueStats: { scorers: {}, assisters: {}, cards: {} },
+    seasonLeagueStats: emptyCompetitionStats(),
     startingXI: [],
     bench: [],
     formation: DEFAULT_FORMATION.map(s => ({ ...s })),

@@ -456,9 +456,13 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
     return team.squad.filter(p => p.isBench && !p.injury);
   };
 
-  // Pick a scorer from a team (weighted by shooting + position).
-  // Returns null when the team has no named players (AI roster edge case).
-  const pickScorer = (team) => {
+  // Player → ref helper — strips down to the identity fields stat events
+  // and rewrites care about. Returns null if the input is null.
+  const playerRef = (p) => p ? { id: p.id || null, name: p.name || "", position: p.position || null } : null;
+
+  // Pick a scorer ref from a team (weighted by shooting + position).
+  // Returns { id, name, position } or null when the team has no named players.
+  const pickScorerRef = (team) => {
     const players = getPlayingSquad(team);
     const weights = players.map(p => {
       const type = POSITION_TYPES[p.position];
@@ -476,23 +480,28 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
     let r = Math.random() * total;
     for (let j = 0; j < weights.length; j++) {
       r -= weights[j];
-      if (r <= 0) return players[j].name || null;
+      if (r <= 0) return playerRef(players[j]);
     }
-    return players[0]?.name || null;
+    return playerRef(players[0]) || null;
   };
 
-  // Pick a random player for non-goal events. Returns null if roster is empty.
-  const pickPlayer = (team) => {
+  // Legacy name-only wrapper for commentary that only needs a string.
+  const pickScorer = (team) => pickScorerRef(team)?.name || null;
+
+  // Pick a random player ref for non-goal events.
+  const pickPlayerRef = (team) => {
     const players = getPlayingSquad(team);
     if (players.length === 0) return null;
-    return players[rand(0, players.length - 1)].name || null;
+    return playerRef(players[rand(0, players.length - 1)]);
   };
+  // Legacy name wrapper.
+  const pickPlayer = (team) => pickPlayerRef(team)?.name || null;
   // Null-safe wrapper for use in commentary template strings.
   const namedPlayer = (team) => pickPlayer(team) ?? "a player";
 
-  // Pick an assister for a goal (~75% of goals have assists, in line with PL average)
-  // Weighted toward MIDs/wingers > FWDs > DEFs; GKs excluded
-  const pickAssister = (team, scorerName) => {
+  // Pick an assister ref for a goal (~75% of goals have assists).
+  // Returns null either when the assist roll fails or no eligible player.
+  const pickAssisterRef = (team, scorerName) => {
     if (Math.random() > MATCH.ASSIST_RATE) return null;
     const players = getPlayingSquad(team).filter(p => p.name !== scorerName);
     if (players.length === 0) return null;
@@ -508,10 +517,13 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
     let r = Math.random() * total;
     for (let j = 0; j < weights.length; j++) {
       r -= weights[j];
-      if (r <= 0) return players[j].name || null;
+      if (r <= 0) return playerRef(players[j]);
     }
-    return players[0]?.name || null;
+    return playerRef(players[0]) || null;
   };
+
+  // Legacy name wrapper.
+  const pickAssister = (team, scorerName) => pickAssisterRef(team, scorerName)?.name || null;
 
   // Build full event timeline
   const events = [];
@@ -553,8 +565,10 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
     for (let i = 0; i < count; i++) {
       const min = pickUniqueGoalMinute(team, minMin, maxMin);
       goalMinutes.push(min);
-      const scorer = pickScorer(team) ?? "Unknown";
-      const assister = pickAssister(team, scorer);
+      const scorerRef = pickScorerRef(team);
+      const scorer = scorerRef?.name ?? "Unknown";
+      const assisterRef = pickAssisterRef(team, scorer);
+      const assister = assisterRef?.name || null;
       const scorerKey = `${side}|${scorer}`;
       matchGoalCounts[scorerKey] = (matchGoalCounts[scorerKey] || 0) + 1;
 
@@ -588,8 +602,12 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
 
       events.push({
         minute: min, type: "goal", side,
+        playerId: scorerRef?.id || null,
         player: scorer,
+        assisterId: assisterRef?.id || null,
         assister: assister || undefined,
+        teamId: team.id ?? null,
+        teamName: team.name,
         text: baseLine + contextLine,
         flash: true, flashColor: team.isPlayer ? MATCH.FLASH_PLAYER : MATCH.FLASH_OPP,
       });
@@ -656,8 +674,8 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
     { type: "shot", weight: 4, gen: (team, opp) => { const p = namedPlayer(team); return { text: `Good save! ${p}'s effort is tipped over the bar.`, flash: false }; }},
     { type: "chance", weight: 3, gen: (team, opp) => { const p = namedPlayer(team); return { text: `${p} breaks through on goal... but fires over!`, flash: true, flashColor: MATCH.FLASH_CHANCE }; }},
     { type: "foul", weight: 4, gen: (team, opp) => { const p = namedPlayer(opp); return { text: `Free kick. ${p} is brought down in midfield.`, flash: false }; }},
-    { type: "card", weight: 7 * (modifiers.cardFrequencyMult || 1), gen: (team, opp) => { const p = namedPlayer(team); return { text: `🟨 Yellow card! ${p} goes into the book.`, flash: true, flashColor: MATCH.FLASH_CHANCE, cardPlayer: p, cardTeamName: team.name }; }},
-    { type: "red_card", weight: 0.4 * (modifiers.cardFrequencyMult || 1), gen: (team, opp) => { const p = namedPlayer(team); return { text: `🟥 RED CARD! ${p} is sent off for a dangerous challenge!`, flash: true, flashColor: MATCH.FLASH_RED, cardPlayer: p, cardTeamName: team.name, isDirectRed: true }; }},
+    { type: "card", weight: 7 * (modifiers.cardFrequencyMult || 1), gen: (team, opp) => { const ref = pickPlayerRef(team); const p = ref?.name || "a player"; return { text: `🟨 Yellow card! ${p} goes into the book.`, flash: true, flashColor: MATCH.FLASH_CHANCE, cardPlayer: p, cardPlayerId: ref?.id || null, cardTeamName: team.name, teamId: team.id ?? null }; }},
+    { type: "red_card", weight: 0.4 * (modifiers.cardFrequencyMult || 1), gen: (team, opp) => { const ref = pickPlayerRef(team); const p = ref?.name || "a player"; return { text: `🟥 RED CARD! ${p} is sent off for a dangerous challenge!`, flash: true, flashColor: MATCH.FLASH_RED, cardPlayer: p, cardPlayerId: ref?.id || null, cardTeamName: team.name, teamId: team.id ?? null, isDirectRed: true }; }},
     { type: "possession", weight: 5, gen: (team, opp) => ({ text: `${team.name} building patiently from the back...`, flash: false }) },
     { type: "possession", weight: 3, gen: (team, opp) => ({ text: `Good spell of pressure from ${team.name}.`, flash: false }) },
     { type: "tackle", weight: 3, gen: (team, opp) => { const p = namedPlayer(team); return { text: `Crunching tackle from ${p}!`, flash: false }; }},
@@ -693,8 +711,9 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
       for (let i = 0; i < rand(MATCH.PHYSICAL_COMMENTARY_MIN, MATCH.PHYSICAL_COMMENTARY_MAX); i++) {
         const min = rand(1, 90);
         if (Math.random() < MATCH.PHYSICAL_CARD_CHANCE * (modifiers.cardFrequencyMult || 1) && !modifiers.noCards) {
-          const p = namedPlayer(team);
-          events.push({ minute: min, type: "card", side, text: `🟨 Yellow card! ${p} goes into the book for a late challenge.`, flash: true, flashColor: MATCH.FLASH_CHANCE, cardPlayer: p, cardTeamName: team.name });
+          const ref = pickPlayerRef(team);
+          const p = ref?.name || "a player";
+          events.push({ minute: min, type: "card", side, text: `🟨 Yellow card! ${p} goes into the book for a late challenge.`, flash: true, flashColor: MATCH.FLASH_CHANCE, cardPlayer: p, cardPlayerId: ref?.id || null, cardTeamName: team.name, teamId: team.id ?? null });
         } else {
           const p = namedPlayer(opp);
           events.push({ minute: min, type: "foul", side, text: `${p} is clattered by a tough ${team.name} challenge. Free kick.`, flash: false });
@@ -728,8 +747,9 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
       for (let i = 0; i < rand(MATCH.FLAIR_COMMENTARY_MIN, MATCH.FLAIR_COMMENTARY_MAX); i++) {
         const min = rand(1, 90);
         if (Math.random() < MATCH.FLAIR_CARD_CHANCE * (modifiers.cardFrequencyMult || 1) && !modifiers.noCards) {
-          const p = namedPlayer(team);
-          events.push({ minute: min, type: "card", side, text: `🟨 Yellow card! ${p} is booked for simulation! The referee wasn't fooled.`, flash: true, flashColor: MATCH.FLASH_CHANCE, cardPlayer: p, cardTeamName: team.name });
+          const ref = pickPlayerRef(team);
+          const p = ref?.name || "a player";
+          events.push({ minute: min, type: "card", side, text: `🟨 Yellow card! ${p} is booked for simulation! The referee wasn't fooled.`, flash: true, flashColor: MATCH.FLASH_CHANCE, cardPlayer: p, cardPlayerId: ref?.id || null, cardTeamName: team.name, teamId: team.id ?? null });
         } else {
           events.push({ minute: min, type: "foul", side, text: `${team.name} player goes down in the box — free kick awarded.`, flash: false });
         }
@@ -799,24 +819,44 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
         offMinutes[teamName][offName] = evt.minute;
       }
     }
+    // Build a list of available player REFS (not just names) for the team,
+    // excluding any subbed off. Used by both goal and card rewrite paths
+    // below so identity (id+name) stays in lock-step. #215 phase 1.
+    const buildAvailableRefs = (team) => {
+      const offSet = subbedOffByTeam[team.name];
+      const subOnNames = subbedOnByTeam[team.name] || [];
+      const starters = getPlayingSquad(team).filter(p => !offSet || !offSet.has(p.name));
+      const subRefs = subOnNames
+        .map(name => team.squad.find(p => p.name === name))
+        .filter(Boolean);
+      return [...starters, ...subRefs].map(playerRef);
+    };
+
     // For goal events, check if scorer or assister was subbed off
     if (evt.type === "goal" && evt.player) {
       const team = evt.side === "home" ? homeTeam : awayTeam;
       const offSet = subbedOffByTeam[team.name];
       if (offSet) {
-        const starters = getPlayingSquad(team).map(p => p.name).filter(n => !offSet.has(n));
-        const subs = subbedOnByTeam[team.name] || [];
-        const available = [...starters, ...subs];
+        const availableRefs = buildAvailableRefs(team);
         let changed = false;
-        // Re-pick scorer if subbed off
-        if (offSet.has(evt.player) && available.length > 0) {
-          evt.player = available[rand(0, available.length - 1)];
+        // Re-pick scorer if subbed off — update both player AND playerId
+        if (offSet.has(evt.player) && availableRefs.length > 0) {
+          const newScorer = availableRefs[rand(0, availableRefs.length - 1)];
+          evt.player = newScorer.name;
+          evt.playerId = newScorer.id || null;
           changed = true;
         }
-        // Re-pick assister if subbed off
+        // Re-pick assister if subbed off — update both assister AND assisterId
         if (evt.assister && offSet.has(evt.assister)) {
-          const assistCandidates = available.filter(n => n !== evt.player);
-          evt.assister = assistCandidates.length > 0 ? assistCandidates[rand(0, assistCandidates.length - 1)] : undefined;
+          const candidates = availableRefs.filter(r => r.name !== evt.player);
+          if (candidates.length > 0) {
+            const newAssister = candidates[rand(0, candidates.length - 1)];
+            evt.assister = newAssister.name;
+            evt.assisterId = newAssister.id || null;
+          } else {
+            evt.assister = undefined;
+            evt.assisterId = null;
+          }
           changed = true;
         }
         // Rebuild text from fields to avoid substring corruption (e.g. player name inside team name)
@@ -827,18 +867,17 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
         }
       }
     }
-    // For other named events (cards, shots etc), check cardPlayer
+    // For card events, check if cardPlayer was subbed off
     if (evt.cardPlayer && evt.cardTeamName) {
       const offSet = subbedOffByTeam[evt.cardTeamName];
       if (offSet && offSet.has(evt.cardPlayer)) {
         const team = evt.cardTeamName === homeTeam.name ? homeTeam : awayTeam;
-        const starters = getPlayingSquad(team).map(p => p.name).filter(n => !offSet.has(n));
-        const subs = subbedOnByTeam[team.name] || [];
-        const available = [...starters, ...subs];
-        if (available.length > 0) {
-          const newPlayer = available[rand(0, available.length - 1)];
-          evt.text = evt.text.replace(evt.cardPlayer, newPlayer);
-          evt.cardPlayer = newPlayer;
+        const availableRefs = buildAvailableRefs(team);
+        if (availableRefs.length > 0) {
+          const newRef = availableRefs[rand(0, availableRefs.length - 1)];
+          evt.text = evt.text.replace(evt.cardPlayer, newRef.name);
+          evt.cardPlayer = newRef.name;
+          evt.cardPlayerId = newRef.id || null;
         }
       }
     }
@@ -858,10 +897,14 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
       const key = `${evt.cardTeamName}|${evt.cardPlayer}`;
       cardCounts[key] = (cardCounts[key] || 0) + 1;
       if (cardCounts[key] === 2) {
-        // Convert second yellow to red card
+        // Convert second yellow to red card. countsAsYellow: true tells the
+        // canonical stats accumulator to credit BOTH a yellow and a red,
+        // per the #215 locked decision (this yellow stays counted).
         evt.text = `🟥 RED CARD! ${evt.cardPlayer} gets a second yellow and is sent off!`;
         evt.flashColor = MATCH.FLASH_RED;
         evt.type = "red_card";
+        evt.redReason = "second_yellow";
+        evt.countsAsYellow = true;
         redCards.push({ minute: evt.minute, teamName: evt.cardTeamName });
       }
     }
@@ -894,10 +937,14 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
       if (usedGoalMinutes.has(bonusMin)) { for (let m = red.minute + 1; m <= 90; m++) { if (!usedGoalMinutes.has(m)) { bonusMin = m; break; } } }
       usedGoalMinutes.add(bonusMin);
       const scoringTeam = isHome ? awayTeam : homeTeam;
-      const scorer = pickScorer(scoringTeam) ?? "Unknown";
+      const scorerRef = pickScorerRef(scoringTeam);
+      const scorer = scorerRef?.name ?? "Unknown";
       events.push({
         minute: bonusMin, type: "goal", side: isHome ? "away" : "home",
+        playerId: scorerRef?.id || null,
         player: scorer,
+        teamId: scoringTeam.id ?? null,
+        teamName: scoringTeam.name,
         text: `⚽ GOAL! ${scorer} scores for ${scoringTeam.name}! Exploiting the extra man!`,
         flash: true, flashColor: scoringTeam.isPlayer ? MATCH.FLASH_PLAYER : MATCH.FLASH_OPP,
       });

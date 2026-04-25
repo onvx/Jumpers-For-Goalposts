@@ -16,6 +16,7 @@ import { resolveSeasonEndArcs } from "./utils/arcs.js";
 import { buildAssistantLineup, buildPresetLineup } from "./utils/lineup.js";
 import { simulateMatch, generatePenaltyShootout, simulateMatchweek } from "./utils/match.js";
 import { initLeagueRosters, sortStandings, collectSeasonEndAchievements, processSeasonSwaps, initLeague, initAILeague, buildSeasonCalendar, initCup, advanceCupRound, buildNextCupRound } from "./utils/league.js";
+import { accumulateMatchStats, leagueMatchId, emptyCompetitionStats } from "./utils/competitionStats.js";
 import { checkBreakouts } from "./utils/breakouts.js";
 import { SFX, BGM } from "./utils/sfx.js";
 import * as Tone from "tone";
@@ -152,6 +153,26 @@ function generateManagerName() {
 const DEFAULT_SEASON_LENGTH = 48;
 const DEFAULT_FIXTURE_COUNT = 18;
 const SQUAD_CAP = 25;
+// Run the canonical league-stats accumulator over a completed matchweek's
+// `simulateMatchweek` results. Mutates `prev` (a seasonLeagueStats blob) in
+// place via the accumulator. Idempotent per matchId. Phase 1 of #215.
+function accumulateLeagueMatchweek(prev, { results, league, season, tier, matchweekIdx }) {
+  if (!prev || !Array.isArray(results) || !league?.teams) return prev || emptyCompetitionStats();
+  const next = prev || emptyCompetitionStats();
+  results.forEach((r, fixtureIdx) => {
+    const home = league.teams[r.home];
+    const away = league.teams[r.away];
+    if (!home || !away) return;
+    accumulateMatchStats(next, {
+      matchId: leagueMatchId({ season, tier, matchweekIdx, fixtureIdx }),
+      result: r,
+      homeTeam: { id: r.home, name: home.name, squad: home.squad || [] },
+      awayTeam: { id: r.away, name: away.name, squad: away.squad || [] },
+    });
+  });
+  return next;
+}
+
 // Bench-restlessness tiers — derived display state only, never stored.
 // Top tier aligns with the Benchwarmer achievement at 10.
 const RESTLESS_BENCH_STREAK = 5;
@@ -195,7 +216,7 @@ function FruitCigs() {
     setConsecutiveUnbeaten, setConsecutiveLosses, setConsecutiveDraws,
     setConsecutiveWins, setConsecutiveScoreless,
     setHalfwayPosition, setPreviousLeaguePosition, setRecentScorelines, setSecondPlaceFinishes,
-    setOvrHistory, setClubHistory, setAllTimeLeagueStats,
+    setOvrHistory, setClubHistory, setAllTimeLeagueStats, setSeasonLeagueStats,
     setStartingXI, setBench, setFormation, setSlotAssignments, setPrevStartingXI, setXiPresets,
     setTrialPlayer, setTrialHistory, setProdigalSon, setRetiringPlayers,
     setPendingFreeAgent, setScoutedPlayers,
@@ -592,6 +613,7 @@ function FruitCigs() {
   // All-time league-wide stats (accumulated at end of each season)
   // { scorers: { "PlayerName|TeamName": goals }, cards: { "PlayerName|TeamName": cards } }
   const allTimeLeagueStats = useGameStore(s => s.allTimeLeagueStats);
+  const seasonLeagueStats = useGameStore(s => s.seasonLeagueStats);
   const trainedThisWeek = useGameStore(s => s.trainedThisWeek);
   const [injuryWarning, setInjuryWarning] = useState(0);
   const [squadFullAlert, setSquadFullAlert] = useState(false);
@@ -2436,6 +2458,7 @@ function FruitCigs() {
           seasonNumber={seasonNumber}
           clubHistory={clubHistory}
           allTimeLeagueStats={allTimeLeagueStats}
+          seasonLeagueStats={seasonLeagueStats}
           allLeagueStates={allLeagueStates}
           leagueTier={leagueTier}
           onPlayerClick={resolveAnyPlayer}
@@ -2845,6 +2868,11 @@ function FruitCigs() {
                           })),
                         }));
                         setLeagueResults(prev => ({ ...prev, [capturedMWIdx]: condensed }));
+                        // Phase 1 #215 — same accumulation as the non-holiday
+                        // path, idempotent per matchId.
+                        setSeasonLeagueStats(prev => accumulateLeagueMatchweek(prev, {
+                          results, league: updatedLeague, season: seasonNumber, tier: leagueTier, matchweekIdx: capturedMWIdx,
+                        }));
                         const playerMatch = results.find(r =>
                           updatedLeague.teams[r.home].isPlayer || updatedLeague.teams[r.away].isPlayer
                         );
@@ -3562,6 +3590,12 @@ function FruitCigs() {
                     })),
                   }));
                   setLeagueResults(prev => ({ ...prev, [capturedMWIdx]: condensed }));
+                  // Phase 1 #215 — accumulate canonical league stats for the
+                  // entire matchweek (player + same-tier AI). Idempotent per
+                  // matchId so re-firing through holiday/save edge cases is safe.
+                  setSeasonLeagueStats(prev => accumulateLeagueMatchweek(prev, {
+                    results, league: updatedLeague, season: seasonNumber, tier: leagueTier, matchweekIdx: capturedMWIdx,
+                  }));
 
                   // Inject hangover commentary into player match
                   if (hangoverPlayer) {
@@ -5942,6 +5976,7 @@ function FruitCigs() {
             setCalendarIndex(0);
             setCalendarResults({});
             setLeagueResults({});
+            setSeasonLeagueStats(emptyCompetitionStats());
             setMatchPending(false);
             setSummerPhase(null);
             setSummerData(null);
@@ -6564,6 +6599,7 @@ function FruitCigs() {
                 return next;
               });
               setLeagueResults({});
+              setSeasonLeagueStats(emptyCompetitionStats());
               setSeasonCards(0);
               setSeasonCleanSheets(0);
               setSeasonGoalsFor(0);

@@ -16,6 +16,7 @@ import { simulateMatchweek } from "../utils/match.js";
 import { normalizeRosters, initLeague, initAILeague, buildSeasonCalendar, computeCalendarIndex, initCup } from "../utils/league.js";
 import { seedMessageSeq, getMessageSeq } from "../utils/messageUtils.js";
 import { checkAchievements } from "../utils/achievements.js";
+import { emptyCompetitionStats } from "../utils/competitionStats.js";
 import { randomAvatar } from "../components/ui/ManagerAvatar.jsx";
 
 /**
@@ -105,6 +106,7 @@ export function useSaveGame({
         ovrHistory: s.ovrHistory,
         storyArcs: s.storyArcs,
         allTimeLeagueStats: s.allTimeLeagueStats,
+        seasonLeagueStats: s.seasonLeagueStats,
         formation: s.formation,
         slotAssignments: s.slotAssignments,
         xiPresets: s.xiPresets,
@@ -556,6 +558,10 @@ export function useSaveGame({
       }
       store.setStoryArcs(loadedArcs);
       store.setAllTimeLeagueStats(s.allTimeLeagueStats || { scorers: {}, assisters: {}, cards: {} });
+      // #215 phase 1 — old saves get a clean blank competition-stats default;
+      // no reconstruction from name-only leagueResults. Stats start populating
+      // from the next match this season onward.
+      store.setSeasonLeagueStats(s.seasonLeagueStats && s.seasonLeagueStats.players ? s.seasonLeagueStats : emptyCompetitionStats());
       // Load formation
       if (s.formation && s.formation.length === 11) {
         store.setFormation(s.formation.map(slot => ({...slot})));

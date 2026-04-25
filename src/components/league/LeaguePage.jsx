@@ -8,8 +8,9 @@ import { displayName } from "../../utils/player.js";
 import { AITeamPanel } from "./AITeamPanel.jsx";
 import { F, C, FONT } from "../../data/tokens";
 import { useMobile } from "../../hooks/useMobile.js";
+import { getTopScorers, getTopAssisters, getMostYellows, getMostReds } from "../../utils/competitionStats.js";
 
-export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, playerSeasonStats, playerRatingTracker, squad, startingXI, bench, seasonNumber, clubHistory, allTimeLeagueStats, allLeagueStates, leagueTier: leagueTierProp, onPlayerClick, onTeamClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, dynastyCupBracket, miniTournamentBracket, ovrCap = 20 }) {
+export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, playerSeasonStats, playerRatingTracker, squad, startingXI, bench, seasonNumber, clubHistory, allTimeLeagueStats, allLeagueStates, leagueTier: leagueTierProp, onPlayerClick, onTeamClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, dynastyCupBracket, miniTournamentBracket, ovrCap = 20, seasonLeagueStats = null }) {
   const [activeTab, setActiveTab] = useState("leagues");
   const [selectedMD, setSelectedMD] = useState(Math.max(0, matchweekIndex - 1));
   const [viewTeamData, setViewTeamData] = useState(null); // { team, tableRow, seasonGoals, seasonAssists }
@@ -71,8 +72,20 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
     return { scorers, assisters, cards };
   }, [leagueResults, playerSeasonStats]);
 
-  // Top scorers list
+  // #215 phase 1 — read from canonical seasonLeagueStats when available.
+  // Falls back to the legacy `leagueStats` reconstruction so old saves and
+  // pre-canonical-data states still render usefully until the next match.
+  const useCanonical = !!(seasonLeagueStats && seasonLeagueStats.players && Object.keys(seasonLeagueStats.players).length > 0);
+
+  // Top scorers list — canonical first, fallback to legacy reconstruction.
   const topScorers = React.useMemo(() => {
+    if (useCanonical) {
+      return getTopScorers(seasonLeagueStats, 20).map(p => ({
+        name: p.name, teamName: p.teamName || "?", goals: p.goals,
+        isPlayer: league.teams[p.teamId]?.isPlayer || false,
+        playerId: p.playerId,
+      }));
+    }
     return Object.entries(leagueStats.scorers)
       .map(([key, goals]) => {
         const [name, teamIdx] = key.split("|");
@@ -81,10 +94,17 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
       })
       .sort((a, b) => b.goals - a.goals)
       .slice(0, 20);
-  }, [leagueStats.scorers, league.teams]);
+  }, [useCanonical, seasonLeagueStats, leagueStats.scorers, league.teams]);
 
   // Top assists list
   const topAssists = React.useMemo(() => {
+    if (useCanonical) {
+      return getTopAssisters(seasonLeagueStats, 20).map(p => ({
+        name: p.name, teamName: p.teamName || "?", assists: p.assists,
+        isPlayer: league.teams[p.teamId]?.isPlayer || false,
+        playerId: p.playerId,
+      }));
+    }
     return Object.entries(leagueStats.assisters)
       .map(([key, assists]) => {
         const [name, teamIdx] = key.split("|");
@@ -93,10 +113,29 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
       })
       .sort((a, b) => b.assists - a.assists)
       .slice(0, 20);
-  }, [leagueStats.assisters, league.teams]);
+  }, [useCanonical, seasonLeagueStats, leagueStats.assisters, league.teams]);
 
-  // Top cards list
+  // Top cards list — canonical splits yellows + reds, legacy collapses both.
+  // For now the UI still shows a single "Cards" column; we sum yellows+reds
+  // from canonical to match. Future iteration can split into two columns.
   const topCards = React.useMemo(() => {
+    if (useCanonical) {
+      // Combine yellows+reds for the existing single-column UI.
+      const all = Object.values(seasonLeagueStats.players)
+        .map(p => ({
+          name: p.name,
+          teamName: p.teamName || "?",
+          cards: (p.yellows || 0) + (p.reds || 0),
+          yellows: p.yellows || 0,
+          reds: p.reds || 0,
+          isPlayer: league.teams[p.teamId]?.isPlayer || false,
+          playerId: p.playerId,
+        }))
+        .filter(p => p.cards > 0)
+        .sort((a, b) => b.cards - a.cards || a.name.localeCompare(b.name))
+        .slice(0, 15);
+      return all;
+    }
     return Object.entries(leagueStats.cards)
       .map(([key, count]) => {
         const [name, teamIdx] = key.split("|");
@@ -105,7 +144,7 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
       })
       .sort((a, b) => b.cards - a.cards)
       .slice(0, 15);
-  }, [leagueStats.cards, league.teams]);
+  }, [useCanonical, seasonLeagueStats, leagueStats.cards, league.teams]);
 
   // Team of the Season
   const teamOfSeason = React.useMemo(() => {
