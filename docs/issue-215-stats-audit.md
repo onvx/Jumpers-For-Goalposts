@@ -222,20 +222,55 @@ out of scope unless we choose to include them.
 ### In scope
 1. **New canonical store**: `seasonLeagueStats` (current player league
    only). Identity by `player.id` where available, deterministic
-   composite fallback otherwise. Yellows + reds separated.
+   composite fallback otherwise. Yellows + reds separated. Phase 1
+   tracks **goals, assists, yellows, reds, apps, starts**. MOTM and
+   ratings are explicitly **deferred** — they live in `playerSeasonStats`
+   and `motmTracker` today and don't need disturbing for the league
+   Stats tab to ship.
 2. **Pure accumulator**: `accumulateMatchStats(stats, { result, homeTeam,
    awayTeam, competition, matchId })` — fully unit-tested, lives in a
-   new `src/utils/competitionStats.js`.
-3. **Idempotency key**: `matchId = league:S{n}:MD{mw}:{home}-{away}`,
-   tracked in `processedMatches` set/object on the stats blob itself
-   (so it travels with the data).
-4. **Event-shape upgrade in `simulateMatch`**: add `playerId`,
-   `assisterId`, `teamId`, plus `cardPlayerId` / `teamId` on cards.
-   Keep existing `player`/`assister`/`cardPlayer` for display
-   compatibility — purely additive.
+   new `src/utils/competitionStats.js`. **API stays competition-
+   agnostic** — no league-only assumptions baked in, so phase 2's cup
+   wiring reuses the same helper unchanged.
+3. **Idempotency key**: `matchId = league:S{season}:T{tier}:MD{mw}:M{matchIdx}`,
+   tracked in `processedMatches` on the stats blob itself (so it
+   travels with the data). Cup phase 2 uses a separate namespace:
+   `cup:S{season}:{cupName}:R{round}:M{matchIdx}`. Includes tier
+   explicitly so future other-tier wiring doesn't need a key change.
+4. **Build events from player refs at simulate-time, not from names**:
+   change `pickScorer()` and the assister/card pickers in `match.js`
+   so they return `{ id, name, position }` references rather than
+   bare names, and pass that ref through the event creation paths.
+   Goal events become:
+   ```js
+   { type, side, playerId, player, assisterId, assister,
+     teamId, teamName, minute, ... }
+   ```
+   Card events similarly carry `cardPlayerId` and `teamId`.
+   Display fields (`player`/`assister`/`cardPlayer`) stay so the
+   commentary, scorer strip, and feed don't need to change.
+   **Critical: every post-processing rewrite must update IDs too.**
+   Verified rewrite paths in `match.js`:
+   - ~810 substitution scorer/assister reassignment (`evt.player`
+     and `evt.assister` get replaced)
+   - ~841 substitution card-player reassignment (`evt.cardPlayer`)
+   - ~864 second-yellow type flip (`evt.type = "red_card"`)
+   - ~899 red-card bonus goal injection (fresh `pickScorer` call)
+   - VAR rewrites in the same neighbourhood
+   If the visible name changes but the ID does not, the canonical
+   store will silently credit the wrong player. This is the single
+   highest-risk integration point in phase 1 and gets a dedicated
+   regression test.
 5. **Wire all four current-league paths through the accumulator**:
    normal player match, holiday player match, same-tier AI matchweek
-   (already has events), holiday AI matchweek.
+   inside the player's current league (already has events), holiday
+   same-tier AI matchweek. Other-tier AI leagues (`allLeagueStates`)
+   stay out of phase 1 — they're tied to the all-time roll-up which
+   is phase 3.
+
+   "Current player league" explicitly = the player's match plus the
+   same-tier AI fixtures, in both normal and holiday flows. Stated
+   so reviewers can sanity-check the wiring map.
 6. **Replace `LeaguePage` Stats tab** with selectors over the new
    canonical store. Keep existing visual layout for now.
 7. **Selectors**: `getTopScorers`, `getTopAssisters`, `getMostYellows`,
@@ -245,7 +280,9 @@ out of scope unless we choose to include them.
    notice if/where it matters.
 9. **Tests**: per the brief's section 16 list — accumulator
    correctness, yellow/red split, second-yellow rule, idempotency,
-   duplicate names with different IDs, missing IDs, selector ordering.
+   duplicate names with different IDs, missing IDs, selector ordering,
+   plus a dedicated regression test for the post-processing rewrite
+   paths (substitution rewrites must update IDs in lock-step).
 
 ### Deferred to phase 2
 - Cup stats (player + AI cup matches). Requires `advanceCupRound`
@@ -257,43 +294,49 @@ out of scope unless we choose to include them.
 - Migrate `allTimeLeagueStats` shape and the achievements that read
   from it (`Bag Man`, `Tactical Foul`, `Etched In Stone`,
   `Brexit`-related logic) onto the canonical pipeline.
+- MOTM / ratings entering canonical stats.
+- Other-tier AI league per-player stats.
 
 ### Out of scope for #215 entirely (unless you say otherwise)
 - Mini tournament / dynasty knockout stats.
-- AI tier (other-tier) per-player stats.
 - Career cup records (different feature).
 
 ---
 
-## 8. Open design questions before phase 1 lands
+## 8. Resolved design decisions
 
-These need decisions before I write code, not after.
+All four questions Bandon and I had pre-implementation are now
+locked. Recording them here so the implementation PR can reference
+this section instead of re-litigating.
 
-1. **Second-yellow rule.** Brief offers two valid choices. My lean:
-   one yellow + one red, with `redReason: "second_yellow"` on the
-   red event so UI can show the dual indicator without changing the
-   underlying counts. **Decision needed before tests are written.**
+1. **Second-yellow rule.** Counts as **one yellow + one red**. The
+   second-yellow `red_card` event carries explicit metadata:
+   `redReason: "second_yellow"`, `countsAsYellow: true`. The
+   accumulator reads `countsAsYellow` as the signal — no inference
+   from `redReason`. Direct reds are red only. VAR-upgraded yellows
+   are red only unless we deliberately preserve the original yellow
+   as a separate event (we don't, in phase 1).
 
-2. **AI player identity at the cup-AI level.** If
-   `advanceCupRound`'s AI match path keeps event payloads, those events
-   now need `playerId`. AI squads have stable IDs, so I'd thread them
-   in on the `simulateMatch` call shape (already the cleaner path — see
-   point 4 above). **Confirming this is acceptable.**
+2. **AI player identity.** Solved at `simulateMatch` event creation,
+   not via cup-specific adapters. Pickers (`pickScorer`, etc.) return
+   `{ id, name, position }` refs from the start so events carry
+   identity from the moment a player is selected. AI squads have
+   stable IDs; cup phase 2 inherits this for free.
 
-3. **Migration policy for old saves.** Brief recommends "stats
-   available from this season onward". Confirming we don't try to
-   reconstruct from `leagueResults` history — even though it's
-   technically possible — because the names→ids gap means it would be
-   best-effort and arguably worse than blank.
+3. **Old saves.** Clean blank default. No reconstruction from old
+   name-only `leagueResults`. Best-effort would be worse than a
+   clear "stats available from this season onward" line.
 
-4. **Phase 1 cut-off.** Confirming phase 1 ships league-only and the
-   Cup Stats tab waits for phase 2. The PR will say so explicitly.
+4. **Phase 1 cut-off.** League-only ships first; cup waits for
+   phase 2. Helper API stays competition-agnostic so phase 2 reuses
+   it unchanged — no league-only baked into the accumulator.
 
 ---
 
 ## 9. What this PR contains
 
-Just this audit doc. No code, no shape changes yet. Once questions
-1–4 are answered I'll open the phase 1 implementation PR with the
-accumulator, store, event upgrade, and selectors — and full tests
-per the brief's section 16.
+Just this audit doc and the original brief. No code, no shape
+changes yet. Phase 1 implementation PR follows next, with the
+accumulator, canonical store, event upgrade, selectors, and full
+tests per brief section 16 + the post-processing rewrite regression
+test from section 7.4 above.
