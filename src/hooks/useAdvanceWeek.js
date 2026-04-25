@@ -966,7 +966,9 @@ export function useAdvanceWeek({
         if (nextEntry?.type === "cup") {
           const cupLookup = (name, tier) => {
             const freshLeague = useGameStore.getState().league;
-            return tier === leagueTier ? freshLeague : (allLeagueStates?.[tier])?.teams?.find(t => t.name === name) || null;
+            return (tier === leagueTier ? freshLeague : allLeagueStates?.[tier])
+              ?.teams
+              ?.find(t => t.name === name) || null;
           };
           const cupHandler = makeCupAIMatchHandler(s.setSeasonCupStats, s.seasonNumber, useGameStore.getState().cup?.cupName || "Cup");
           if (useGameStore.getState().cup.playerEliminated) {
