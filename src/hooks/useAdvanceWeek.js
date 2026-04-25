@@ -11,6 +11,7 @@ import { getOvrCap } from "../utils/player.js";
 import { getArcById, checkArcCond, applyArcFx, applyFinalReward, processArcCompletion, precomputeArcEffects, getStepNarrative, getFocusNarrative, resolveSeasonEndArcs } from "../utils/arcs.js";
 import { simulateMatch, generatePenaltyShootout } from "../utils/match.js";
 import { sortStandings, processSeasonSwaps, initLeagueRosters, advanceCupRound, buildNextCupRound } from "../utils/league.js";
+import { makeCupAIMatchHandler } from "../utils/competitionStats.js";
 import { checkAchievements } from "../utils/achievements.js";
 import { createInboxMessage, getUnreadCount } from "../utils/messageUtils.js";
 import { SFX, BGM } from "../utils/sfx.js";
@@ -965,11 +966,14 @@ export function useAdvanceWeek({
         if (nextEntry?.type === "cup") {
           const cupLookup = (name, tier) => {
             const freshLeague = useGameStore.getState().league;
-            return tier === leagueTier ? freshLeague : (allLeagueStates?.[tier])?.teams?.find(t => t.name === name) || null;
+            return (tier === leagueTier ? freshLeague : allLeagueStates?.[tier])
+              ?.teams
+              ?.find(t => t.name === name) || null;
           };
+          const cupHandler = makeCupAIMatchHandler(s.setSeasonCupStats, s.seasonNumber, useGameStore.getState().cup?.cupName || "Cup");
           if (useGameStore.getState().cup.playerEliminated) {
             // Auto-skip: resolve AI matches and advance calendar past this cup entry
-            const updatedCup = advanceCupRound(useGameStore.getState().cup, newSquad, startingXI, bench, cupLookup);
+            const updatedCup = advanceCupRound(useGameStore.getState().cup, newSquad, startingXI, bench, cupLookup, cupHandler);
             let finCup = updatedCup;
             if (finCup.pendingPlayerMatch) {
               const pm = finCup.pendingPlayerMatch;
@@ -990,7 +994,7 @@ export function useAdvanceWeek({
             // Don't set matchPending — we auto-skipped, advance to next entry
           } else {
             // Prepare the cup round for player to play
-            const updatedCup = advanceCupRound(useGameStore.getState().cup, newSquad, startingXI, bench, cupLookup);
+            const updatedCup = advanceCupRound(useGameStore.getState().cup, newSquad, startingXI, bench, cupLookup, cupHandler);
             s.setCup(updatedCup);
             s.setMatchPending(true);
           }

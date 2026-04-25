@@ -2,11 +2,13 @@ import { describe, it, expect } from "vitest";
 import {
   emptyCompetitionStats,
   accumulateMatchStats,
+  accumulateCupMatch,
   getTopScorers,
   getTopAssisters,
   getMostYellows,
   getMostReds,
   leagueMatchId,
+  cupMatchId,
 } from "../competitionStats.js";
 
 // Test fixtures ---------------------------------------------------------------
@@ -301,5 +303,70 @@ describe("leagueMatchId", () => {
   it("formats season/tier/matchweek/fixture", () => {
     expect(leagueMatchId({ season: 3, tier: 7, matchweekIdx: 12, fixtureIdx: 4 }))
       .toBe("league:S3:T7:MD12:M4");
+  });
+});
+
+describe("cupMatchId", () => {
+  it("formats season/cupName/round/home-away", () => {
+    expect(cupMatchId({ season: 2, cupName: "Clubman Cup", roundIdx: 3, home: "Real Sociedad", away: "Bayern" }))
+      .toBe("cup:S2:Clubman_Cup:R3:Real_Sociedad-Bayern");
+  });
+
+  it("sanitises non-alphanumeric chars in names", () => {
+    expect(cupMatchId({ season: 1, cupName: "Sub Money Cup", roundIdx: 0, home: "FC O'Brien", away: "1.FC Köln" }))
+      .toBe("cup:S1:Sub_Money_Cup:R0:FC_O_Brien-1_FC_K_ln");
+  });
+
+  it("home/away order produces different ids", () => {
+    const a = cupMatchId({ season: 1, cupName: "Cup", roundIdx: 0, home: "A", away: "B" });
+    const b = cupMatchId({ season: 1, cupName: "Cup", roundIdx: 0, home: "B", away: "A" });
+    expect(a).not.toBe(b);
+  });
+});
+
+describe("accumulateCupMatch", () => {
+  const cupHome = {
+    name: "Athletic", squad: [{ id: "ah1", name: "Iker", position: "ST" }],
+  };
+  const cupAway = {
+    name: "Sporting", squad: [{ id: "sa1", name: "Diogo", position: "CM" }],
+  };
+  const cupResult = {
+    homeGoals: 1, awayGoals: 0,
+    events: [
+      { type: "goal", side: "home", playerId: "ah1", player: "Iker", minute: 30 },
+      { type: "card", side: "away", cardPlayerId: "sa1", cardPlayer: "Diogo", minute: 60 },
+    ],
+  };
+
+  it("credits cup goals and cards using the team-name fallback id", () => {
+    const next = accumulateCupMatch(emptyCompetitionStats(), {
+      home: cupHome, away: cupAway, result: cupResult,
+      season: 1, cupName: "Clubman", roundIdx: 0,
+    });
+    expect(next.players["ah1"].goals).toBe(1);
+    expect(next.players["ah1"].teamId).toBe("Athletic");
+    expect(next.players["sa1"].yellows).toBe(1);
+    expect(next.players["sa1"].teamId).toBe("Sporting");
+  });
+
+  it("is idempotent across same cup matchId", () => {
+    let stats = accumulateCupMatch(emptyCompetitionStats(), {
+      home: cupHome, away: cupAway, result: cupResult,
+      season: 1, cupName: "Clubman", roundIdx: 0,
+    });
+    const same = accumulateCupMatch(stats, {
+      home: cupHome, away: cupAway, result: cupResult,
+      season: 1, cupName: "Clubman", roundIdx: 0,
+    });
+    expect(same).toBe(stats);
+    expect(stats.players["ah1"].goals).toBe(1);
+  });
+
+  it("returns input unchanged when home, away or result is missing", () => {
+    const stats = emptyCompetitionStats();
+    expect(accumulateCupMatch(stats, { home: null, away: cupAway, result: cupResult, season: 1, cupName: "Cup", roundIdx: 0 })).toBe(stats);
+    expect(accumulateCupMatch(stats, { home: cupHome, away: null, result: cupResult, season: 1, cupName: "Cup", roundIdx: 0 })).toBe(stats);
+    expect(accumulateCupMatch(stats, { home: cupHome, away: cupAway, result: null, season: 1, cupName: "Cup", roundIdx: 0 })).toBe(stats);
   });
 });

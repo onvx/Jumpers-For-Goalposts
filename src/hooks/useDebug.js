@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { initLeagueRosters, initLeague, initCup, initAILeague, buildSeasonCalendar, advanceCupRound, buildNextCupRound } from "../utils/league.js";
+import { makeCupAIMatchHandler } from "../utils/competitionStats.js";
 import { simulateMatchweek } from "../utils/match.js";
 import { NUM_TIERS } from "../data/leagues.js";
 import { getModifier } from "../data/leagueModifiers.js";
@@ -71,8 +72,11 @@ export function useDebug({
     if (curCup && !curCup.playerEliminated) {
       let simCup = curCup;
       let safety = 0;
+      const debugSetSeasonCupStats = useGameStore.getState().setSeasonCupStats;
+      const debugSeason = useGameStore.getState().seasonNumber;
+      const debugCupHandler = makeCupAIMatchHandler(debugSetSeasonCupStats, debugSeason, curCup.cupName || "Cup");
       while (simCup.currentRound < simCup.rounds.length && safety++ < 10) {
-        const advanced = advanceCupRound(simCup, squad, startingXI, bench, null);
+        const advanced = advanceCupRound(simCup, squad, startingXI, bench, null, debugCupHandler);
         if (advanced.pendingPlayerMatch) {
           // Resolve the player's match as a 2-0 win
           const pm = advanced.pendingPlayerMatch;

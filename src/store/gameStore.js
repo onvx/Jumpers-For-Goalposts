@@ -184,6 +184,10 @@ export const useGameStore = create((set, get) => ({
   // a save was loaded mid-season without canonical data (legacy migration).
   // The Stats tab shows an unavailable notice while this is false.
   seasonLeagueStatsAvailable: true,
+  // Canonical season-wide cup stats. Mirrors the league shape; cleared at
+  // season end. Same availability flag pattern for legacy saves.
+  seasonCupStats: emptyCompetitionStats(),
+  seasonCupStatsAvailable: true,
 
   // === Squad composition ===
   startingXI: [],
@@ -357,6 +361,8 @@ export const useGameStore = create((set, get) => ({
   setAllTimeLeagueStats: (val) => set(s => ({ allTimeLeagueStats: typeof val === "function" ? val(s.allTimeLeagueStats) : val })),
   setSeasonLeagueStats: (val) => set(s => ({ seasonLeagueStats: typeof val === "function" ? val(s.seasonLeagueStats) : val })),
   setSeasonLeagueStatsAvailable: (val) => set(s => ({ seasonLeagueStatsAvailable: typeof val === "function" ? val(s.seasonLeagueStatsAvailable) : val })),
+  setSeasonCupStats: (val) => set(s => ({ seasonCupStats: typeof val === "function" ? val(s.seasonCupStats) : val })),
+  setSeasonCupStatsAvailable: (val) => set(s => ({ seasonCupStatsAvailable: typeof val === "function" ? val(s.seasonCupStatsAvailable) : val })),
 
   setStartingXI: (val) => set(s => ({ startingXI: typeof val === "function" ? val(s.startingXI) : val })),
   setBench: (val) => set(s => ({ bench: typeof val === "function" ? val(s.bench) : val })),
@@ -502,6 +508,8 @@ export const useGameStore = create((set, get) => ({
     allTimeLeagueStats: { scorers: {}, assisters: {}, cards: {} },
     seasonLeagueStats: emptyCompetitionStats(),
     seasonLeagueStatsAvailable: true,
+    seasonCupStats: emptyCompetitionStats(),
+    seasonCupStatsAvailable: true,
     startingXI: [],
     bench: [],
     formation: DEFAULT_FORMATION.map(s => ({ ...s })),

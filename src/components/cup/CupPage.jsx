@@ -5,8 +5,9 @@ import { getPosColor } from "../../utils/calc.js";
 import { displayName } from "../../utils/player.js";
 import { F, C, FONT } from "../../data/tokens";
 import { useMobile } from "../../hooks/useMobile.js";
+import { getTopScorers, getTopAssisters, getMostYellows, getMostReds } from "../../utils/competitionStats.js";
 
-export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlayerClick, onTeamClick }) {
+export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlayerClick, onTeamClick, seasonCupStats = null, seasonCupStatsAvailable = true }) {
   const [activeTab, setActiveTab] = useState("bracket");
   const mob = useMobile();
 
@@ -24,17 +25,17 @@ export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlaye
   const tierColor = (tier) => (LEAGUE_DEFS[tier]?.color) || C.textMuted;
   const tierLabel = (tier) => (LEAGUE_DEFS[tier]?.shortName) || "?";
 
-  // Compute tournament stats from cup rounds
+  // Tournament-level stats (team goals, biggest wins) reconstruct from
+  // cup.rounds. Player-level stats (scorers, assisters, cards) come from
+  // the canonical seasonCupStats store via shared selectors.
   const cupStats = React.useMemo(() => {
-    if (!cup?.rounds) return { teamGoals: {}, totalGoals: 0, totalMatches: 0, biggestWin: null, highestScoring: null, topScorers: [], topAssists: [] };
-    const teamGoals = {}; // teamName → { scored, conceded, wins, played }
-    const playerScorers = {}; // "playerName|teamName" → goals
-    const playerAssisters = {}; // "playerName|teamName" → assists
+    if (!cup?.rounds) return { teamGoals: {}, totalGoals: 0, totalMatches: 0, biggestWin: null, highestScoring: null, topScoringTeams: [] };
+    const teamGoals = {};
     let totalGoals = 0, totalMatches = 0;
-    let biggestWin = null; // { winner, loser, score, round }
-    let highestScoring = null; // { home, away, total, score, round }
+    let biggestWin = null;
+    let highestScoring = null;
 
-    cup.rounds.forEach((round, rIdx) => {
+    cup.rounds.forEach((round) => {
       (round.matches || []).forEach(match => {
         if (!match.result || match.result.bye) return;
         const hg = match.result.homeGoals;
@@ -59,17 +60,6 @@ export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlaye
           if (teamGoals[wName]) teamGoals[wName].wins++;
         }
 
-        // Individual scorer/assister tracking (only for matches that have goalScorers data)
-        (match.result.goalScorers || []).forEach(g => {
-          const teamName = g.side === "home" ? hName : aName;
-          const sKey = `${g.name}|${teamName}`;
-          playerScorers[sKey] = (playerScorers[sKey] || 0) + 1;
-          if (g.assister) {
-            const aKey = `${g.assister}|${teamName}`;
-            playerAssisters[aKey] = (playerAssisters[aKey] || 0) + 1;
-          }
-        });
-
         const margin = Math.abs(hg - ag);
         if (!biggestWin || margin > biggestWin.margin) {
           const wName = hg > ag ? hName : aName;
@@ -88,18 +78,34 @@ export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlaye
       .sort((a, b) => b.scored - a.scored)
       .slice(0, 10);
 
-    const topScorers = Object.entries(playerScorers)
-      .map(([key, goals]) => { const [name, teamName] = key.split("|"); return { name, teamName, goals }; })
-      .sort((a, b) => b.goals - a.goals)
-      .slice(0, 10);
-
-    const topAssists = Object.entries(playerAssisters)
-      .map(([key, assists]) => { const [name, teamName] = key.split("|"); return { name, teamName, assists }; })
-      .sort((a, b) => b.assists - a.assists)
-      .slice(0, 10);
-
-    return { teamGoals, totalGoals, totalMatches, biggestWin, highestScoring, topScoringTeams, topScorers, topAssists };
+    return { teamGoals, totalGoals, totalMatches, biggestWin, highestScoring, topScoringTeams };
   }, [cup]);
+
+  // Player rows from canonical seasonCupStats. Same shape the LeaguePage uses.
+  const playerTopScorers = React.useMemo(
+    () => getTopScorers(seasonCupStats, 10).map(p => ({
+      name: p.name, teamName: p.teamName || "?", goals: p.goals, playerId: p.playerId,
+    })),
+    [seasonCupStats]
+  );
+  const playerTopAssists = React.useMemo(
+    () => getTopAssisters(seasonCupStats, 10).map(p => ({
+      name: p.name, teamName: p.teamName || "?", assists: p.assists, playerId: p.playerId,
+    })),
+    [seasonCupStats]
+  );
+  const playerTopYellows = React.useMemo(
+    () => getMostYellows(seasonCupStats, 10).map(p => ({
+      name: p.name, teamName: p.teamName || "?", yellows: p.yellows, playerId: p.playerId,
+    })),
+    [seasonCupStats]
+  );
+  const playerTopReds = React.useMemo(
+    () => getMostReds(seasonCupStats, 10).map(p => ({
+      name: p.name, teamName: p.teamName || "?", reds: p.reds, playerId: p.playerId,
+    })),
+    [seasonCupStats]
+  );
 
   // Team of the Cup — best XI based on cup performance (goals + wins + round reached)
   const teamOfCup = React.useMemo(() => {
@@ -409,46 +415,45 @@ export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlaye
               <div style={{ textAlign: "center", padding: 16, fontSize: F.sm, color: C.bgInput }}>No matches played yet</div>
             )}
 
-            {/* Individual Top Scorers */}
-            {cupStats.topScorers.length > 0 && (
-              <div style={{ marginTop: 24 }}>
-                <div style={{ fontSize: mob ? F.sm : F.md, color: C.gold, marginBottom: 12, letterSpacing: 1 }}>🥇 TOP SCORERS</div>
-                {cupStats.topScorers.map((s, i) => (
-                  <div key={i} style={{
-                    display: "grid", gridTemplateColumns: mob ? "26px 1fr 1fr 38px" : "30px 1fr 1fr 44px",
-                    padding: "10px", fontSize: F.xs, gap: 4,
-                    borderBottom: `1px solid ${C.bgCard}`,
-                    background: i === 0 ? "rgba(250,204,21,0.06)" : "transparent",
-                    alignItems: "center",
-                  }}>
-                    <span style={{ color: i === 0 ? C.gold : C.slate }}>{i + 1}</span>
-                    <span onClick={() => onPlayerClick?.(s.name, s.teamName)} style={{ color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#e2e8f044", textUnderlineOffset: 3 }}>{displayName(s.name, mob)}</span>
-                    <span onClick={() => onTeamClick?.(s.teamName)} style={{ color: C.textDim, fontSize: mob ? F.micro : F.xs, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{s.teamName}</span>
-                    <span style={{ textAlign: "center", color: C.green, fontWeight: "bold", fontSize: F.md }}>{s.goals}</span>
-                  </div>
-                ))}
+            {/* Player-level cup stats — canonical seasonCupStats */}
+            {!seasonCupStatsAvailable ? (
+              <div style={{ marginTop: 24, textAlign: "center" }}>
+                <div style={{ fontSize: F.sm, color: C.textDim, lineHeight: 1.6, maxWidth: 460, margin: "0 auto" }}>
+                  Player-level cup stats are unavailable for this season. This save was loaded from an older version that didn't track cup events. Full cup stats will resume next season.
+                </div>
               </div>
-            )}
-
-            {/* Individual Top Assists */}
-            {cupStats.topAssists.length > 0 && (
-              <div style={{ marginTop: 24 }}>
-                <div style={{ fontSize: mob ? F.sm : F.md, color: C.gold, marginBottom: 12, letterSpacing: 1 }}>🎯 TOP ASSISTS</div>
-                {cupStats.topAssists.map((s, i) => (
-                  <div key={i} style={{
-                    display: "grid", gridTemplateColumns: mob ? "26px 1fr 1fr 38px" : "30px 1fr 1fr 44px",
-                    padding: "10px", fontSize: F.xs, gap: 4,
-                    borderBottom: `1px solid ${C.bgCard}`,
-                    background: i === 0 ? "rgba(250,204,21,0.06)" : "transparent",
-                    alignItems: "center",
-                  }}>
-                    <span style={{ color: i === 0 ? C.gold : C.slate }}>{i + 1}</span>
-                    <span onClick={() => onPlayerClick?.(s.name, s.teamName)} style={{ color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#e2e8f044", textUnderlineOffset: 3 }}>{displayName(s.name, mob)}</span>
-                    <span onClick={() => onTeamClick?.(s.teamName)} style={{ color: C.textDim, fontSize: mob ? F.micro : F.xs, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{s.teamName}</span>
-                    <span style={{ textAlign: "center", color: "#38bdf8", fontWeight: "bold", fontSize: F.md }}>{s.assists}</span>
-                  </div>
-                ))}
-              </div>
+            ) : (
+              <>
+                {(() => {
+                  const renderPlayerList = (title, icon, list, valueField, valueColor) => list.length > 0 && (
+                    <div style={{ marginTop: 24 }}>
+                      <div style={{ fontSize: mob ? F.sm : F.md, color: C.gold, marginBottom: 12, letterSpacing: 1 }}>{icon} {title}</div>
+                      {list.map((s, i) => (
+                        <div key={i} style={{
+                          display: "grid", gridTemplateColumns: mob ? "26px 1fr 1fr 38px" : "30px 1fr 1fr 44px",
+                          padding: "10px", fontSize: F.xs, gap: 4,
+                          borderBottom: `1px solid ${C.bgCard}`,
+                          background: i === 0 ? "rgba(250,204,21,0.06)" : "transparent",
+                          alignItems: "center",
+                        }}>
+                          <span style={{ color: i === 0 ? C.gold : C.slate }}>{i + 1}</span>
+                          <span onClick={() => onPlayerClick?.(s.name, s.teamName)} style={{ color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#e2e8f044", textUnderlineOffset: 3 }}>{displayName(s.name, mob)}</span>
+                          <span onClick={() => onTeamClick?.(s.teamName)} style={{ color: C.textDim, fontSize: mob ? F.micro : F.xs, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{s.teamName}</span>
+                          <span style={{ textAlign: "center", color: valueColor, fontWeight: "bold", fontSize: F.md }}>{s[valueField]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                  return (
+                    <>
+                      {renderPlayerList("TOP SCORERS", "🥇", playerTopScorers, "goals", C.green)}
+                      {renderPlayerList("TOP ASSISTS", "🎯", playerTopAssists, "assists", "#38bdf8")}
+                      {renderPlayerList("MOST YELLOW CARDS", "🟨", playerTopYellows, "yellows", C.amber)}
+                      {renderPlayerList("MOST RED CARDS", "🟥", playerTopReds, "reds", C.red)}
+                    </>
+                  );
+                })()}
+              </>
             )}
           </div>
         )}
