@@ -106,7 +106,7 @@ export function useSaveGame({
         ovrHistory: s.ovrHistory,
         storyArcs: s.storyArcs,
         allTimeLeagueStatsByTier: s.allTimeLeagueStatsByTier,
-        seasonLeagueStats: s.seasonLeagueStats,
+        seasonLeagueStatsByTier: s.seasonLeagueStatsByTier,
         seasonLeagueStatsAvailable: s.seasonLeagueStatsAvailable,
         seasonCupStats: s.seasonCupStats,
         seasonCupStatsAvailable: s.seasonCupStatsAvailable,
@@ -572,16 +572,26 @@ export function useSaveGame({
       } else {
         store.setAllTimeLeagueStatsByTier({});
       }
-      const hasCanonicalStats = !!(s.seasonLeagueStats && s.seasonLeagueStats.players);
-      store.setSeasonLeagueStats(hasCanonicalStats ? s.seasonLeagueStats : emptyCompetitionStats());
+      // Season league stats are now per-tier. New saves persist the
+      // tier-keyed object; older canonical saves persisted a single blob
+      // keyed at the player tier — migrate that under s.leagueTier.
+      let seasonByTier = {};
+      if (s.seasonLeagueStatsByTier && typeof s.seasonLeagueStatsByTier === "object") {
+        seasonByTier = s.seasonLeagueStatsByTier;
+      } else if (s.seasonLeagueStats && s.seasonLeagueStats.players) {
+        const tierKey = s.leagueTier || NUM_TIERS;
+        seasonByTier = { [tierKey]: s.seasonLeagueStats };
+      }
+      store.setSeasonLeagueStatsByTier(seasonByTier);
       // Legacy detection: a save without canonical stats whose season has
       // already started cannot be reconstructed reliably. Mark unavailable
       // so the Stats tab shows a notice instead of misleading partials.
       const matchweekProgressed = (s.matchweekIndex || 0) > 0;
+      const hasAnyTierData = Object.keys(seasonByTier).length > 0;
       const explicitFlag = typeof s.seasonLeagueStatsAvailable === "boolean" ? s.seasonLeagueStatsAvailable : null;
       const available = explicitFlag != null
         ? explicitFlag
-        : (hasCanonicalStats || !matchweekProgressed);
+        : (hasAnyTierData || !matchweekProgressed);
       store.setSeasonLeagueStatsAvailable(available);
       // Cup stats: same legacy detection, gated on whether the cup has
       // resolved any matches yet (currentRound > 0 or any result populated).

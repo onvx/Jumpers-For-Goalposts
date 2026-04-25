@@ -182,12 +182,13 @@ export const useGameStore = create((set, get) => ({
   // division's record book. Rolled up at season end via rollIntoAllTime
   // into allTimeLeagueStatsByTier[currentTier].
   allTimeLeagueStatsByTier: {},
-  // (allTimeCupStatsByCup lands in the follow-up cup-scoped PR.)
-  // Canonical season-wide league stats. Source of truth for the LeaguePage
-  // Stats tab. Cleared at season end.
-  seasonLeagueStats: emptyCompetitionStats(),
-  // True when seasonLeagueStats has tracked the season from MW0; false when
-  // a save was loaded mid-season without canonical data (legacy migration).
+  // Canonical season-wide league stats — tier-scoped. Every league tier
+  // gets its own current-season blob; rolled into allTimeLeagueStatsByTier
+  // at season end and cleared. Lazy: tier slots are only created when an
+  // event is recorded for that tier.
+  seasonLeagueStatsByTier: {},
+  // True when seasonLeagueStatsByTier has tracked the player's tier from
+  // MW0; false when a save was loaded mid-season without canonical data.
   // The Stats tab shows an unavailable notice while this is false.
   seasonLeagueStatsAvailable: true,
   // Canonical season-wide cup stats. Mirrors the league shape; cleared at
@@ -365,7 +366,7 @@ export const useGameStore = create((set, get) => ({
   setOvrHistory: (val) => set(s => ({ ovrHistory: typeof val === "function" ? val(s.ovrHistory) : val })),
   setClubHistory: (val) => set(s => ({ clubHistory: typeof val === "function" ? val(s.clubHistory) : val })),
   setAllTimeLeagueStatsByTier: (val) => set(s => ({ allTimeLeagueStatsByTier: typeof val === "function" ? val(s.allTimeLeagueStatsByTier) : val })),
-  setSeasonLeagueStats: (val) => set(s => ({ seasonLeagueStats: typeof val === "function" ? val(s.seasonLeagueStats) : val })),
+  setSeasonLeagueStatsByTier: (val) => set(s => ({ seasonLeagueStatsByTier: typeof val === "function" ? val(s.seasonLeagueStatsByTier) : val })),
   setSeasonLeagueStatsAvailable: (val) => set(s => ({ seasonLeagueStatsAvailable: typeof val === "function" ? val(s.seasonLeagueStatsAvailable) : val })),
   setSeasonCupStats: (val) => set(s => ({ seasonCupStats: typeof val === "function" ? val(s.seasonCupStats) : val })),
   setSeasonCupStatsAvailable: (val) => set(s => ({ seasonCupStatsAvailable: typeof val === "function" ? val(s.seasonCupStatsAvailable) : val })),
@@ -512,7 +513,7 @@ export const useGameStore = create((set, get) => ({
       playerCareers: {}, allTimeXI: {}, seasonArchive: [], cupHistory: [],
     },
     allTimeLeagueStatsByTier: {},
-    seasonLeagueStats: emptyCompetitionStats(),
+    seasonLeagueStatsByTier: {},
     seasonLeagueStatsAvailable: true,
     seasonCupStats: emptyCompetitionStats(),
     seasonCupStatsAvailable: true,

@@ -287,43 +287,5 @@ export function rollIntoAllTime(allTime, season) {
   };
 }
 
-/**
- * Credit a list of scorer events directly to an all-time stats blob.
- * Used for non-player-tier AI matchweeks where we don't maintain a per-tier
- * season store, so credits happen per matchweek rather than via the
- * idempotent match accumulator. Composite-keyed by team name + scorer name.
- *
- * Idempotent: `creditId` is recorded in processedMatches so the same
- * matchweek credit can't double-count if the path retries (load/replay).
- * Use a deterministic id like `alltime-ai-league:S{season}:T{tier}:MD{mw}`.
- *
- * `events` shape: [{ teamName, name, assister?, position? }, ...]
- */
-export function creditAllTimeScorers(allTime, creditId, events) {
-  const base = allTime || emptyCompetitionStats();
-  if (!creditId) return base;
-  if (base.processedMatches?.[creditId]) return base;
-  if (!Array.isArray(events) || events.length === 0) return base;
-  const newPlayers = { ...(base.players || {}) };
-  const bump = (teamName, name, position, field) => {
-    const key = compositeFallbackKey(teamName, name, position || null);
-    const prev = newPlayers[key] || {
-      key, playerId: null, name, teamId: teamName, teamName,
-      position: position || null,
-      goals: 0, assists: 0, yellows: 0, reds: 0,
-    };
-    newPlayers[key] = { ...prev, [field]: (prev[field] || 0) + 1 };
-  };
-  for (const e of events) {
-    if (!e) continue;
-    if (e.name) bump(e.teamName || "", e.name, e.position, "goals");
-    if (e.assister) bump(e.teamName || "", e.assister, null, "assists");
-  }
-  return {
-    players: newPlayers,
-    processedMatches: { ...(base.processedMatches || {}), [creditId]: true },
-  };
-}
-
 // Internal — exposed only for tests
 export const __test = { playerKey, compositeFallbackKey };

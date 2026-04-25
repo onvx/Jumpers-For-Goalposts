@@ -10,7 +10,11 @@ import { F, C, FONT } from "../../data/tokens";
 import { useMobile } from "../../hooks/useMobile.js";
 import { getTopScorers, getTopAssisters, getMostYellows, getMostReds } from "../../utils/competitionStats.js";
 
-export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, playerSeasonStats, playerRatingTracker, squad, startingXI, bench, seasonNumber, clubHistory, allTimeLeagueStatsByTier, allLeagueStates, leagueTier: leagueTierProp, onPlayerClick, onTeamClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, dynastyCupBracket, miniTournamentBracket, ovrCap = 20, seasonLeagueStats = null, seasonLeagueStatsAvailable = true }) {
+export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, playerSeasonStats, playerRatingTracker, squad, startingXI, bench, seasonNumber, clubHistory, allTimeLeagueStatsByTier, allLeagueStates, leagueTier: leagueTierProp, onPlayerClick, onTeamClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, dynastyCupBracket, miniTournamentBracket, ovrCap = 20, seasonLeagueStatsByTier = null, seasonLeagueStatsAvailable = true }) {
+  // The Stats tab and TOTS heuristic operate on the player's current tier.
+  const seasonLeagueStats = (seasonLeagueStatsByTier && league?.tier != null)
+    ? (seasonLeagueStatsByTier[league.tier] || null)
+    : null;
   const [activeTab, setActiveTab] = useState("leagues");
   const [selectedMD, setSelectedMD] = useState(Math.max(0, matchweekIndex - 1));
   const [viewTeamData, setViewTeamData] = useState(null); // { team, tableRow, seasonGoals, seasonAssists }

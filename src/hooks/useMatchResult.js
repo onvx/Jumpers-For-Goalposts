@@ -138,7 +138,7 @@ export function useMatchResult({
         s.setLeagueRosters(swapResult.rosters);
         const newSeasonUnlocks = collectSeasonEndAchievements({
           position, currentTier, moveType, newTier, lastSeasonMove: s.lastSeasonMove, league: currentLeague, leagueResults: s.leagueResults,
-          playerSeasonStats: s.playerSeasonStats, seasonLeagueStats: s.seasonLeagueStats,
+          playerSeasonStats: s.playerSeasonStats, seasonLeagueStats: s.seasonLeagueStatsByTier?.[currentTier] || null,
           beatenTeams: s.beatenTeams, unlockedAchievements: s.unlockedAchievements, clubHistory: s.clubHistory,
           wonCupThisSeason: s.unlockedAchievements.has("cup_winner"),
           squad: s.squad, prevSeasonSquadIds: s.prevSeasonSquadIds, seasonNumber: s.seasonNumber,

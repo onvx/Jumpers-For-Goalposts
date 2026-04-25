@@ -4,7 +4,6 @@ import {
   accumulateMatchStats,
   accumulateCupMatch,
   rollIntoAllTime,
-  creditAllTimeScorers,
   getTopScorers,
   getTopAssisters,
   getMostYellows,
@@ -368,49 +367,6 @@ describe("rollIntoAllTime", () => {
     const season = { players: { "p1": { key: "p1", name: "A", goals: 1, assists: 0, yellows: 0, reds: 0 } }, processedMatches: { "match-x": true } };
     const next = rollIntoAllTime(allTime, season);
     expect(next.processedMatches["match-x"]).toBeUndefined();
-  });
-});
-
-describe("creditAllTimeScorers", () => {
-  const mw0 = "alltime-ai-league:S1:T3:MD0";
-  const mw1 = "alltime-ai-league:S1:T3:MD1";
-
-  it("credits goals + assists by composite key", () => {
-    const next = creditAllTimeScorers(emptyCompetitionStats(), mw0, [
-      { teamName: "Rovers", name: "Joe", assister: "Mike" },
-      { teamName: "Rovers", name: "Joe" },
-    ]);
-    const joeKey = Object.keys(next.players).find(k => next.players[k].name === "Joe");
-    const mikeKey = Object.keys(next.players).find(k => next.players[k].name === "Mike");
-    expect(next.players[joeKey].goals).toBe(2);
-    expect(next.players[mikeKey].assists).toBe(1);
-    expect(next.processedMatches[mw0]).toBe(true);
-  });
-
-  it("is idempotent across the same creditId — same input returns same reference", () => {
-    let stats = creditAllTimeScorers(emptyCompetitionStats(), mw0, [
-      { teamName: "Rovers", name: "Joe" },
-    ]);
-    const same = creditAllTimeScorers(stats, mw0, [
-      { teamName: "Rovers", name: "Joe" },
-    ]);
-    expect(same).toBe(stats);
-    const joeKey = Object.keys(stats.players).find(k => stats.players[k].name === "Joe");
-    expect(stats.players[joeKey].goals).toBe(1);
-  });
-
-  it("processes different creditIds independently", () => {
-    let stats = creditAllTimeScorers(emptyCompetitionStats(), mw0, [{ teamName: "R", name: "Joe" }]);
-    stats = creditAllTimeScorers(stats, mw1, [{ teamName: "R", name: "Joe" }]);
-    const joeKey = Object.keys(stats.players).find(k => stats.players[k].name === "Joe");
-    expect(stats.players[joeKey].goals).toBe(2);
-  });
-
-  it("returns the input when events array is empty, missing, or creditId omitted", () => {
-    const stats = emptyCompetitionStats();
-    expect(creditAllTimeScorers(stats, mw0, [])).toBe(stats);
-    expect(creditAllTimeScorers(stats, mw0, null)).toBe(stats);
-    expect(creditAllTimeScorers(stats, null, [{ teamName: "R", name: "X" }])).toBe(stats);
   });
 });
 
