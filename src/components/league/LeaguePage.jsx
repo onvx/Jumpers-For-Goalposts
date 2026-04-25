@@ -8,8 +8,9 @@ import { displayName } from "../../utils/player.js";
 import { AITeamPanel } from "./AITeamPanel.jsx";
 import { F, C, FONT } from "../../data/tokens";
 import { useMobile } from "../../hooks/useMobile.js";
+import { getTopScorers, getTopAssisters, getMostYellows, getMostReds } from "../../utils/competitionStats.js";
 
-export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, playerSeasonStats, playerRatingTracker, squad, startingXI, bench, seasonNumber, clubHistory, allTimeLeagueStats, allLeagueStates, leagueTier: leagueTierProp, onPlayerClick, onTeamClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, dynastyCupBracket, miniTournamentBracket, ovrCap = 20 }) {
+export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, playerSeasonStats, playerRatingTracker, squad, startingXI, bench, seasonNumber, clubHistory, allTimeLeagueStats, allLeagueStates, leagueTier: leagueTierProp, onPlayerClick, onTeamClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, dynastyCupBracket, miniTournamentBracket, ovrCap = 20, seasonLeagueStats = null, seasonLeagueStatsAvailable = true }) {
   const [activeTab, setActiveTab] = useState("leagues");
   const [selectedMD, setSelectedMD] = useState(Math.max(0, matchweekIndex - 1));
   const [viewTeamData, setViewTeamData] = useState(null); // { team, tableRow, seasonGoals, seasonAssists }
@@ -71,41 +72,29 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
     return { scorers, assisters, cards };
   }, [leagueResults, playerSeasonStats]);
 
-  // Top scorers list
-  const topScorers = React.useMemo(() => {
-    return Object.entries(leagueStats.scorers)
-      .map(([key, goals]) => {
-        const [name, teamIdx] = key.split("|");
-        const team = league.teams[parseInt(teamIdx)];
-        return { name, teamName: team?.name || "?", goals, isPlayer: team?.isPlayer };
-      })
-      .sort((a, b) => b.goals - a.goals)
-      .slice(0, 20);
-  }, [leagueStats.scorers, league.teams]);
-
-  // Top assists list
-  const topAssists = React.useMemo(() => {
-    return Object.entries(leagueStats.assisters)
-      .map(([key, assists]) => {
-        const [name, teamIdx] = key.split("|");
-        const team = league.teams[parseInt(teamIdx)];
-        return { name, teamName: team?.name || "?", assists, isPlayer: team?.isPlayer };
-      })
-      .sort((a, b) => b.assists - a.assists)
-      .slice(0, 20);
-  }, [leagueStats.assisters, league.teams]);
-
-  // Top cards list
-  const topCards = React.useMemo(() => {
-    return Object.entries(leagueStats.cards)
-      .map(([key, count]) => {
-        const [name, teamIdx] = key.split("|");
-        const team = league.teams[parseInt(teamIdx)];
-        return { name, teamName: team?.name || "?", cards: count, isPlayer: team?.isPlayer };
-      })
-      .sort((a, b) => b.cards - a.cards)
-      .slice(0, 15);
-  }, [leagueStats.cards, league.teams]);
+  // Stats tab is canonical-only. When seasonLeagueStatsAvailable is false
+  // (legacy save mid-season), the tab shows an unavailable notice instead.
+  const mapToCanonicalRow = (p, valueField) => ({
+    name: p.name, teamName: p.teamName || "?", [valueField]: p[valueField],
+    isPlayer: league.teams[p.teamId]?.isPlayer || false,
+    playerId: p.playerId,
+  });
+  const topScorers = React.useMemo(
+    () => getTopScorers(seasonLeagueStats, 20).map(p => mapToCanonicalRow(p, "goals")),
+    [seasonLeagueStats, league.teams]
+  );
+  const topAssists = React.useMemo(
+    () => getTopAssisters(seasonLeagueStats, 20).map(p => mapToCanonicalRow(p, "assists")),
+    [seasonLeagueStats, league.teams]
+  );
+  const topYellows = React.useMemo(
+    () => getMostYellows(seasonLeagueStats, 15).map(p => mapToCanonicalRow(p, "yellows")),
+    [seasonLeagueStats, league.teams]
+  );
+  const topReds = React.useMemo(
+    () => getMostReds(seasonLeagueStats, 15).map(p => mapToCanonicalRow(p, "reds")),
+    [seasonLeagueStats, league.teams]
+  );
 
   // Team of the Season
   const teamOfSeason = React.useMemo(() => {
@@ -396,7 +385,19 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
         })()}
 
         {/* ===== STATS TAB ===== */}
-        {activeTab === "stats" && (
+        {activeTab === "stats" && !seasonLeagueStatsAvailable && (
+          <div style={{ padding: mob ? "21px 14px" : "26px", textAlign: "center" }}>
+            <div style={{ fontSize: mob ? F.lg : F.xl, color: C.gold, marginBottom: 14, letterSpacing: 1 }}>📊 LEAGUE STATS</div>
+            <div style={{ fontSize: F.md, color: C.textDim, marginBottom: 10, lineHeight: 1.6 }}>
+              Stats unavailable for this season.
+            </div>
+            <div style={{ fontSize: F.sm, color: C.slate, lineHeight: 1.6, maxWidth: 460, margin: "0 auto" }}>
+              This save was loaded from an older version that didn't track player events.
+              Full league stats will resume from next season.
+            </div>
+          </div>
+        )}
+        {activeTab === "stats" && seasonLeagueStatsAvailable && (
           <div style={{ padding: mob ? "21px 14px" : "26px" }}>
             {/* Top Scorers */}
             <div style={{ fontSize: mob ? F.lg : F.xl, color: C.gold, marginBottom: 14, letterSpacing: 1 }}>🥇 TOP SCORERS</div>
@@ -460,11 +461,11 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
               <div style={{ textAlign: "center", padding: 18, fontSize: F.md, color: C.bgInput, marginBottom: 28 }}>No assists recorded yet</div>
             )}
 
-            {/* Most Carded */}
-            <div style={{ fontSize: mob ? F.lg : F.xl, color: C.gold, marginBottom: 14, letterSpacing: 1 }}>🟨 MOST BOOKED</div>
-            {topCards.length > 0 ? (
-              <div>
-                {topCards.map((c, i) => (
+            {/* Most Yellow Cards */}
+            <div style={{ fontSize: mob ? F.lg : F.xl, color: C.gold, marginBottom: 14, letterSpacing: 1 }}>🟨 MOST YELLOW CARDS</div>
+            {topYellows.length > 0 ? (
+              <div style={{ marginBottom: 28 }}>
+                {topYellows.map((c, i) => (
                   <div key={i} style={{
                     display: "grid", gridTemplateColumns: mob ? "30px 1fr 1fr 44px" : "35px 1fr 1fr 51px",
                     padding: "12px", fontSize: F.sm, gap: 4,
@@ -480,13 +481,42 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
                       {c.teamName}
                     </span>
                     <span style={{ textAlign: "center", color: C.amber, fontWeight: "bold", fontSize: F.lg }}>
-                      {c.cards}
+                      {c.yellows}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div style={{ textAlign: "center", padding: 16, fontSize: F.sm, color: C.bgInput }}>No cards issued yet</div>
+              <div style={{ textAlign: "center", padding: 16, fontSize: F.sm, color: C.bgInput, marginBottom: 28 }}>No yellows issued yet</div>
+            )}
+
+            {/* Most Red Cards */}
+            <div style={{ fontSize: mob ? F.lg : F.xl, color: C.gold, marginBottom: 14, letterSpacing: 1 }}>🟥 MOST RED CARDS</div>
+            {topReds.length > 0 ? (
+              <div>
+                {topReds.map((c, i) => (
+                  <div key={i} style={{
+                    display: "grid", gridTemplateColumns: mob ? "30px 1fr 1fr 44px" : "35px 1fr 1fr 51px",
+                    padding: "12px", fontSize: F.sm, gap: 4,
+                    borderBottom: `1px solid ${C.bgCard}`,
+                    background: c.isPlayer ? "rgba(74,222,128,0.04)" : "transparent",
+                    alignItems: "center",
+                  }}>
+                    <span style={{ color: C.slate }}>{i + 1}</span>
+                    <span onClick={() => onPlayerClick?.(c.name, c.teamName)} style={{ color: c.isPlayer ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: c.isPlayer ? "#4ade8044" : "#e2e8f044", textUnderlineOffset: 3 }}>
+                      {displayName(c.name, mob)}
+                    </span>
+                    <span onClick={() => onTeamClick?.(c.teamName)} style={{ color: C.textDim, fontSize: mob ? F.xs : F.sm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#64748b44", textUnderlineOffset: 3 }}>
+                      {c.teamName}
+                    </span>
+                    <span style={{ textAlign: "center", color: C.red, fontWeight: "bold", fontSize: F.lg }}>
+                      {c.reds}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: "center", padding: 16, fontSize: F.sm, color: C.bgInput }}>No reds issued yet</div>
             )}
           </div>
         )}
