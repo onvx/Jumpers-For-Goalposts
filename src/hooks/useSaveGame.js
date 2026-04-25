@@ -106,7 +106,6 @@ export function useSaveGame({
         ovrHistory: s.ovrHistory,
         storyArcs: s.storyArcs,
         allTimeLeagueStatsByTier: s.allTimeLeagueStatsByTier,
-        allTimeCupStats: s.allTimeCupStats,
         seasonLeagueStats: s.seasonLeagueStats,
         seasonLeagueStatsAvailable: s.seasonLeagueStatsAvailable,
         seasonCupStats: s.seasonCupStats,
@@ -573,7 +572,6 @@ export function useSaveGame({
       } else {
         store.setAllTimeLeagueStatsByTier({});
       }
-      store.setAllTimeCupStats(s.allTimeCupStats && s.allTimeCupStats.players ? s.allTimeCupStats : emptyCompetitionStats());
       const hasCanonicalStats = !!(s.seasonLeagueStats && s.seasonLeagueStats.players);
       store.setSeasonLeagueStats(hasCanonicalStats ? s.seasonLeagueStats : emptyCompetitionStats());
       // Legacy detection: a save without canonical stats whose season has

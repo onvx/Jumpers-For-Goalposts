@@ -182,8 +182,7 @@ export const useGameStore = create((set, get) => ({
   // division's record book. Rolled up at season end via rollIntoAllTime
   // into allTimeLeagueStatsByTier[currentTier].
   allTimeLeagueStatsByTier: {},
-  // Cup is not naturally tier-scoped — record stays global per cup name.
-  allTimeCupStats: emptyCompetitionStats(),
+  // (allTimeCupStatsByCup lands in the follow-up cup-scoped PR.)
   // Canonical season-wide league stats. Source of truth for the LeaguePage
   // Stats tab. Cleared at season end.
   seasonLeagueStats: emptyCompetitionStats(),
@@ -366,7 +365,6 @@ export const useGameStore = create((set, get) => ({
   setOvrHistory: (val) => set(s => ({ ovrHistory: typeof val === "function" ? val(s.ovrHistory) : val })),
   setClubHistory: (val) => set(s => ({ clubHistory: typeof val === "function" ? val(s.clubHistory) : val })),
   setAllTimeLeagueStatsByTier: (val) => set(s => ({ allTimeLeagueStatsByTier: typeof val === "function" ? val(s.allTimeLeagueStatsByTier) : val })),
-  setAllTimeCupStats: (val) => set(s => ({ allTimeCupStats: typeof val === "function" ? val(s.allTimeCupStats) : val })),
   setSeasonLeagueStats: (val) => set(s => ({ seasonLeagueStats: typeof val === "function" ? val(s.seasonLeagueStats) : val })),
   setSeasonLeagueStatsAvailable: (val) => set(s => ({ seasonLeagueStatsAvailable: typeof val === "function" ? val(s.seasonLeagueStatsAvailable) : val })),
   setSeasonCupStats: (val) => set(s => ({ seasonCupStats: typeof val === "function" ? val(s.seasonCupStats) : val })),
@@ -514,7 +512,6 @@ export const useGameStore = create((set, get) => ({
       playerCareers: {}, allTimeXI: {}, seasonArchive: [], cupHistory: [],
     },
     allTimeLeagueStatsByTier: {},
-    allTimeCupStats: emptyCompetitionStats(),
     seasonLeagueStats: emptyCompetitionStats(),
     seasonLeagueStatsAvailable: true,
     seasonCupStats: emptyCompetitionStats(),

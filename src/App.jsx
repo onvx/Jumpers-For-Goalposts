@@ -153,15 +153,16 @@ function generateManagerName() {
 const DEFAULT_SEASON_LENGTH = 48;
 const DEFAULT_FIXTURE_COUNT = 18;
 const SQUAD_CAP = 25;
-// Roll the current season's league + cup canonical stats into all-time
-// before the season-end paths clear the season stores. League all-time is
-// tier-scoped (allTimeLeagueStatsByTier[closingTier]); cup all-time is a
-// single global blob keyed by cup name elsewhere. Also runs the Etched In
-// Stone check against the post-roll *current tier* blob (Option A: top of
-// this division's all-time chart).
+// Roll the current season's league canonical stats into the closing tier's
+// all-time slot before the season-end paths clear the season store. Also
+// runs the Etched In Stone check against the post-roll *current tier* blob
+// (Option A: top of this division's all-time chart).
+//
+// Cup all-time roll-up is deliberately not handled here — the cup-scoped
+// model (`allTimeCupStatsByCup[cupKey]`) lands in the follow-up PR.
 function finalizeSeasonStatsIntoAllTime({
-  setAllTimeLeagueStatsByTier, setAllTimeCupStats,
-  seasonLeagueStats, seasonCupStats,
+  setAllTimeLeagueStatsByTier,
+  seasonLeagueStats,
   closingTier, teamName, unlockedAchievements, tryUnlockAchievement,
 }) {
   setAllTimeLeagueStatsByTier(prev => {
@@ -175,7 +176,6 @@ function finalizeSeasonStatsIntoAllTime({
     }
     return { ...(prev || {}), [closingTier]: nextTierBlob };
   });
-  setAllTimeCupStats(prev => rollIntoAllTime(prev, seasonCupStats));
 }
 
 // Run the canonical league-stats accumulator over a completed matchweek's
@@ -242,7 +242,7 @@ function FruitCigs() {
     setConsecutiveUnbeaten, setConsecutiveLosses, setConsecutiveDraws,
     setConsecutiveWins, setConsecutiveScoreless,
     setHalfwayPosition, setPreviousLeaguePosition, setRecentScorelines, setSecondPlaceFinishes,
-    setOvrHistory, setClubHistory, setAllTimeLeagueStatsByTier, setAllTimeCupStats, setSeasonLeagueStats, setSeasonLeagueStatsAvailable,
+    setOvrHistory, setClubHistory, setAllTimeLeagueStatsByTier, setSeasonLeagueStats, setSeasonLeagueStatsAvailable,
     setSeasonCupStats, setSeasonCupStatsAvailable,
     setStartingXI, setBench, setFormation, setSlotAssignments, setPrevStartingXI, setXiPresets,
     setTrialPlayer, setTrialHistory, setProdigalSon, setRetiringPlayers,
@@ -6028,8 +6028,8 @@ function FruitCigs() {
             // The closing tier is the current `leagueTier` (the prestige tier
             // change to NUM_TIERS happens further down).
             finalizeSeasonStatsIntoAllTime({
-              setAllTimeLeagueStatsByTier, setAllTimeCupStats,
-              seasonLeagueStats, seasonCupStats,
+              setAllTimeLeagueStatsByTier,
+              seasonLeagueStats,
               closingTier: leagueTier,
               teamName, unlockedAchievements, tryUnlockAchievement,
             });
@@ -6624,8 +6624,8 @@ function FruitCigs() {
               setCalendarIndex(0);
               setCalendarResults({});
               finalizeSeasonStatsIntoAllTime({
-                setAllTimeLeagueStatsByTier, setAllTimeCupStats,
-                seasonLeagueStats, seasonCupStats,
+                setAllTimeLeagueStatsByTier,
+                seasonLeagueStats,
                 closingTier: summerData?.fromTier || leagueTier,
                 teamName, unlockedAchievements, tryUnlockAchievement,
               });
