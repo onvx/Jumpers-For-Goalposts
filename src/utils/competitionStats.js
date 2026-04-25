@@ -293,11 +293,17 @@ export function rollIntoAllTime(allTime, season) {
  * season store, so credits happen per matchweek rather than via the
  * idempotent match accumulator. Composite-keyed by team name + scorer name.
  *
+ * Idempotent: `creditId` is recorded in processedMatches so the same
+ * matchweek credit can't double-count if the path retries (load/replay).
+ * Use a deterministic id like `alltime-ai-league:S{season}:T{tier}:MD{mw}`.
+ *
  * `events` shape: [{ teamName, name, assister?, position? }, ...]
  */
-export function creditAllTimeScorers(allTime, events) {
-  if (!Array.isArray(events) || events.length === 0) return allTime || emptyCompetitionStats();
+export function creditAllTimeScorers(allTime, creditId, events) {
   const base = allTime || emptyCompetitionStats();
+  if (!creditId) return base;
+  if (base.processedMatches?.[creditId]) return base;
+  if (!Array.isArray(events) || events.length === 0) return base;
   const newPlayers = { ...(base.players || {}) };
   const bump = (teamName, name, position, field) => {
     const key = compositeFallbackKey(teamName, name, position || null);
@@ -313,7 +319,10 @@ export function creditAllTimeScorers(allTime, events) {
     if (e.name) bump(e.teamName || "", e.name, e.position, "goals");
     if (e.assister) bump(e.teamName || "", e.assister, null, "assists");
   }
-  return { players: newPlayers, processedMatches: base.processedMatches || {} };
+  return {
+    players: newPlayers,
+    processedMatches: { ...(base.processedMatches || {}), [creditId]: true },
+  };
 }
 
 /**

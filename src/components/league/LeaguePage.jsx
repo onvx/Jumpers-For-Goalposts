@@ -822,8 +822,11 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
 
         {activeTab === "alltime" && (() => {
           // All-time records merge canonical allTimeLeagueStats with the
-          // current season's canonical seasonLeagueStats. Filter to current
-          // league teams only — records are per-division.
+          // current season's canonical seasonLeagueStats, then filter to the
+          // teams currently in the player's league. The underlying store is
+          // a single global blob — entries aren't tier-scoped, so this is a
+          // "records for current league teams across all seasons" view, not
+          // a strict per-division ledger.
           const leagueTeamNames = new Set((league?.teams || []).map(t => t.name));
           const merged = {};
           const acc = (entry) => {

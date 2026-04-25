@@ -16,7 +16,7 @@ import { resolveSeasonEndArcs } from "./utils/arcs.js";
 import { buildAssistantLineup, buildPresetLineup } from "./utils/lineup.js";
 import { simulateMatch, generatePenaltyShootout, simulateMatchweek } from "./utils/match.js";
 import { initLeagueRosters, sortStandings, collectSeasonEndAchievements, processSeasonSwaps, initLeague, initAILeague, buildSeasonCalendar, initCup, advanceCupRound, buildNextCupRound } from "./utils/league.js";
-import { accumulateMatchStats, accumulateCupMatch, makeCupAIMatchHandler, leagueMatchId, emptyCompetitionStats, rollIntoAllTime, creditAllTimeScorers, getTopScorers, getMostYellows, getMostReds } from "./utils/competitionStats.js";
+import { accumulateMatchStats, accumulateCupMatch, makeCupAIMatchHandler, leagueMatchId, emptyCompetitionStats, rollIntoAllTime, creditAllTimeScorers, getTopScorers } from "./utils/competitionStats.js";
 import { checkBreakouts } from "./utils/breakouts.js";
 import { SFX, BGM } from "./utils/sfx.js";
 import * as Tone from "tone";
@@ -153,6 +153,29 @@ function generateManagerName() {
 const DEFAULT_SEASON_LENGTH = 48;
 const DEFAULT_FIXTURE_COUNT = 18;
 const SQUAD_CAP = 25;
+// Roll the current season's league + cup canonical stats into all-time
+// before the season-end paths clear the season stores. Also runs the
+// Etched In Stone check on the post-roll all-time blob. Used by both the
+// normal new-season transition and the prestige reset, so neither path
+// silently drops a final season's stats.
+function finalizeSeasonStatsIntoAllTime({
+  setAllTimeLeagueStats, setAllTimeCupStats,
+  seasonLeagueStats, seasonCupStats,
+  teamName, unlockedAchievements, tryUnlockAchievement,
+}) {
+  setAllTimeLeagueStats(prev => {
+    const next = rollIntoAllTime(prev, seasonLeagueStats);
+    if (tryUnlockAchievement && !unlockedAchievements?.has?.("all_time_top")) {
+      const top = getTopScorers(next, 1)[0];
+      if (top && top.teamName === teamName) {
+        tryUnlockAchievement("all_time_top");
+      }
+    }
+    return next;
+  });
+  setAllTimeCupStats(prev => rollIntoAllTime(prev, seasonCupStats));
+}
+
 // Run the canonical league-stats accumulator over a completed matchweek's
 // `simulateMatchweek` results. Pure — returns a new seasonLeagueStats
 // object with each match's deltas chained in. Idempotent per matchId.
@@ -2953,8 +2976,10 @@ function FruitCigs() {
                           }
                         }
                         // matchweekIndex derived from calendarIndex — no explicit increment needed
-                        // Capture AI tier scorer data for all-time stats (holiday path)
-                        const holAIMWScorers = [];
+                        // Capture AI tier scorer data for all-time stats (holiday path).
+                        // Grouped by tier+MW so each batch gets a deterministic creditId
+                        // and won't double-count if the path retries.
+                        const holAIBatches = []; // [{ tier, mw, events: [{name, assister, teamName}] }]
                         setAllLeagueStates(prev => {
                           if (!prev || Object.keys(prev).length === 0) return prev;
                           const next = {};
@@ -2964,24 +2989,29 @@ function FruitCigs() {
                             } else {
                               const copy = { ...aiLeague, table: aiLeague.table.map(r => ({ ...r })) };
                               const aiResults = simulateMatchweek(copy, aiLeague.matchweekIndex, null, null, null, null, null);
+                              const events = [];
                               if (aiResults) {
                                 for (const r of aiResults) {
                                   for (const e of (r.events || [])) {
                                     if (e.type === "goal") {
                                       const teamIdx = e.side === "home" ? r.home : r.away;
                                       const team = copy.teams?.[teamIdx];
-                                      if (team) holAIMWScorers.push({ name: e.player, assister: e.assister, teamName: team.name });
+                                      if (team) events.push({ name: e.player, assister: e.assister, teamName: team.name });
                                     }
                                   }
                                 }
+                              }
+                              if (events.length > 0) {
+                                holAIBatches.push({ tier: t, mw: aiLeague.matchweekIndex, events });
                               }
                               next[t] = { ...copy, matchweekIndex: aiLeague.matchweekIndex + 1 };
                             }
                           }
                           return next;
                         });
-                        if (holAIMWScorers.length > 0) {
-                          setAllTimeLeagueStats(prev => creditAllTimeScorers(prev, holAIMWScorers));
+                        for (const batch of holAIBatches) {
+                          const creditId = `alltime-ai-league:S${seasonNumber}:T${batch.tier}:MD${batch.mw}`;
+                          setAllTimeLeagueStats(prev => creditAllTimeScorers(prev, creditId, batch.events));
                         }
                         if (playerMatch) {
                           // === HOLIDAY: process stats inline, skip MatchResultScreen ===
@@ -3636,9 +3666,10 @@ function FruitCigs() {
                       .filter(o => o.expiresWeeks > 0)
                     );
                   }
-                  // Advance every AI league by one matchweek in parallel
-                  // Capture scorer data for all-time stats accumulation
-                  const aiMWScorers = [];
+                  // Advance every AI league by one matchweek in parallel.
+                  // Group scorer events by tier+MW so each batch gets a
+                  // deterministic creditId and can't double-count on retry.
+                  const aiBatches = []; // [{ tier, mw, events }]
                   setAllLeagueStates(prev => {
                     if (!prev || Object.keys(prev).length === 0) return prev;
                     const next = {};
@@ -3648,25 +3679,29 @@ function FruitCigs() {
                       } else {
                         const copy = { ...aiLeague, table: aiLeague.table.map(r => ({ ...r })) };
                         const aiResults = simulateMatchweek(copy, aiLeague.matchweekIndex, null, null, null, null, null);
+                        const events = [];
                         if (aiResults) {
                           for (const r of aiResults) {
                             for (const e of (r.events || [])) {
                               if (e.type === "goal") {
                                 const teamIdx = e.side === "home" ? r.home : r.away;
                                 const team = copy.teams?.[teamIdx];
-                                if (team) aiMWScorers.push({ name: e.player, assister: e.assister, teamName: team.name });
+                                if (team) events.push({ name: e.player, assister: e.assister, teamName: team.name });
                               }
                             }
                           }
+                        }
+                        if (events.length > 0) {
+                          aiBatches.push({ tier: t, mw: aiLeague.matchweekIndex, events });
                         }
                         next[t] = { ...copy, matchweekIndex: aiLeague.matchweekIndex + 1 };
                       }
                     }
                     return next;
                   });
-                  // Accumulate AI tier scorer data into all-time stats
-                  if (aiMWScorers.length > 0) {
-                    setAllTimeLeagueStats(prev => creditAllTimeScorers(prev, aiMWScorers));
+                  for (const batch of aiBatches) {
+                    const creditId = `alltime-ai-league:S${seasonNumber}:T${batch.tier}:MD${batch.mw}`;
+                    setAllTimeLeagueStats(prev => creditAllTimeScorers(prev, creditId, batch.events));
                   }
                   if (playerMatch) {
                     playerMatch._playedMatchweekIndex = capturedMWIdx;
@@ -5976,6 +6011,13 @@ function FruitCigs() {
             setSeasonCalendar(cal);
             setCalendarIndex(0);
             setCalendarResults({});
+            // Prestige is a real season-end too — fold the closing season's
+            // canonical stats into all-time before wiping the season stores.
+            finalizeSeasonStatsIntoAllTime({
+              setAllTimeLeagueStats, setAllTimeCupStats,
+              seasonLeagueStats, seasonCupStats,
+              teamName, unlockedAchievements, tryUnlockAchievement,
+            });
             setLeagueResults({});
             setSeasonLeagueStats(emptyCompetitionStats());
             setSeasonLeagueStatsAvailable(true);
@@ -6566,19 +6608,11 @@ function FruitCigs() {
               setSeasonCalendar(newCal);
               setCalendarIndex(0);
               setCalendarResults({});
-              // Roll the canonical season stats into all-time before wiping.
-              setAllTimeLeagueStats(prev => {
-                const next = rollIntoAllTime(prev, seasonLeagueStats);
-                // Etched In Stone — top all-time scorer plays for the player's team.
-                if (!unlockedAchievements.has("all_time_top")) {
-                  const top = getTopScorers(next, 1)[0];
-                  if (top && top.teamName === teamName) {
-                    tryUnlockAchievement("all_time_top");
-                  }
-                }
-                return next;
+              finalizeSeasonStatsIntoAllTime({
+                setAllTimeLeagueStats, setAllTimeCupStats,
+                seasonLeagueStats, seasonCupStats,
+                teamName, unlockedAchievements, tryUnlockAchievement,
               });
-              setAllTimeCupStats(prev => rollIntoAllTime(prev, seasonCupStats));
               setLeagueResults({});
               setSeasonLeagueStats(emptyCompetitionStats());
               setSeasonLeagueStatsAvailable(true);
