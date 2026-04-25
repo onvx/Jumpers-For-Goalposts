@@ -1,17 +1,15 @@
-// Canonical competition-wide stats accumulator and selectors for #215 phase 1.
+// Canonical competition-wide stats accumulator and selectors.
 //
-// This module is intentionally competition-agnostic — the same accumulator
-// and selectors will be reused for cup stats in phase 2.
+// Competition-agnostic — the accumulator and selectors are reused for both
+// league and cup stats.
 //
 // Identity model: every player entry is keyed by player.id when available,
-// with a deterministic composite fallback for AI players whose events
-// might lack an id. Names are display-only.
+// with a deterministic composite fallback for events that lack an id.
+// Names are display-only.
 //
 // Idempotency: every accumulation call requires a `matchId`; subsequent
 // calls for the same id are no-ops. The processed-match set lives inside
 // the stats blob so it travels with the data on save/load.
-
-const PHASE1_FIELDS = ["goals", "assists", "yellows", "reds", "apps", "starts"];
 
 export function emptyCompetitionStats() {
   return { players: {}, processedMatches: {} };
@@ -146,9 +144,8 @@ export function accumulateMatchStats(stats, input) {
     });
   } else {
     // Fallback: credit apps + starts for the full squad of each team.
-    // Bench-who-didn't-play double-counting is acceptable in phase 1; the
-    // explicit-starters path above is the precise version when wiring is
-    // complete.
+    // The explicit-starters path above is the precise version when callers
+    // can supply it; this fallback double-counts bench-who-didn't-play.
     creditAppearance(homeTeam, "home", true);
     creditAppearance(awayTeam, "away", true);
   }
@@ -225,7 +222,5 @@ export function leagueMatchId({ season, tier, matchweekIdx, fixtureIdx }) {
   return `league:S${season}:T${tier}:MD${matchweekIdx}:M${fixtureIdx}`;
 }
 
-// Phase 2 will add cupMatchId here in the same shape.
-
 // Internal — exposed only for tests
-export const __test = { playerKey, compositeFallbackKey, PHASE1_FIELDS };
+export const __test = { playerKey, compositeFallbackKey };

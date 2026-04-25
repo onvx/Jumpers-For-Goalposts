@@ -558,9 +558,6 @@ export function useSaveGame({
       }
       store.setStoryArcs(loadedArcs);
       store.setAllTimeLeagueStats(s.allTimeLeagueStats || { scorers: {}, assisters: {}, cards: {} });
-      // #215 phase 1 — old saves get a clean blank competition-stats default;
-      // no reconstruction from name-only leagueResults. Stats start populating
-      // from the next match this season onward.
       store.setSeasonLeagueStats(s.seasonLeagueStats && s.seasonLeagueStats.players ? s.seasonLeagueStats : emptyCompetitionStats());
       // Load formation
       if (s.formation && s.formation.length === 11) {

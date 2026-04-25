@@ -177,8 +177,8 @@ export const useGameStore = create((set, get) => ({
     playerCareers: {}, allTimeXI: {}, seasonArchive: [], cupHistory: [],
   },
   allTimeLeagueStats: { scorers: {}, assisters: {}, cards: {} },
-  // #215 phase 1 — canonical season-wide league stats. Source of truth
-  // for the LeaguePage Stats tab. Cleared at season end.
+  // Canonical season-wide league stats. Source of truth for the LeaguePage
+  // Stats tab. Cleared at season end.
   seasonLeagueStats: emptyCompetitionStats(),
 
   // === Squad composition ===

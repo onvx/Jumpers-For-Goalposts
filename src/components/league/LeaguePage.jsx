@@ -72,12 +72,12 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
     return { scorers, assisters, cards };
   }, [leagueResults, playerSeasonStats]);
 
-  // #215 phase 1 — read from canonical seasonLeagueStats when available.
-  // Falls back to the legacy `leagueStats` reconstruction so old saves and
-  // pre-canonical-data states still render usefully until the next match.
+  // Prefer the canonical seasonLeagueStats when populated; fall back to
+  // reconstructing from leagueResults + playerSeasonStats so saves without
+  // any canonical data yet still render their stats tab.
   const useCanonical = !!(seasonLeagueStats && seasonLeagueStats.players && Object.keys(seasonLeagueStats.players).length > 0);
 
-  // Top scorers list — canonical first, fallback to legacy reconstruction.
+  // Top scorers list.
   const topScorers = React.useMemo(() => {
     if (useCanonical) {
       return getTopScorers(seasonLeagueStats, 20).map(p => ({
@@ -115,9 +115,8 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
       .slice(0, 20);
   }, [useCanonical, seasonLeagueStats, leagueStats.assisters, league.teams]);
 
-  // Top cards list — canonical splits yellows + reds, legacy collapses both.
-  // For now the UI still shows a single "Cards" column; we sum yellows+reds
-  // from canonical to match. Future iteration can split into two columns.
+  // Top cards list. The canonical store keeps yellows and reds separate;
+  // the existing single-column UI shows the combined total.
   const topCards = React.useMemo(() => {
     if (useCanonical) {
       // Combine yellows+reds for the existing single-column UI.

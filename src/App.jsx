@@ -154,8 +154,8 @@ const DEFAULT_SEASON_LENGTH = 48;
 const DEFAULT_FIXTURE_COUNT = 18;
 const SQUAD_CAP = 25;
 // Run the canonical league-stats accumulator over a completed matchweek's
-// `simulateMatchweek` results. Mutates `prev` (a seasonLeagueStats blob) in
-// place via the accumulator. Idempotent per matchId. Phase 1 of #215.
+// `simulateMatchweek` results. Mutates `prev` (a seasonLeagueStats blob)
+// in place via the accumulator. Idempotent per matchId.
 function accumulateLeagueMatchweek(prev, { results, league, season, tier, matchweekIdx }) {
   if (!prev || !Array.isArray(results) || !league?.teams) return prev || emptyCompetitionStats();
   const next = prev || emptyCompetitionStats();
@@ -2868,8 +2868,6 @@ function FruitCigs() {
                           })),
                         }));
                         setLeagueResults(prev => ({ ...prev, [capturedMWIdx]: condensed }));
-                        // Phase 1 #215 — same accumulation as the non-holiday
-                        // path, idempotent per matchId.
                         setSeasonLeagueStats(prev => accumulateLeagueMatchweek(prev, {
                           results, league: updatedLeague, season: seasonNumber, tier: leagueTier, matchweekIdx: capturedMWIdx,
                         }));
@@ -3590,9 +3588,6 @@ function FruitCigs() {
                     })),
                   }));
                   setLeagueResults(prev => ({ ...prev, [capturedMWIdx]: condensed }));
-                  // Phase 1 #215 — accumulate canonical league stats for the
-                  // entire matchweek (player + same-tier AI). Idempotent per
-                  // matchId so re-firing through holiday/save edge cases is safe.
                   setSeasonLeagueStats(prev => accumulateLeagueMatchweek(prev, {
                     results, league: updatedLeague, season: seasonNumber, tier: leagueTier, matchweekIdx: capturedMWIdx,
                   }));

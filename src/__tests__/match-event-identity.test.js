@@ -1,15 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { simulateMatch } from "../utils/match.js";
 
-// Regression suite for the #215 phase 1 contract:
 // Every stat-bearing event from simulateMatch must carry the player's
-// canonical id alongside the display name, AND that id must stay in
+// canonical id alongside the display name, and that id must stay in
 // lock-step with the name through every post-processing rewrite path
 // (substitution scorer/assister/card reassignment, second-yellow type
 // flip, red-card bonus goal injection).
 //
-// If `evt.player` ever changes but `evt.playerId` doesn't (or vice
-// versa), the canonical stats accumulator credits the wrong player.
+// If evt.player ever changes but evt.playerId doesn't (or vice versa),
+// the stats accumulator credits the wrong player.
 
 const POSITIONS = ["GK", "CB", "CB", "LB", "RB", "CM", "CM", "AM", "LW", "RW", "ST"];
 const BENCH_POSITIONS = ["GK", "CB", "CM", "AM", "ST"];
@@ -64,7 +63,7 @@ function findId(team, name) {
 
 // =============================================================================
 
-describe("simulateMatch event identity — phase 1 contract", () => {
+describe("simulateMatch event identity contract", () => {
   it("every goal event carries playerId that resolves to evt.player", () => {
     const runs = runMatches(50);
     let goalsSeen = 0;

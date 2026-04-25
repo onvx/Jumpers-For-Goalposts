@@ -120,8 +120,7 @@ describe("accumulateMatchStats — basic counting", () => {
   });
 
   it("VAR-upgraded red (no countsAsYellow flag) is red only", () => {
-    // Per the locked decision: VAR-upgraded yellows count as red only,
-    // unless we deliberately set countsAsYellow.
+    // VAR-upgraded yellows count as red only unless countsAsYellow is set.
     const stats = emptyCompetitionStats();
     accumulateMatchStats(stats, baseInput([
       cardEvent({ type: "red_card", cardPlayerId: "p1", cardPlayer: "John Smith", minute: 60 }),
@@ -213,7 +212,7 @@ describe("accumulateMatchStats — graceful fallbacks", () => {
   it("falls back to a composite key when an event has no id", () => {
     const stats = emptyCompetitionStats();
     accumulateMatchStats(stats, baseInput([
-      // Name-only event (the kind we want to phase out, but tolerate)
+      // Name-only event (no playerId) — tolerated via composite key
       { type: "goal", side: "home", player: "Some Mystery", minute: 30 },
     ]));
     // Composite key should be created

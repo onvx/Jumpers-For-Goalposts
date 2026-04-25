@@ -819,9 +819,9 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
         offMinutes[teamName][offName] = evt.minute;
       }
     }
-    // Build a list of available player REFS (not just names) for the team,
+    // Build a list of available player refs (not just names) for the team,
     // excluding any subbed off. Used by both goal and card rewrite paths
-    // below so identity (id+name) stays in lock-step. #215 phase 1.
+    // below so identity (id + name) stays in lock-step.
     const buildAvailableRefs = (team) => {
       const offSet = subbedOffByTeam[team.name];
       const subOnNames = subbedOnByTeam[team.name] || [];
@@ -897,9 +897,8 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
       const key = `${evt.cardTeamName}|${evt.cardPlayer}`;
       cardCounts[key] = (cardCounts[key] || 0) + 1;
       if (cardCounts[key] === 2) {
-        // Convert second yellow to red card. countsAsYellow: true tells the
-        // canonical stats accumulator to credit BOTH a yellow and a red,
-        // per the #215 locked decision (this yellow stays counted).
+        // Convert second yellow to red card. countsAsYellow: true tells
+        // stats accumulators to credit both a yellow and a red.
         evt.text = `🟥 RED CARD! ${evt.cardPlayer} gets a second yellow and is sent off!`;
         evt.flashColor = MATCH.FLASH_RED;
         evt.type = "red_card";
