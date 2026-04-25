@@ -108,6 +108,8 @@ export function useSaveGame({
         allTimeLeagueStats: s.allTimeLeagueStats,
         seasonLeagueStats: s.seasonLeagueStats,
         seasonLeagueStatsAvailable: s.seasonLeagueStatsAvailable,
+        seasonCupStats: s.seasonCupStats,
+        seasonCupStatsAvailable: s.seasonCupStatsAvailable,
         formation: s.formation,
         slotAssignments: s.slotAssignments,
         xiPresets: s.xiPresets,
@@ -570,6 +572,17 @@ export function useSaveGame({
         ? explicitFlag
         : (hasCanonicalStats || !matchweekProgressed);
       store.setSeasonLeagueStatsAvailable(available);
+      // Cup stats: same legacy detection, gated on whether the cup has
+      // resolved any matches yet (currentRound > 0 or any result populated).
+      const hasCanonicalCupStats = !!(s.seasonCupStats && s.seasonCupStats.players);
+      store.setSeasonCupStats(hasCanonicalCupStats ? s.seasonCupStats : emptyCompetitionStats());
+      const cupProgressed = !!(s.cup && (s.cup.currentRound > 0
+        || s.cup.rounds?.some(r => r.matches?.some(m => m.result && !m.result.bye))));
+      const explicitCupFlag = typeof s.seasonCupStatsAvailable === "boolean" ? s.seasonCupStatsAvailable : null;
+      const cupAvailable = explicitCupFlag != null
+        ? explicitCupFlag
+        : (hasCanonicalCupStats || !cupProgressed);
+      store.setSeasonCupStatsAvailable(cupAvailable);
       // Load formation
       if (s.formation && s.formation.length === 11) {
         store.setFormation(s.formation.map(slot => ({...slot})));

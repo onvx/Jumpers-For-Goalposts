@@ -194,5 +194,47 @@ export function leagueMatchId({ season, tier, matchweekIdx, fixtureIdx }) {
   return `league:S${season}:T${tier}:MD${matchweekIdx}:M${fixtureIdx}`;
 }
 
+function slug(s) {
+  return String(s ?? "").replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "_";
+}
+
+/**
+ * Canonical cup match id for the current season.
+ * Format: cup:S{season}:{cupSlug}:R{roundIdx}:{homeSlug}-{awaySlug}
+ *
+ * cupName, home and away are sanitised so non-alphanumeric chars don't
+ * break the id. Different home/away order produces a different id, which
+ * is correct — the same fixture flipped is a different match in the cup.
+ */
+export function cupMatchId({ season, cupName, roundIdx, home, away }) {
+  return `cup:S${season}:${slug(cupName)}:R${roundIdx}:${slug(home)}-${slug(away)}`;
+}
+
+/**
+ * Apply a single cup match's events to the canonical cup stats.
+ * Cup teams have no numeric id, so the team name is used as `teamId`.
+ */
+export function accumulateCupMatch(prev, { home, away, result, season, cupName, roundIdx }) {
+  if (!home || !away || !result) return prev;
+  return accumulateMatchStats(prev, {
+    matchId: cupMatchId({ season, cupName, roundIdx, home: home.name, away: away.name }),
+    result,
+    homeTeam: { id: home.name, name: home.name, squad: home.squad || [] },
+    awayTeam: { id: away.name, name: away.name, squad: away.squad || [] },
+  });
+}
+
+/**
+ * Build a callback for advanceCupRound that funnels each AI cup-match sim
+ * result into the canonical seasonCupStats via the supplied setter.
+ */
+export function makeCupAIMatchHandler(setSeasonCupStats, season, cupName) {
+  return (homeTeam, awayTeam, simResult, roundIdx) => {
+    setSeasonCupStats(prev => accumulateCupMatch(prev, {
+      home: homeTeam, away: awayTeam, result: simResult, season, cupName, roundIdx,
+    }));
+  };
+}
+
 // Internal — exposed only for tests
 export const __test = { playerKey, compositeFallbackKey };

@@ -16,7 +16,7 @@ import { resolveSeasonEndArcs } from "./utils/arcs.js";
 import { buildAssistantLineup, buildPresetLineup } from "./utils/lineup.js";
 import { simulateMatch, generatePenaltyShootout, simulateMatchweek } from "./utils/match.js";
 import { initLeagueRosters, sortStandings, collectSeasonEndAchievements, processSeasonSwaps, initLeague, initAILeague, buildSeasonCalendar, initCup, advanceCupRound, buildNextCupRound } from "./utils/league.js";
-import { accumulateMatchStats, leagueMatchId, emptyCompetitionStats } from "./utils/competitionStats.js";
+import { accumulateMatchStats, accumulateCupMatch, makeCupAIMatchHandler, leagueMatchId, emptyCompetitionStats } from "./utils/competitionStats.js";
 import { checkBreakouts } from "./utils/breakouts.js";
 import { SFX, BGM } from "./utils/sfx.js";
 import * as Tone from "tone";
@@ -218,6 +218,7 @@ function FruitCigs() {
     setConsecutiveWins, setConsecutiveScoreless,
     setHalfwayPosition, setPreviousLeaguePosition, setRecentScorelines, setSecondPlaceFinishes,
     setOvrHistory, setClubHistory, setAllTimeLeagueStats, setSeasonLeagueStats, setSeasonLeagueStatsAvailable,
+    setSeasonCupStats, setSeasonCupStatsAvailable,
     setStartingXI, setBench, setFormation, setSlotAssignments, setPrevStartingXI, setXiPresets,
     setTrialPlayer, setTrialHistory, setProdigalSon, setRetiringPlayers,
     setPendingFreeAgent, setScoutedPlayers,
@@ -616,6 +617,8 @@ function FruitCigs() {
   const allTimeLeagueStats = useGameStore(s => s.allTimeLeagueStats);
   const seasonLeagueStats = useGameStore(s => s.seasonLeagueStats);
   const seasonLeagueStatsAvailable = useGameStore(s => s.seasonLeagueStatsAvailable);
+  const seasonCupStats = useGameStore(s => s.seasonCupStats);
+  const seasonCupStatsAvailable = useGameStore(s => s.seasonCupStatsAvailable);
   const trainedThisWeek = useGameStore(s => s.trainedThisWeek);
   const [injuryWarning, setInjuryWarning] = useState(0);
   const [squadFullAlert, setSquadFullAlert] = useState(false);
@@ -2769,6 +2772,13 @@ function FruitCigs() {
                         return buildNextCupRound({ ...updatedCup, playerEliminated: playerEliminated || prev.playerEliminated });
                       });
 
+                      setSeasonCupStats(prev => accumulateCupMatch(prev, {
+                        home: homeT, away: awayT, result,
+                        season: seasonNumber,
+                        cupName: useGameStore.getState().cup?.cupName || "Cup",
+                        roundIdx: _holidayCupRound,
+                      }));
+
                       // Calendar result + advance index
                       const cupPGoals = isPlayerHome ? result.homeGoals : result.awayGoals;
                       const cupOGoals = isPlayerHome ? result.awayGoals : result.homeGoals;
@@ -3003,7 +3013,8 @@ function FruitCigs() {
                           while (newCI < cal.length && cal[newCI]?.type === "cup" && useGameStore.getState().cup?.playerEliminated) {
                             if (useGameStore.getState().cup && useGameStore.getState().cup.currentRound < useGameStore.getState().cup.rounds.length) {
                               const skipLookup = (name, tier) => (tier === leagueTier ? updatedLeague : allLeagueStates?.[tier])?.teams?.find(t => t.name === name) || null;
-                              const skipCup = advanceCupRound(useGameStore.getState().cup, freshSquad, currentXI, currentBench, skipLookup);
+                              const skipCupHandler = makeCupAIMatchHandler(setSeasonCupStats, seasonNumber, useGameStore.getState().cup?.cupName || "Cup");
+                              const skipCup = advanceCupRound(useGameStore.getState().cup, freshSquad, currentXI, currentBench, skipLookup, skipCupHandler);
                               let finCup = skipCup;
                               if (finCup.pendingPlayerMatch) {
                                 const pm2 = finCup.pendingPlayerMatch;
@@ -3290,6 +3301,8 @@ function FruitCigs() {
           clubHistory={clubHistory}
           seasonNumber={seasonNumber}
           leagueRosters={leagueRosters}
+          seasonCupStats={seasonCupStats}
+          seasonCupStatsAvailable={seasonCupStatsAvailable}
           onPlayerClick={resolveAnyPlayer}
           onTeamClick={handleGlobalTeamClick}
         />
@@ -5280,6 +5293,17 @@ function FruitCigs() {
               return buildNextCupRound({ ...updatedCup, playerEliminated: playerEliminated || prev.playerEliminated });
             });
 
+            // Canonical seasonCupStats — credit the player cup match.
+            {
+              const cupTeams = cupMatchResult.cupLeague?.teams || [];
+              setSeasonCupStats(prev => accumulateCupMatch(prev, {
+                home: cupTeams[0], away: cupTeams[1], result: cupMatchResult,
+                season: seasonNumber,
+                cupName: cup?.cupName || "Cup",
+                roundIdx: cup?.currentRound ?? 0,
+              }));
+            }
+
             const playerEliminated2 = !winner.isPlayer;
 
             // Cup achievements
@@ -5976,6 +6000,8 @@ function FruitCigs() {
             setLeagueResults({});
             setSeasonLeagueStats(emptyCompetitionStats());
             setSeasonLeagueStatsAvailable(true);
+            setSeasonCupStats(emptyCompetitionStats());
+            setSeasonCupStatsAvailable(true);
             setMatchPending(false);
             setSummerPhase(null);
             setSummerData(null);
@@ -6600,6 +6626,8 @@ function FruitCigs() {
               setLeagueResults({});
               setSeasonLeagueStats(emptyCompetitionStats());
               setSeasonLeagueStatsAvailable(true);
+              setSeasonCupStats(emptyCompetitionStats());
+              setSeasonCupStatsAvailable(true);
               setSeasonCards(0);
               setSeasonCleanSheets(0);
               setSeasonGoalsFor(0);

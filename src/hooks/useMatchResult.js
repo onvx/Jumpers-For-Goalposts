@@ -9,6 +9,7 @@ import { rand, getOverall } from "../utils/calc.js";
 import { generateFreeAgent, getOvrCap } from "../utils/player.js";
 import { getArcById, checkArcCond, getStepNarrative, processArcCompletion, resolveSeasonEndArcs } from "../utils/arcs.js";
 import { sortStandings, collectSeasonEndAchievements, processSeasonSwaps, initLeagueRosters, advanceCupRound, buildNextCupRound } from "../utils/league.js";
+import { makeCupAIMatchHandler } from "../utils/competitionStats.js";
 import { checkAchievements } from "../utils/achievements.js";
 import { PLAYER_UNLOCK_ACHIEVEMENTS, UNLOCKABLE_PLAYERS } from "../data/achievements.js";
 import { createInboxMessage } from "../utils/messageUtils.js";
@@ -89,7 +90,8 @@ export function useMatchResult({
       while (newCalIdx < cal.length && cal[newCalIdx]?.type === "cup" && s.cup?.playerEliminated) {
         if (s.cup && s.cup.currentRound < s.cup.rounds.length) {
           const skipLookup = (name, tier) => (tier === s.leagueTier ? currentLeague : s.allLeagueStates?.[tier])?.teams?.find(t => t.name === name) || null;
-          const skipCup = advanceCupRound(s.cup, s.squad, s.startingXI, s.bench, skipLookup);
+          const skipCupHandler = makeCupAIMatchHandler(s.setSeasonCupStats, s.seasonNumber, s.cup?.cupName || "Cup");
+          const skipCup = advanceCupRound(s.cup, s.squad, s.startingXI, s.bench, skipLookup, skipCupHandler);
           let finCup = skipCup;
           if (finCup.pendingPlayerMatch) {
             const pm2 = finCup.pendingPlayerMatch;

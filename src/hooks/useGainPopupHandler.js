@@ -7,6 +7,7 @@ import { getModifier } from "../data/leagueModifiers.js";
 import { rand, getOverall, pickRandom } from "../utils/calc.js";
 import { getOvrCap } from "../utils/player.js";
 import { sortStandings, advanceCupRound, buildNextCupRound } from "../utils/league.js";
+import { makeCupAIMatchHandler } from "../utils/competitionStats.js";
 import { simulateMatch, generatePenaltyShootout } from "../utils/match.js";
 import { createInboxMessage } from "../utils/messageUtils.js";
 
@@ -290,8 +291,9 @@ export function useGainPopupHandler({
       const entry = s.seasonCalendar[ci];
       if (entry?.type === "cup") {
         const cupLookup = (name, tier) => (tier === s.leagueTier ? s.league : s.allLeagueStates?.[tier])?.teams?.find(t => t.name === name) || null;
+        const cupHandler = makeCupAIMatchHandler(s.setSeasonCupStats, s.seasonNumber, s.cup?.cupName || "Cup");
         if (s.cup.playerEliminated) {
-          const updatedCup = advanceCupRound(s.cup, appliedSquad, s.startingXI, s.bench, cupLookup);
+          const updatedCup = advanceCupRound(s.cup, appliedSquad, s.startingXI, s.bench, cupLookup, cupHandler);
           let finCup = updatedCup;
           if (finCup.pendingPlayerMatch) {
             const pm = finCup.pendingPlayerMatch;
@@ -310,7 +312,7 @@ export function useGainPopupHandler({
           s.setCup(finCup);
           s.setCalendarIndex(prev => prev + 1);
         } else {
-          const updatedCup = advanceCupRound(s.cup, appliedSquad, s.startingXI, s.bench, cupLookup);
+          const updatedCup = advanceCupRound(s.cup, appliedSquad, s.startingXI, s.bench, cupLookup, cupHandler);
           s.setCup(updatedCup);
         }
       }

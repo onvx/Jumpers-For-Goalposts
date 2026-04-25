@@ -636,7 +636,12 @@ export function initCup(playerTeamName, leagueTier, currentRosters) {
 
 // teamLookup: (name, tier) => storedTeamObject | null — provided by App.jsx so cup
 // AI vs AI matches use the same persistent squads as league simulation.
-export function advanceCupRound(cup, playerSquad, startingXI, bench, teamLookup = null) {
+//
+// onAIMatchSimulated: (homeTeam, awayTeam, simResult, roundIdx) => void
+// Called once per AI vs AI match that ran simulateMatch with full squads, so
+// callers can feed the events into the canonical cup-stats accumulator.
+// Skipped on the strength-formula fallback path (no events available).
+export function advanceCupRound(cup, playerSquad, startingXI, bench, teamLookup = null, onAIMatchSimulated = null) {
   const roundIdx = cup.currentRound;
   if (roundIdx >= cup.rounds.length) return cup;
 
@@ -657,12 +662,19 @@ export function advanceCupRound(cup, playerSquad, startingXI, bench, teamLookup 
     // AI vs AI — use stored squads via simulateMatch for authentic results.
     // Falls back to strength formula only when squad data isn't available.
     let hg, ag;
+    let goalScorers = null;
     const homeTeam = teamLookup?.(match.home.name, match.home.tier);
     const awayTeam = teamLookup?.(match.away.name, match.away.tier);
     if (homeTeam?.squad && awayTeam?.squad) {
       const result = simulateMatch(homeTeam, awayTeam, null, null, false, 1.0);
       hg = result.homeGoals;
       ag = result.awayGoals;
+      goalScorers = (result.events || [])
+        .filter(e => e.type === "goal")
+        .map(e => ({ name: e.player, assister: e.assister || null, side: e.side, minute: e.minute }));
+      if (onAIMatchSimulated) {
+        onAIMatchSimulated(homeTeam, awayTeam, result, roundIdx);
+      }
     } else {
       const homeAdj = (match.home.strength || 0.5) + (Math.random() * 0.3 - 0.15);
       const awayAdj = (match.away.strength || 0.5) + (Math.random() * 0.3 - 0.15);
@@ -676,12 +688,12 @@ export function advanceCupRound(cup, playerSquad, startingXI, bench, teamLookup 
       const penWinner = penHome > penAway ? match.home : match.away;
       return {
         ...match,
-        result: { homeGoals: hg, awayGoals: ag, winner: penWinner, penalties: { homeScore: penHome, awayScore: penAway } },
+        result: { homeGoals: hg, awayGoals: ag, winner: penWinner, penalties: { homeScore: penHome, awayScore: penAway }, goalScorers: goalScorers || [] },
       };
     }
     return {
       ...match,
-      result: { homeGoals: hg, awayGoals: ag, winner: hg > ag ? match.home : match.away },
+      result: { homeGoals: hg, awayGoals: ag, winner: hg > ag ? match.home : match.away, goalScorers: goalScorers || [] },
     };
   });
 
