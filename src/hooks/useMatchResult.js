@@ -90,7 +90,7 @@ export function useMatchResult({
       while (newCalIdx < cal.length && cal[newCalIdx]?.type === "cup" && s.cup?.playerEliminated) {
         if (s.cup && s.cup.currentRound < s.cup.rounds.length) {
           const skipLookup = (name, tier) => (tier === s.leagueTier ? currentLeague : s.allLeagueStates?.[tier])?.teams?.find(t => t.name === name) || null;
-          const skipCupHandler = makeCupAIMatchHandler(s.setSeasonCupStats, s.seasonNumber, s.cup?.cupName || "Cup");
+          const skipCupHandler = makeCupAIMatchHandler(s.setSeasonCupStatsByCup, s.seasonNumber, s.cup?.cupName || "Cup");
           const skipCup = advanceCupRound(s.cup, s.squad, s.startingXI, s.bench, skipLookup, skipCupHandler);
           let finCup = skipCup;
           if (finCup.pendingPlayerMatch) {
@@ -138,7 +138,7 @@ export function useMatchResult({
         s.setLeagueRosters(swapResult.rosters);
         const newSeasonUnlocks = collectSeasonEndAchievements({
           position, currentTier, moveType, newTier, lastSeasonMove: s.lastSeasonMove, league: currentLeague, leagueResults: s.leagueResults,
-          playerSeasonStats: s.playerSeasonStats, seasonLeagueStats: s.seasonLeagueStats,
+          playerSeasonStats: s.playerSeasonStats, seasonLeagueStats: s.seasonLeagueStatsByTier?.[currentTier] || null,
           beatenTeams: s.beatenTeams, unlockedAchievements: s.unlockedAchievements, clubHistory: s.clubHistory,
           wonCupThisSeason: s.unlockedAchievements.has("cup_winner"),
           squad: s.squad, prevSeasonSquadIds: s.prevSeasonSquadIds, seasonNumber: s.seasonNumber,

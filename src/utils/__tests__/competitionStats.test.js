@@ -4,13 +4,14 @@ import {
   accumulateMatchStats,
   accumulateCupMatch,
   rollIntoAllTime,
-  creditAllTimeScorers,
   getTopScorers,
   getTopAssisters,
   getMostYellows,
   getMostReds,
   leagueMatchId,
   cupMatchId,
+  cupKey,
+  makeCupAIMatchHandler,
 } from "../competitionStats.js";
 
 // Test fixtures ---------------------------------------------------------------
@@ -326,6 +327,62 @@ describe("cupMatchId", () => {
   });
 });
 
+describe("cupKey", () => {
+  it("slugs the cup name into a stable index key", () => {
+    expect(cupKey("Clubman Cup")).toBe("Clubman_Cup");
+    expect(cupKey("Sub Money Cup")).toBe("Sub_Money_Cup");
+    expect(cupKey("Global Cup")).toBe("Global_Cup");
+  });
+
+  it("collapses non-alphanumerics", () => {
+    expect(cupKey("FA-Cup!")).toBe("FA_Cup");
+    expect(cupKey("  Padded  ")).toBe("Padded");
+  });
+
+  it("handles missing names without throwing", () => {
+    expect(cupKey(undefined)).toBe("_");
+    expect(cupKey(null)).toBe("_");
+  });
+});
+
+describe("makeCupAIMatchHandler — routes by cupKey", () => {
+  it("writes events into seasonCupStatsByCup[cupKey] for the named cup", () => {
+    const home = { name: "Athletic", squad: [{ id: "ah1", name: "Iker", position: "ST" }] };
+    const away = { name: "Sporting", squad: [{ id: "sa1", name: "Diogo", position: "CM" }] };
+    let store = {};
+    const setSeasonCupStatsByCup = (updater) => { store = updater(store); };
+    const handler = makeCupAIMatchHandler(setSeasonCupStatsByCup, 1, "Clubman Cup");
+    handler(home, away, {
+      homeGoals: 2, awayGoals: 0,
+      events: [
+        { type: "goal", side: "home", playerId: "ah1", player: "Iker", minute: 30 },
+        { type: "goal", side: "home", playerId: "ah1", player: "Iker", minute: 70 },
+      ],
+    }, 0);
+    expect(store["Clubman_Cup"].players["ah1"].goals).toBe(2);
+    expect(store["Sub_Money_Cup"]).toBeUndefined();
+  });
+
+  it("different cup names accumulate into different slots", () => {
+    const home = { name: "City", squad: [{ id: "p1", name: "Joe", position: "ST" }] };
+    const away = { name: "Rovers", squad: [{ id: "p2", name: "Mike", position: "ST" }] };
+    let store = {};
+    const set = (u) => { store = u(store); };
+    makeCupAIMatchHandler(set, 1, "Clubman Cup")(home, away, {
+      homeGoals: 1, awayGoals: 0,
+      events: [{ type: "goal", side: "home", playerId: "p1", player: "Joe", minute: 30 }],
+    }, 0);
+    makeCupAIMatchHandler(set, 1, "Sub Money Cup")(home, away, {
+      homeGoals: 0, awayGoals: 1,
+      events: [{ type: "goal", side: "away", playerId: "p2", player: "Mike", minute: 60 }],
+    }, 0);
+    expect(store["Clubman_Cup"].players["p1"].goals).toBe(1);
+    expect(store["Sub_Money_Cup"].players["p2"].goals).toBe(1);
+    expect(store["Clubman_Cup"].players["p2"]).toBeUndefined();
+    expect(store["Sub_Money_Cup"].players["p1"]).toBeUndefined();
+  });
+});
+
 describe("rollIntoAllTime", () => {
   function seasonWith(players) {
     return { players, processedMatches: {} };
@@ -368,49 +425,6 @@ describe("rollIntoAllTime", () => {
     const season = { players: { "p1": { key: "p1", name: "A", goals: 1, assists: 0, yellows: 0, reds: 0 } }, processedMatches: { "match-x": true } };
     const next = rollIntoAllTime(allTime, season);
     expect(next.processedMatches["match-x"]).toBeUndefined();
-  });
-});
-
-describe("creditAllTimeScorers", () => {
-  const mw0 = "alltime-ai-league:S1:T3:MD0";
-  const mw1 = "alltime-ai-league:S1:T3:MD1";
-
-  it("credits goals + assists by composite key", () => {
-    const next = creditAllTimeScorers(emptyCompetitionStats(), mw0, [
-      { teamName: "Rovers", name: "Joe", assister: "Mike" },
-      { teamName: "Rovers", name: "Joe" },
-    ]);
-    const joeKey = Object.keys(next.players).find(k => next.players[k].name === "Joe");
-    const mikeKey = Object.keys(next.players).find(k => next.players[k].name === "Mike");
-    expect(next.players[joeKey].goals).toBe(2);
-    expect(next.players[mikeKey].assists).toBe(1);
-    expect(next.processedMatches[mw0]).toBe(true);
-  });
-
-  it("is idempotent across the same creditId — same input returns same reference", () => {
-    let stats = creditAllTimeScorers(emptyCompetitionStats(), mw0, [
-      { teamName: "Rovers", name: "Joe" },
-    ]);
-    const same = creditAllTimeScorers(stats, mw0, [
-      { teamName: "Rovers", name: "Joe" },
-    ]);
-    expect(same).toBe(stats);
-    const joeKey = Object.keys(stats.players).find(k => stats.players[k].name === "Joe");
-    expect(stats.players[joeKey].goals).toBe(1);
-  });
-
-  it("processes different creditIds independently", () => {
-    let stats = creditAllTimeScorers(emptyCompetitionStats(), mw0, [{ teamName: "R", name: "Joe" }]);
-    stats = creditAllTimeScorers(stats, mw1, [{ teamName: "R", name: "Joe" }]);
-    const joeKey = Object.keys(stats.players).find(k => stats.players[k].name === "Joe");
-    expect(stats.players[joeKey].goals).toBe(2);
-  });
-
-  it("returns the input when events array is empty, missing, or creditId omitted", () => {
-    const stats = emptyCompetitionStats();
-    expect(creditAllTimeScorers(stats, mw0, [])).toBe(stats);
-    expect(creditAllTimeScorers(stats, mw0, null)).toBe(stats);
-    expect(creditAllTimeScorers(stats, null, [{ teamName: "R", name: "X" }])).toBe(stats);
   });
 });
 

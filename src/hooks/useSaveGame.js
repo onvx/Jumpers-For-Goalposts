@@ -106,9 +106,10 @@ export function useSaveGame({
         ovrHistory: s.ovrHistory,
         storyArcs: s.storyArcs,
         allTimeLeagueStatsByTier: s.allTimeLeagueStatsByTier,
-        seasonLeagueStats: s.seasonLeagueStats,
+        seasonLeagueStatsByTier: s.seasonLeagueStatsByTier,
         seasonLeagueStatsAvailable: s.seasonLeagueStatsAvailable,
-        seasonCupStats: s.seasonCupStats,
+        seasonCupStatsByCup: s.seasonCupStatsByCup,
+        allTimeCupStatsByCup: s.allTimeCupStatsByCup,
         seasonCupStatsAvailable: s.seasonCupStatsAvailable,
         formation: s.formation,
         slotAssignments: s.slotAssignments,
@@ -572,27 +573,46 @@ export function useSaveGame({
       } else {
         store.setAllTimeLeagueStatsByTier({});
       }
-      const hasCanonicalStats = !!(s.seasonLeagueStats && s.seasonLeagueStats.players);
-      store.setSeasonLeagueStats(hasCanonicalStats ? s.seasonLeagueStats : emptyCompetitionStats());
+      // Season league stats are now per-tier. New saves persist the
+      // tier-keyed object; older canonical saves persisted a single blob
+      // keyed at the player tier — migrate that under s.leagueTier.
+      let seasonByTier = {};
+      if (s.seasonLeagueStatsByTier && typeof s.seasonLeagueStatsByTier === "object") {
+        seasonByTier = s.seasonLeagueStatsByTier;
+      } else if (s.seasonLeagueStats && s.seasonLeagueStats.players) {
+        const tierKey = s.leagueTier || NUM_TIERS;
+        seasonByTier = { [tierKey]: s.seasonLeagueStats };
+      }
+      store.setSeasonLeagueStatsByTier(seasonByTier);
       // Legacy detection: a save without canonical stats whose season has
       // already started cannot be reconstructed reliably. Mark unavailable
       // so the Stats tab shows a notice instead of misleading partials.
       const matchweekProgressed = (s.matchweekIndex || 0) > 0;
+      const hasAnyTierData = Object.keys(seasonByTier).length > 0;
       const explicitFlag = typeof s.seasonLeagueStatsAvailable === "boolean" ? s.seasonLeagueStatsAvailable : null;
       const available = explicitFlag != null
         ? explicitFlag
-        : (hasCanonicalStats || !matchweekProgressed);
+        : (hasAnyTierData || !matchweekProgressed);
       store.setSeasonLeagueStatsAvailable(available);
-      // Cup stats: same legacy detection, gated on whether the cup has
-      // resolved any matches yet (currentRound > 0 or any result populated).
-      const hasCanonicalCupStats = !!(s.seasonCupStats && s.seasonCupStats.players);
-      store.setSeasonCupStats(hasCanonicalCupStats ? s.seasonCupStats : emptyCompetitionStats());
+      // Cup stats are now per-cup. New saves persist seasonCupStatsByCup
+      // and allTimeCupStatsByCup directly. Older canonical saves persisted
+      // a single seasonCupStats blob — we don't fake-attribute that to a
+      // cup key (same reasoning as the league legacy migration), so old
+      // saves start with empty cup stores and the legacy availability flag
+      // marks them unavailable for this season.
+      const seasonCupByCup = (s.seasonCupStatsByCup && typeof s.seasonCupStatsByCup === "object")
+        ? s.seasonCupStatsByCup : {};
+      const allTimeCupByCup = (s.allTimeCupStatsByCup && typeof s.allTimeCupStatsByCup === "object")
+        ? s.allTimeCupStatsByCup : {};
+      store.setSeasonCupStatsByCup(seasonCupByCup);
+      store.setAllTimeCupStatsByCup(allTimeCupByCup);
       const cupProgressed = !!(s.cup && (s.cup.currentRound > 0
         || s.cup.rounds?.some(r => r.matches?.some(m => m.result && !m.result.bye))));
+      const hasAnyCupData = Object.keys(seasonCupByCup).length > 0;
       const explicitCupFlag = typeof s.seasonCupStatsAvailable === "boolean" ? s.seasonCupStatsAvailable : null;
       const cupAvailable = explicitCupFlag != null
         ? explicitCupFlag
-        : (hasCanonicalCupStats || !cupProgressed);
+        : (hasAnyCupData || !cupProgressed);
       store.setSeasonCupStatsAvailable(cupAvailable);
       // Load formation
       if (s.formation && s.formation.length === 11) {

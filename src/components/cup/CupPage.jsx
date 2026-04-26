@@ -5,9 +5,13 @@ import { getPosColor } from "../../utils/calc.js";
 import { displayName } from "../../utils/player.js";
 import { F, C, FONT } from "../../data/tokens";
 import { useMobile } from "../../hooks/useMobile.js";
-import { getTopScorers, getTopAssisters, getMostYellows, getMostReds } from "../../utils/competitionStats.js";
+import { getTopScorers, getTopAssisters, getMostYellows, getMostReds, cupKey as makeCupKey } from "../../utils/competitionStats.js";
 
-export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlayerClick, onTeamClick, seasonCupStats = null, seasonCupStatsAvailable = true }) {
+export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlayerClick, onTeamClick, seasonCupStatsByCup = null, allTimeCupStatsByCup = null, seasonCupStatsAvailable = true }) {
+  // Stats tab + selectors operate on the current cup's slot.
+  const currentCupKey = cup?.cupName ? makeCupKey(cup.cupName) : null;
+  const seasonCupStats = (seasonCupStatsByCup && currentCupKey) ? (seasonCupStatsByCup[currentCupKey] || null) : null;
+  const allTimeCupStats = (allTimeCupStatsByCup && currentCupKey) ? (allTimeCupStatsByCup[currentCupKey] || null) : null;
   const [activeTab, setActiveTab] = useState("bracket");
   const mob = useMobile();
 
@@ -105,6 +109,41 @@ export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlaye
       name: p.name, teamName: p.teamName || "?", reds: p.reds, playerId: p.playerId,
     })),
     [seasonCupStats]
+  );
+
+  // All-time cup leaders for this cup, merged with the in-progress season
+  // so a current-season scorer can already appear in the all-time list.
+  const allTimeMerged = React.useMemo(() => {
+    const merged = {};
+    const acc = (entry) => {
+      const k = entry.key;
+      if (!merged[k]) merged[k] = { ...entry, goals: 0, assists: 0, yellows: 0, reds: 0 };
+      merged[k].goals += entry.goals || 0;
+      merged[k].assists += entry.assists || 0;
+      merged[k].yellows += entry.yellows || 0;
+      merged[k].reds += entry.reds || 0;
+      if (entry.name) merged[k].name = entry.name;
+      if (entry.teamName) merged[k].teamName = entry.teamName;
+    };
+    Object.values(allTimeCupStats?.players || {}).forEach(acc);
+    Object.values(seasonCupStats?.players || {}).forEach(acc);
+    return { players: merged, processedMatches: {} };
+  }, [allTimeCupStats, seasonCupStats]);
+  const allTimeTopScorers = React.useMemo(
+    () => getTopScorers(allTimeMerged, 10).map(p => ({ name: p.name, teamName: p.teamName || "?", goals: p.goals })),
+    [allTimeMerged]
+  );
+  const allTimeTopAssists = React.useMemo(
+    () => getTopAssisters(allTimeMerged, 10).map(p => ({ name: p.name, teamName: p.teamName || "?", assists: p.assists })),
+    [allTimeMerged]
+  );
+  const allTimeTopYellows = React.useMemo(
+    () => getMostYellows(allTimeMerged, 10).map(p => ({ name: p.name, teamName: p.teamName || "?", yellows: p.yellows })),
+    [allTimeMerged]
+  );
+  const allTimeTopReds = React.useMemo(
+    () => getMostReds(allTimeMerged, 10).map(p => ({ name: p.name, teamName: p.teamName || "?", reds: p.reds })),
+    [allTimeMerged]
   );
 
   // Team of the Cup — best XI based on cup performance (goals + wins + round reached)
@@ -450,6 +489,21 @@ export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlaye
                       {renderPlayerList("TOP ASSISTS", "🎯", playerTopAssists, "assists", "#38bdf8")}
                       {renderPlayerList("MOST YELLOW CARDS", "🟨", playerTopYellows, "yellows", C.amber)}
                       {renderPlayerList("MOST RED CARDS", "🟥", playerTopReds, "reds", C.red)}
+                      {(allTimeTopScorers.length > 0 || allTimeTopAssists.length > 0
+                        || allTimeTopYellows.length > 0 || allTimeTopReds.length > 0) && (
+                        <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${C.bgInput}` }}>
+                          <div style={{ fontSize: mob ? F.xs : F.sm, color: C.slate, marginBottom: 4, letterSpacing: 1 }}>
+                            🏛️ {cup?.cupName?.toUpperCase() || "CUP"} — ALL-TIME
+                          </div>
+                          <div style={{ fontSize: mob ? F.micro : F.xs, color: C.bgInput, marginBottom: 12 }}>
+                            Cumulative across every season this cup has been played
+                          </div>
+                          {renderPlayerList("ALL-TIME TOP SCORERS", "⚽", allTimeTopScorers, "goals", C.green)}
+                          {renderPlayerList("ALL-TIME TOP ASSISTS", "🎯", allTimeTopAssists, "assists", "#38bdf8")}
+                          {renderPlayerList("ALL-TIME MOST YELLOW CARDS", "🟨", allTimeTopYellows, "yellows", C.amber)}
+                          {renderPlayerList("ALL-TIME MOST RED CARDS", "🟥", allTimeTopReds, "reds", C.red)}
+                        </div>
+                      )}
                     </>
                   );
                 })()}

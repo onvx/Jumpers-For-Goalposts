@@ -10,7 +10,7 @@ import { F, C, FONT } from "../../data/tokens";
 import { useMobile } from "../../hooks/useMobile.js";
 import { getTopScorers, getTopAssisters, getMostYellows, getMostReds } from "../../utils/competitionStats.js";
 
-export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, playerSeasonStats, playerRatingTracker, squad, startingXI, bench, seasonNumber, clubHistory, allTimeLeagueStatsByTier, allLeagueStates, leagueTier: leagueTierProp, onPlayerClick, onTeamClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, dynastyCupBracket, miniTournamentBracket, ovrCap = 20, seasonLeagueStats = null, seasonLeagueStatsAvailable = true }) {
+export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, playerSeasonStats, playerRatingTracker, squad, startingXI, bench, seasonNumber, clubHistory, allTimeLeagueStatsByTier, allLeagueStates, leagueTier: leagueTierProp, onPlayerClick, onTeamClick, clubRelationships, transferFocus, onSetFocus, onRemoveFocus, onReplaceFocus, dynastyCupBracket, miniTournamentBracket, ovrCap = 20, seasonLeagueStatsByTier = null, seasonLeagueStatsAvailable = true }) {
   const [activeTab, setActiveTab] = useState("leagues");
   const [selectedMD, setSelectedMD] = useState(Math.max(0, matchweekIndex - 1));
   const [viewTeamData, setViewTeamData] = useState(null); // { team, tableRow, seasonGoals, seasonAssists }
@@ -24,7 +24,23 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
     if (gdB !== gdA) return gdB - gdA;
     return b.goalsFor - a.goalsFor;
   });
-  const tier = league.tier || leagueTier || NUM_TIERS;
+  // Player's own tier (the one their squad plays in).
+  const tier = league.tier || leagueTierProp || NUM_TIERS;
+  // The tier the user is currently inspecting in the UI. Stats and All-Time
+  // tabs follow this so the user can browse other divisions' record books
+  // via the tier chips. Falls back to the player's tier when unset.
+  const displayTier = selectedSimTier ?? tier;
+  const isPlayerDisplayTier = displayTier === tier;
+  const displayLeague = isPlayerDisplayTier ? league : (allLeagueStates?.[displayTier] || null);
+  // Per-tier season + all-time slots for whichever tier is being inspected.
+  const seasonLeagueStats = (seasonLeagueStatsByTier && displayTier != null)
+    ? (seasonLeagueStatsByTier[displayTier] || null)
+    : null;
+  // The TOTS heuristic still uses the player's own-tier season blob — it's
+  // a player-team feature, not a per-division browsable view.
+  const playerTierSeasonLeagueStats = (seasonLeagueStatsByTier && tier != null)
+    ? (seasonLeagueStatsByTier[tier] || null)
+    : null;
   const canPromote = tier > 1;
   const canRelegate = tier < NUM_TIERS;
   const tableCols = mob ? "35px 1fr 45px 51px 59px" : "40px 1fr 47px 47px 47px 47px 59px 59px 59px";
@@ -35,12 +51,12 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
   // Tiers 5–11 always visible; tiers 1–4 unlock once the player has reached them
   const visibleTiers = Array.from({ length: NUM_TIERS }, (_, i) => i + 1).filter(t2 => t2 >= 5 || t2 >= highestTierReached).reverse();
 
-  // Local "name|teamIdx" maps derived from the canonical seasonLeagueStats
-  // store. Kept for the TOTS heuristic and AI-team panel which were originally
-  // written against this shape.
+  // Local "name|teamIdx" maps derived from the player's tier season blob.
+  // Used by the TOTS heuristic and the AI-team panel onClick (player-tier
+  // only path) which were originally written against this shape.
   const leagueStats = React.useMemo(() => {
     const scorers = {}, assisters = {}, cards = {};
-    const players = seasonLeagueStats?.players || {};
+    const players = playerTierSeasonLeagueStats?.players || {};
     for (const p of Object.values(players)) {
       const teamIdx = p.teamId;
       if (teamIdx == null) continue;
@@ -51,30 +67,33 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
       if (totalCards > 0) cards[key] = totalCards;
     }
     return { scorers, assisters, cards };
-  }, [seasonLeagueStats]);
+  }, [playerTierSeasonLeagueStats]);
 
-  // Stats tab is canonical-only. When seasonLeagueStatsAvailable is false
-  // (legacy save mid-season), the tab shows an unavailable notice instead.
+  // Stats tab is canonical-only and follows the selected tier chip via
+  // displayTier. The legacy "unavailable" notice only applies when the user
+  // is looking at their own tier (other tiers either have populated data or
+  // legitimately empty data — never legacy-unavailable).
+  const displayTeams = displayLeague?.teams || [];
   const mapToCanonicalRow = (p, valueField) => ({
     name: p.name, teamName: p.teamName || "?", [valueField]: p[valueField],
-    isPlayer: league.teams[p.teamId]?.isPlayer || false,
+    isPlayer: displayTeams[p.teamId]?.isPlayer || false,
     playerId: p.playerId,
   });
   const topScorers = React.useMemo(
     () => getTopScorers(seasonLeagueStats, 20).map(p => mapToCanonicalRow(p, "goals")),
-    [seasonLeagueStats, league.teams]
+    [seasonLeagueStats, displayTeams]
   );
   const topAssists = React.useMemo(
     () => getTopAssisters(seasonLeagueStats, 20).map(p => mapToCanonicalRow(p, "assists")),
-    [seasonLeagueStats, league.teams]
+    [seasonLeagueStats, displayTeams]
   );
   const topYellows = React.useMemo(
     () => getMostYellows(seasonLeagueStats, 15).map(p => mapToCanonicalRow(p, "yellows")),
-    [seasonLeagueStats, league.teams]
+    [seasonLeagueStats, displayTeams]
   );
   const topReds = React.useMemo(
     () => getMostReds(seasonLeagueStats, 15).map(p => mapToCanonicalRow(p, "reds")),
-    [seasonLeagueStats, league.teams]
+    [seasonLeagueStats, displayTeams]
   );
 
   // Team of the Season
@@ -169,6 +188,33 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
     }
     return xi;
   }, [leagueStats, league.teams, league.table, squad, playerSeasonStats, playerRatingTracker, matchweekIndex, teamName]);
+
+  // Reusable tier-chip strip — used by leagues, stats, and alltime tabs so
+  // the user can browse other divisions' tables, current-season stats, and
+  // all-time records via the same control.
+  const renderTierChips = () => (
+    <div style={{ display: "flex", gap: 4, marginBottom: 14, flexWrap: "wrap" }}>
+      {visibleTiers.map(t2 => {
+        const def = LEAGUE_DEFS[t2];
+        const isActive = t2 === displayTier;
+        return (
+          <button key={t2} onClick={() => setSelectedSimTier(t2)} style={{
+            padding: mob ? "7px 9px" : "7px 12px",
+            fontSize: mob ? F.micro : F.xs,
+            fontFamily: FONT,
+            background: isActive ? `${def?.color}22` : "transparent",
+            border: `1px solid ${isActive ? (def?.color || C.textMuted) : C.bgInput}`,
+            color: isActive ? (def?.color || C.text) : C.textDim,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}>
+            {def?.shortName || t2}
+            {t2 === tier && <span style={{ color: C.green, marginLeft: 3 }}>★</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   const tabStyle = (tab) => ({
     padding: mob ? "10px 13px" : "10px 18px",
@@ -366,20 +412,27 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
         })()}
 
         {/* ===== STATS TAB ===== */}
-        {activeTab === "stats" && !seasonLeagueStatsAvailable && (
-          <div style={{ padding: mob ? "21px 14px" : "26px", textAlign: "center" }}>
-            <div style={{ fontSize: mob ? F.lg : F.xl, color: C.gold, marginBottom: 14, letterSpacing: 1 }}>📊 LEAGUE STATS</div>
-            <div style={{ fontSize: F.md, color: C.textDim, marginBottom: 10, lineHeight: 1.6 }}>
-              Stats unavailable for this season.
-            </div>
-            <div style={{ fontSize: F.sm, color: C.slate, lineHeight: 1.6, maxWidth: 460, margin: "0 auto" }}>
-              This save was loaded from an older version that didn't track player events.
-              Full league stats will resume from next season.
+        {/* Legacy "unavailable" notice only applies to the player's own tier
+            mid-season migration case. For other selected tiers we just show
+            the empty/populated canonical view. */}
+        {activeTab === "stats" && isPlayerDisplayTier && !seasonLeagueStatsAvailable && (
+          <div style={{ padding: mob ? "21px 14px" : "26px" }}>
+            {renderTierChips()}
+            <div style={{ textAlign: "center", marginTop: 18 }}>
+              <div style={{ fontSize: mob ? F.lg : F.xl, color: C.gold, marginBottom: 14, letterSpacing: 1 }}>📊 LEAGUE STATS</div>
+              <div style={{ fontSize: F.md, color: C.textDim, marginBottom: 10, lineHeight: 1.6 }}>
+                Stats unavailable for this season.
+              </div>
+              <div style={{ fontSize: F.sm, color: C.slate, lineHeight: 1.6, maxWidth: 460, margin: "0 auto" }}>
+                This save was loaded from an older version that didn't track player events.
+                Full league stats will resume from next season.
+              </div>
             </div>
           </div>
         )}
-        {activeTab === "stats" && seasonLeagueStatsAvailable && (
+        {activeTab === "stats" && (!isPlayerDisplayTier || seasonLeagueStatsAvailable) && (
           <div style={{ padding: mob ? "21px 14px" : "26px" }}>
+            {renderTierChips()}
             {/* Top Scorers */}
             <div style={{ fontSize: mob ? F.lg : F.xl, color: C.gold, marginBottom: 14, letterSpacing: 1 }}>🥇 TOP SCORERS</div>
             {topScorers.length > 0 ? (
@@ -584,8 +637,9 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
         {/* ===== ALL-TIME TAB ===== */}
         {/* ===== LEAGUES TAB ===== */}
         {activeTab === "leagues" && (() => {
-          const displayTier = selectedSimTier ?? tier;
-          const isPlayerTier = displayTier === tier;
+          // displayTier + isPlayerDisplayTier are derived at the top of the
+          // component now so Stats/All-Time can follow chip selection too.
+          const isPlayerTier = isPlayerDisplayTier;
           const totalMDs = league.fixtures?.length || 18;
           const leagueDef2 = LEAGUE_DEFS[displayTier];
           const leagueColor2 = leagueDef2?.color || C.textMuted;
@@ -629,28 +683,7 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
 
           return (
             <div style={{ padding: mob ? "16px 10px" : "20px" }}>
-              {/* Tier selector chips */}
-              <div style={{ display: "flex", gap: 4, marginBottom: 14, flexWrap: "wrap" }}>
-                {visibleTiers.map(t2 => {
-                  const def = LEAGUE_DEFS[t2];
-                  const isActive = t2 === displayTier;
-                  return (
-                    <button key={t2} onClick={() => setSelectedSimTier(t2)} style={{
-                      padding: mob ? "7px 9px" : "7px 12px",
-                      fontSize: mob ? F.micro : F.xs,
-                      fontFamily: FONT,
-                      background: isActive ? `${def?.color}22` : "transparent",
-                      border: `1px solid ${isActive ? (def?.color || C.textMuted) : C.bgInput}`,
-                      color: isActive ? (def?.color || C.text) : C.textDim,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    }}>
-                      {def?.shortName || t2}
-                      {t2 === tier && <span style={{ color: C.green, marginLeft: 3 }}>★</span>}
-                    </button>
-                  );
-                })}
-              </div>
+              {renderTierChips()}
 
               {/* League name + matchday progress */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
@@ -821,14 +854,13 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
         })()}
 
         {activeTab === "alltime" && (() => {
-          // All-time league records are tier-scoped: read only the current
-          // tier's slot from allTimeLeagueStatsByTier and merge in the
-          // current season's canonical seasonLeagueStats (player-tier only).
-          // No team-name filter — the tier slot itself defines what counts
-          // as a Div N record. Promoted/relegated team entries stay where
-          // they were earned, regardless of which division they're in now.
-          const currentTier = league?.tier || tier;
-          const tierAllTime = allTimeLeagueStatsByTier?.[currentTier] || null;
+          // All-time league records are tier-scoped: read the selected tier's
+          // slot (via displayTier — chip selection) from allTimeLeagueStatsByTier
+          // and merge in that tier's in-progress season blob. No team-name
+          // filter — the tier slot itself defines what counts as a Div N
+          // record. Promoted/relegated team entries stay where they were
+          // earned, regardless of which division they're in now.
+          const tierAllTime = allTimeLeagueStatsByTier?.[displayTier] || null;
           const merged = {};
           const acc = (entry) => {
             const key = entry.key;
@@ -851,7 +883,7 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
             name: p.name, teamName: p.teamName,
             goals: p.goals, assists: p.assists,
             cards: (p.yellows || 0) + (p.reds || 0),
-            isPlayerTeam: p.teamName === teamName,
+            isPlayerTeam: p.teamName === teamName && isPlayerDisplayTier,
           }));
 
           const scorerList = rows.filter(r => r.goals > 0).sort((a, b) => b.goals - a.goals).slice(0, 20);
@@ -886,11 +918,13 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
             </div>
           );
 
+          const displayDef = LEAGUE_DEFS[displayTier];
           return (
             <div style={{ padding: mob ? "16px 10px" : "20px" }}>
-              <div style={{ fontSize: mob ? F.sm : F.md, color: C.gold, marginBottom: 4, letterSpacing: 1 }}>🏛️ LEAGUE ALL-TIME RECORDS</div>
+              {renderTierChips()}
+              <div style={{ fontSize: mob ? F.sm : F.md, color: displayDef?.color || C.gold, marginBottom: 4, letterSpacing: 1 }}>🏛️ {displayDef?.name?.toUpperCase() || "LEAGUE"} ALL-TIME RECORDS</div>
               <div style={{ fontSize: mob ? F.micro : F.xs, color: C.slate, marginBottom: 16 }}>
-                Cumulative stats across all seasons
+                Cumulative goals/assists/cards earned in this division across all seasons
               </div>
               {renderAllTimeList("TOP SCORERS", "⚽", scorerList, p => p.goals)}
               {renderAllTimeList("TOP ASSISTS", "🎯", assisterList, p => p.assists)}
