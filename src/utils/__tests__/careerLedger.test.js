@@ -438,6 +438,32 @@ describe("retirement read paths via findCareerKey — Bandon regression #2", () 
     expect(key).toBe("Tim");
     expect(playerCareers[key].apps).toBe(200);
   });
+
+  it("retiree snapshot must carry `id` for playerId-first resolution to work", () => {
+    // Mirrors the real summerData.retirees data shape feeding the
+    // testimonial-metadata write path. If `id` is dropped from the snapshot,
+    // findCareerKey falls back to name-only resolution and a renamed player
+    // misses their career entry. The fix is to keep `id` in the snapshot.
+    const playerCareers = {
+      "Old Name": {
+        playerId: "p1", goals: 30, apps: 80, seasons: [], competitions: {},
+      },
+    };
+    const liveSquad = [{ id: "p1", name: "New Name", position: "ST", age: 36, attrs: {}, nationality: "🏴" }];
+
+    // CORRECT snapshot — carries id
+    const goodSnapshot = liveSquad.map(p => ({ id: p.id, name: p.name, position: p.position, age: p.age, attrs: p.attrs, nationality: p.nationality }));
+    const goodKey = findCareerKey(playerCareers, { playerId: goodSnapshot[0].id, name: goodSnapshot[0].name });
+    expect(goodKey).toBe("Old Name");
+
+    // BROKEN snapshot — drops id (regression we're guarding against)
+    const badSnapshot = liveSquad.map(p => ({ name: p.name, position: p.position, age: p.age, attrs: p.attrs, nationality: p.nationality }));
+    const badKey = findCareerKey(playerCareers, { playerId: badSnapshot[0].id, name: badSnapshot[0].name });
+    // Without id in the snapshot, resolver falls through to name-only
+    // and misses the renamed player's existing career.
+    expect(badKey).toBe("New Name");
+    expect(playerCareers[badKey]).toBeUndefined();
+  });
 });
 
 describe("deriveCupLabels", () => {

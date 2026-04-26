@@ -5947,7 +5947,7 @@ function FruitCigs() {
           });
           setSummerData(prev => ({
             ...prev,
-            retirees: retirees.map(p => ({ name: p.name, position: p.position, age: p.age, attrs: { ...p.attrs }, nationality: p.nationality })),
+            retirees: retirees.map(p => ({ id: p.id, name: p.name, position: p.position, age: p.age, attrs: { ...p.attrs }, nationality: p.nationality })),
             youthCandidates: candidates,
             preRetirementSquad,
             weeksLeft: 3,
