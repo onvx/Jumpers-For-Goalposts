@@ -76,6 +76,44 @@ export function getInitial(name) {
 }
 
 /**
+ * Group goals by scorer within each side. One entry per unique scorer,
+ * preserving the side-relative event order of their *first* goal so the
+ * strip reads chronologically.
+ *
+ * Returns:
+ *   {
+ *     home: [{ player, goals: [{ minute, assister }, ...] }, ...],
+ *     away: [{ player, goals: [{ minute, assister }, ...] }, ...]
+ *   }
+ *
+ * A scorer with two goals appears once with both minutes/assists in
+ * `goals`. The renderer can collapse them into a single row
+ * ("Watkins 28', 31'") instead of stacking duplicate rows.
+ */
+export function groupGoalsByScorer(events) {
+  const out = { home: [], away: [] };
+  if (!Array.isArray(events)) return out;
+  const indexBySide = { home: new Map(), away: new Map() };
+  for (const evt of events) {
+    if (!evt || evt.type !== "goal") continue;
+    if (evt.side !== "home" && evt.side !== "away") continue;
+    const player = evt.player || "";
+    const goal = {
+      minute: typeof evt.minute === "number" ? evt.minute : null,
+      assister: evt.assister || null,
+    };
+    const idx = indexBySide[evt.side];
+    if (!idx.has(player)) {
+      const entry = { player, goals: [] };
+      idx.set(player, entry);
+      out[evt.side].push(entry);
+    }
+    idx.get(player).goals.push(goal);
+  }
+  return out;
+}
+
+/**
  * Build a Map of full player name -> compact display name for mobile
  * scorer ledgers, applying smart disambiguation across the match's
  * combined squad pool.

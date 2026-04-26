@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { F, C, FONT } from "../../data/tokens";
-import { buildGoalStrip, buildScorerDisplayMap, formatScorerName } from "../../utils/matchEvents.js";
+import { groupGoalsByScorer, buildScorerDisplayMap, formatScorerName } from "../../utils/matchEvents.js";
 
 /**
  * Persistent scorer/assister strip rendered under the matchday scoreline.
@@ -12,8 +12,10 @@ import { buildGoalStrip, buildScorerDisplayMap, formatScorerName } from "../../u
  * in step with the commentary feed in slow/fast/highlights modes and is
  * fully populated on arrival for instant matches.
  *
- * Mobile renders a compact "31' Watkins" goal ledger (no assists, smart
- * disambiguated surnames). Desktop keeps the fuller scorer/assister view.
+ * Goals are grouped by scorer so a brace becomes one row
+ * ("28', 31' Watkins" on mobile / "Watkins 28' (Yorke), 31'" on desktop)
+ * rather than two stacked rows. Mobile drops assists; desktop keeps them
+ * per goal where they exist.
  */
 export function ScorerStrip({
   events,
@@ -23,7 +25,7 @@ export function ScorerStrip({
   awayIsPlayer = false,
   isMobile = false,
 }) {
-  const { home, away } = useMemo(() => buildGoalStrip(events), [events]);
+  const { home, away } = useMemo(() => groupGoalsByScorer(events), [events]);
 
   // Mobile-only — disambiguated surname map across the combined match squads.
   const displayMap = useMemo(() => {
@@ -36,10 +38,15 @@ export function ScorerStrip({
 
   if (home.length === 0 && away.length === 0) return null;
 
-  // === Mobile compact ledger ("31' Watkins") ===
+  // === Mobile compact ledger ("28', 31' Watkins" — no assists) ===
   if (isMobile) {
-    const renderRow = (g, key, alignRight) => {
-      const name = displayMap?.[g.player] ?? formatScorerName(g.player);
+    const minutesStr = (entry) => entry.goals
+      .map(g => g.minute != null ? `${g.minute}'` : "")
+      .filter(Boolean)
+      .join(", ");
+    const renderEntry = (entry, key, alignRight) => {
+      const name = displayMap?.[entry.player] ?? formatScorerName(entry.player);
+      const mins = minutesStr(entry);
       return (
         <div key={key} style={{
           fontSize: F.xs, lineHeight: 1.6, color: C.text,
@@ -49,11 +56,11 @@ export function ScorerStrip({
           {alignRight ? (
             <>
               <span>{name}</span>
-              {g.minute != null && <span style={{ color: C.textMuted, marginLeft: 4 }}>{g.minute}'</span>}
+              {mins && <span style={{ color: C.textMuted, marginLeft: 4 }}>{mins}</span>}
             </>
           ) : (
             <>
-              {g.minute != null && <span style={{ color: C.textMuted, marginRight: 4 }}>{g.minute}'</span>}
+              {mins && <span style={{ color: C.textMuted, marginRight: 4 }}>{mins}</span>}
               <span>{name}</span>
             </>
           )}
@@ -76,36 +83,41 @@ export function ScorerStrip({
           borderLeft: homeIsPlayer ? `2px solid ${C.green}` : "none",
           paddingLeft: homeIsPlayer ? 6 : 0,
         }}>
-          {home.map((g, i) => renderRow(g, `h-${i}`, false))}
+          {home.map((entry, i) => renderEntry(entry, `h-${i}`, false))}
         </div>
         <div style={{
           flex: 1, minWidth: 0,
           borderRight: awayIsPlayer ? `2px solid ${C.green}` : "none",
           paddingRight: awayIsPlayer ? 6 : 0,
         }}>
-          {away.map((g, i) => renderRow(g, `a-${i}`, true))}
+          {away.map((entry, i) => renderEntry(entry, `a-${i}`, true))}
         </div>
       </div>
     );
   }
 
-  // === Desktop full version ("D. Yorke 37' (R. Keane)") ===
-  const renderGoal = (g, key) => (
-    <div key={key} style={{
-      fontSize: F.sm, lineHeight: 1.5, color: C.text,
-      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-    }}>
-      <span>{formatScorerName(g.player)}</span>
-      {g.minute != null && (
-        <span style={{ color: C.textMuted, marginLeft: 4 }}>{g.minute}'</span>
-      )}
-      {g.assister && (
-        <span style={{ color: C.textDim, marginLeft: 4 }}>
-          ({formatScorerName(g.assister)})
-        </span>
-      )}
-    </div>
-  );
+  // === Desktop full version ("Watkins 28' (Yorke), 31'") ===
+  // Goals are grouped per scorer; each goal can carry its own assister.
+  // Comma-separated minute parts keep the line compact even for braces.
+  const renderEntry = (entry, key) => {
+    const parts = entry.goals.map(g => {
+      const min = g.minute != null ? `${g.minute}'` : "";
+      return g.assister ? `${min} (${formatScorerName(g.assister)})` : min;
+    }).filter(Boolean);
+    return (
+      <div key={key} style={{
+        fontSize: F.sm, lineHeight: 1.5, color: C.text,
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>
+        <span>{formatScorerName(entry.player)}</span>
+        {parts.length > 0 && (
+          <span style={{ color: C.textMuted, marginLeft: 4 }}>
+            {parts.join(", ")}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div style={{
@@ -123,14 +135,14 @@ export function ScorerStrip({
         borderLeft: homeIsPlayer ? `2px solid ${C.green}` : "none",
         paddingLeft: homeIsPlayer ? 8 : 0,
       }}>
-        {home.map((g, i) => renderGoal(g, `h-${i}`))}
+        {home.map((entry, i) => renderEntry(entry, `h-${i}`))}
       </div>
       <div style={{
         flex: 1, minWidth: 0, textAlign: "right",
         borderRight: awayIsPlayer ? `2px solid ${C.green}` : "none",
         paddingRight: awayIsPlayer ? 8 : 0,
       }}>
-        {away.map((g, i) => renderGoal(g, `a-${i}`))}
+        {away.map((entry, i) => renderEntry(entry, `a-${i}`))}
       </div>
     </div>
   );
