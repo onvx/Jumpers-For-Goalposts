@@ -391,6 +391,55 @@ describe("retirement metadata via findCareerKey — Bandon regression", () => {
   });
 });
 
+describe("retirement read paths via findCareerKey — Bandon regression #2", () => {
+  // Pins the retirement read pattern used in App.jsx's SeasonEndReveal /
+  // Testimonial / notable-retiree-inbox blocks: given a renamed retiree
+  // whose career is stored under the OLD name with playerId, the read
+  // pattern `findCareerKey(...) -> playerCareers[key]` still surfaces the
+  // historical totals so the Departed summary, Testimonial threshold, and
+  // notable-retirement message all behave correctly.
+  it("renamed retiree's career apps/goals still surface for read paths", () => {
+    const playerCareers = {
+      "Old Name": {
+        playerId: "p1",
+        goals: 32, assists: 10, apps: 95, motm: 5, yellows: 2, reds: 0,
+        seasons: [{ season: 1 }, { season: 2 }, { season: 3 }],
+        competitions: {},
+      },
+    };
+    // Squad / season stats now reflect the new name
+    const retiree = { id: "p1", name: "New Name" };
+    const playerSeasonStats = { "New Name": { apps: 18, goals: 8, assists: 2, motm: 1, yellows: 0, reds: 0 } };
+
+    const key = findCareerKey(playerCareers, { playerId: retiree.id, name: retiree.name });
+    expect(key).toBe("Old Name");
+    const career = playerCareers[key];
+    const currentStats = playerSeasonStats[retiree.name];
+
+    // Departed summary: apps + goals should include both archived + current
+    const apps = (career?.apps || 0) + (currentStats?.apps || 0);
+    const goals = (career?.goals || 0) + (currentStats?.goals || 0);
+    expect(apps).toBe(113); // 95 + 18
+    expect(goals).toBe(40); // 32 + 8
+
+    // Testimonial threshold: 30+ career apps clears trivially with this history
+    const careerApps = (career?.apps || 0) + (currentStats?.apps || 0);
+    expect(careerApps).toBeGreaterThanOrEqual(30);
+
+    // Notable retirement (100+ apps OR 30+ goals)
+    expect(apps >= 100 || goals >= 30).toBe(true);
+  });
+
+  it("name-only fallback still works when no playerId match exists", () => {
+    const playerCareers = {
+      "Tim": { goals: 50, apps: 200, seasons: [] }, // legacy entry, no playerId
+    };
+    const key = findCareerKey(playerCareers, { playerId: "p1", name: "Tim" });
+    expect(key).toBe("Tim");
+    expect(playerCareers[key].apps).toBe(200);
+  });
+});
+
 describe("deriveCupLabels", () => {
   it("includes the active cup's name", () => {
     expect(deriveCupLabels({ cupName: "Clubman Cup" })).toEqual({ Clubman_Cup: "Clubman Cup" });

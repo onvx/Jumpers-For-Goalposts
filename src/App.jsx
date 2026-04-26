@@ -5813,10 +5813,13 @@ function FruitCigs() {
             })(),
           }}
           retirees={(() => {
-            // Build retiree summaries with career stats for the Departed section
+            // Build retiree summaries with career stats for the Departed
+            // section. Resolve the career key by playerId first so renamed
+            // players still surface their historical totals.
             const retiringSquad = useGameStore.getState().squad.filter(p => retiringPlayers.has(p.id));
             return retiringSquad.map(p => {
-              const career = clubHistory?.playerCareers?.[p.name];
+              const careerKey = findCareerKey(clubHistory?.playerCareers, { playerId: p.id, name: p.name });
+              const career = careerKey ? clubHistory?.playerCareers?.[careerKey] : null;
               const seasonStats = playerSeasonStats[p.name];
               const apps = (career?.apps || 0) + (seasonStats?.apps || 0);
               const goals = (career?.goals || 0) + (seasonStats?.goals || 0);
@@ -5833,10 +5836,12 @@ function FruitCigs() {
           const retirees = useGameStore.getState().squad.filter(p => retiringPlayers.has(p.id));
           // Save squad snapshot before retirements for season archiving
           const preRetirementSquad = [...useGameStore.getState().squad];  // Use ref!
-          // Testimonial achievement — retiring player with 30+ career apps
+          // Testimonial achievement — retiring player with 30+ career apps.
+          // playerId-first lookup so a renamed retiree's history still counts.
           if (!unlockedAchievements.has("testimonial")) {
             for (const p of retirees) {
-              const career = clubHistory?.playerCareers?.[p.name];
+              const ckey = findCareerKey(clubHistory?.playerCareers, { playerId: p.id, name: p.name });
+              const career = ckey ? clubHistory?.playerCareers?.[ckey] : null;
               const currentStats = playerSeasonStats[p.name];
               const careerApps = (career?.apps || 0) + (currentStats?.apps || 0);
               if (careerApps >= 30) {
@@ -5854,9 +5859,11 @@ function FruitCigs() {
             tryUnlockAchievement("time_dilation");
           }
           // Inbox: brief retirement notification per notable retiree
-          // (100+ apps OR 30+ goals — same threshold as the SeasonEndReveal Departed section)
+          // (100+ apps OR 30+ goals — same threshold as the SeasonEndReveal
+          // Departed section). playerId-first lookup as above.
           retirees.forEach(p => {
-            const career = clubHistory?.playerCareers?.[p.name];
+            const ckey = findCareerKey(clubHistory?.playerCareers, { playerId: p.id, name: p.name });
+            const career = ckey ? clubHistory?.playerCareers?.[ckey] : null;
             const currentStats = playerSeasonStats[p.name];
             const apps = (career?.apps || 0) + (currentStats?.apps || 0);
             const goals = (career?.goals || 0) + (currentStats?.goals || 0);
