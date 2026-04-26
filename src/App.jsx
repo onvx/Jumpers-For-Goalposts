@@ -17,6 +17,7 @@ import { buildAssistantLineup, buildPresetLineup } from "./utils/lineup.js";
 import { simulateMatch, generatePenaltyShootout, simulateMatchweek } from "./utils/match.js";
 import { initLeagueRosters, sortStandings, collectSeasonEndAchievements, processSeasonSwaps, initLeague, initAILeague, buildSeasonCalendar, initCup, advanceCupRound, buildNextCupRound } from "./utils/league.js";
 import { accumulateMatchStats, accumulateCupMatch, makeCupAIMatchHandler, leagueMatchId, emptyCompetitionStats, rollIntoAllTime, getTopScorers, cupKey as makeCupKey } from "./utils/competitionStats.js";
+import { archivePlayerSeason, deriveCupLabels } from "./utils/careerLedger.js";
 import { checkBreakouts } from "./utils/breakouts.js";
 import { SFX, BGM } from "./utils/sfx.js";
 import * as Tone from "tone";
@@ -5981,20 +5982,38 @@ function FruitCigs() {
                 seasonSubApps: 0,
               }));
 
-            // Archive careers of non-legend retirees
+            // Prestige is a real season-end too — archive the closing
+            // season's career stats before marking retirees, so the final
+            // prestige season isn't dropped from the player ledger.
             const retirees = squad.filter(p => !selectedIds.includes(p.id) && !p.isLegend);
             setClubHistory(prev => {
-              const h = { ...prev, playerCareers: { ...(prev.playerCareers || {}) } };
-              retirees.forEach(p => {
-                const career = h.playerCareers[p.name] || { goals: 0, assists: 0, apps: 0, motm: 0, seasons: [] };
-                career.retiredAttrs = { ...p.attrs };
-                career.retiredPosition = p.position;
-                career.retiredAge = p.age;
-                career.retiredNationality = p.nationality;
-                career.retiredSeason = seasonNumber;
-                h.playerCareers[p.name] = career;
+              let careers = archivePlayerSeason(prev?.playerCareers || {}, {
+                squad,
+                playerSeasonStats,
+                playerTierSeasonStats: seasonLeagueStatsByTier?.[leagueTier] || null,
+                seasonCupStatsByCup,
+                cupLabels: deriveCupLabels(cup),
+                playerRatingTracker,
+                playerRatingNames,
+                season: seasonNumber,
+                tier: leagueTier,
+                leagueName: league?.leagueName,
               });
-              return h;
+              // Mark retirement metadata on retiree careers (post-archive so
+              // the closing season's stats are already folded in).
+              const next = { ...careers };
+              retirees.forEach(p => {
+                const existing = next[p.name] || { goals: 0, assists: 0, apps: 0, motm: 0, seasons: [] };
+                next[p.name] = {
+                  ...existing,
+                  retiredAttrs: { ...p.attrs },
+                  retiredPosition: p.position,
+                  retiredAge: p.age,
+                  retiredNationality: p.nationality,
+                  retiredSeason: seasonNumber,
+                };
+              });
+              return { ...prev, playerCareers: next };
             });
 
             // Keep existing legends from previous prestiges
@@ -6341,30 +6360,19 @@ function FruitCigs() {
                   });
                 }
 
-                // Accumulate player career stats
-                Object.entries(playerSeasonStats).forEach(([name, s]) => {
-                  if (!h.playerCareers[name]) h.playerCareers[name] = { goals: 0, assists: 0, apps: 0, motm: 0, yellows: 0, reds: 0, seasons: [] };
-                  const career = h.playerCareers[name];
-                  career.goals += s.goals || 0;
-                  career.assists = (career.assists || 0) + (s.assists || 0);
-                  career.apps += s.apps || 0;
-                  career.motm += s.motm || 0;
-                  career.yellows += s.yellows || 0;
-                  career.reds += s.reds || 0;
-                  // Compute avg rating — use squad ID, or reverse-lookup from playerRatingNames for traded-away players
-                  const p = archiveSquad.find(pl => pl.name === name);
-                  let _ratingId = p?.id;
-                  if (!_ratingId) { const _entry = Object.entries(playerRatingNames).find(([, n]) => n === name); _ratingId = _entry?.[0]; }
-                  const ratings = _ratingId ? (playerRatingTracker[_ratingId] || []) : [];
-                  const avgRating = ratings.length > 0 ? (ratings.reduce((a, b) => a + b, 0) / ratings.length) : 0;
-                  career.seasons.push({
-                    season: seasonNumber,
-                    position: p?.position || s.position || "?",
-                    avgRating: Math.round(avgRating * 100) / 100,
-                    goals: s.goals || 0,
-                    assists: s.assists || 0,
-                    apps: s.apps || 0,
-                  });
+                // Player career ledger — broad totals + per-tier / per-cup
+                // breakdown from canonical season stores. Pure helper.
+                h.playerCareers = archivePlayerSeason(h.playerCareers, {
+                  squad: archiveSquad,
+                  playerSeasonStats,
+                  playerTierSeasonStats: seasonLeagueStatsByTier?.[currentTierVal] || null,
+                  seasonCupStatsByCup,
+                  cupLabels: deriveCupLabels(cup),
+                  playerRatingTracker,
+                  playerRatingNames,
+                  season: seasonNumber,
+                  tier: currentTierVal,
+                  leagueName: summerData.leagueName,
                 });
 
                 // Store snapshot of retiring players for Testimonial Match ticket
