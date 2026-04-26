@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatScorerName, buildGoalStrip, buildScorerDisplayMap, getSurname, getInitial } from "../matchEvents.js";
+import { formatScorerName, buildGoalStrip, groupGoalsByScorer, buildScorerDisplayMap, getSurname, getInitial } from "../matchEvents.js";
 
 describe("formatScorerName", () => {
   it("converts 'First Last' to 'F. Last'", () => {
@@ -94,6 +94,96 @@ describe("buildGoalStrip", () => {
   it("tolerates a missing assister", () => {
     const strip = buildGoalStrip([awayGoal]);
     expect(strip.away[0].assister).toBeNull();
+  });
+});
+
+describe("groupGoalsByScorer", () => {
+  const homeG = (player, minute, assister = null) => ({ type: "goal", side: "home", player, minute, assister });
+  const awayG = (player, minute, assister = null) => ({ type: "goal", side: "away", player, minute, assister });
+
+  it("returns empty columns for empty/invalid input", () => {
+    expect(groupGoalsByScorer([])).toEqual({ home: [], away: [] });
+    expect(groupGoalsByScorer(null)).toEqual({ home: [], away: [] });
+    expect(groupGoalsByScorer({})).toEqual({ home: [], away: [] });
+  });
+
+  it("groups multiple goals from one scorer into a single entry", () => {
+    const grouped = groupGoalsByScorer([
+      homeG("N. Robinson", 28),
+      homeG("N. Robinson", 31),
+    ]);
+    expect(grouped.home).toHaveLength(1);
+    expect(grouped.home[0]).toEqual({
+      player: "N. Robinson",
+      goals: [
+        { minute: 28, assister: null },
+        { minute: 31, assister: null },
+      ],
+    });
+  });
+
+  it("preserves first-occurrence order between scorers", () => {
+    const grouped = groupGoalsByScorer([
+      homeG("Watkins", 28),
+      homeG("Yorke", 30),
+      homeG("Watkins", 31),
+    ]);
+    expect(grouped.home.map(e => e.player)).toEqual(["Watkins", "Yorke"]);
+    expect(grouped.home[0].goals).toHaveLength(2);
+    expect(grouped.home[1].goals).toHaveLength(1);
+  });
+
+  it("keeps assister info per goal when grouping", () => {
+    const grouped = groupGoalsByScorer([
+      homeG("Watkins", 28, "Yorke"),
+      homeG("Watkins", 31),
+    ]);
+    expect(grouped.home[0].goals).toEqual([
+      { minute: 28, assister: "Yorke" },
+      { minute: 31, assister: null },
+    ]);
+  });
+
+  it("splits by side", () => {
+    const grouped = groupGoalsByScorer([
+      homeG("Watkins", 28),
+      awayG("Smith", 40),
+      homeG("Watkins", 60),
+    ]);
+    expect(grouped.home).toHaveLength(1);
+    expect(grouped.home[0].goals).toHaveLength(2);
+    expect(grouped.away).toHaveLength(1);
+    expect(grouped.away[0].player).toBe("Smith");
+  });
+
+  it("ignores non-goal events", () => {
+    const grouped = groupGoalsByScorer([
+      { type: "card", side: "home", cardPlayer: "Watkins", minute: 12 },
+      { type: "shot", side: "home", player: "Watkins", minute: 18 },
+      homeG("Watkins", 28),
+    ]);
+    expect(grouped.home).toHaveLength(1);
+    expect(grouped.home[0].goals).toHaveLength(1);
+  });
+
+  it("ignores goals with unknown side", () => {
+    const grouped = groupGoalsByScorer([
+      { type: "goal", side: "neutral", player: "Mystery", minute: 50 },
+      homeG("Watkins", 60),
+    ]);
+    expect(grouped.home).toHaveLength(1);
+    expect(grouped.away).toHaveLength(0);
+  });
+
+  it("does not collapse two scorers who share a surname (different full names → different entries)", () => {
+    // Disambiguation is the buildScorerDisplayMap's job; this helper keys
+    // by full name so the two scorers stay as separate entries.
+    const grouped = groupGoalsByScorer([
+      homeG("John Smith", 30),
+      homeG("Kevin Smith", 60),
+    ]);
+    expect(grouped.home).toHaveLength(2);
+    expect(grouped.home.map(e => e.player)).toEqual(["John Smith", "Kevin Smith"]);
   });
 });
 

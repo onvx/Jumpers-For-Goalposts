@@ -212,19 +212,23 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
         transition: "transform 0.4s ease, border-color 0.5s ease",
         overflow: "hidden",
       }}>
-        {/* Scoreboard — fixed height */}
-        <div style={{ textAlign: "center", marginBottom: 4, flexShrink: 0 }}>
+        {/* Scoreboard — fixed height. Rhythm tightened: each section's own
+            margin contributes to a tall stack on mobile; reductions here
+            give the feed/ratings tabs more vertical room. */}
+        <div style={{ textAlign: "center", marginBottom: 2, flexShrink: 0 }}>
           {/* Competition label */}
           {competitionLabel && (
-            <div style={{ fontSize: F.sm, color: C.gold, letterSpacing: 2, marginBottom: 9 }}>
+            <div style={{ fontSize: F.sm, color: C.gold, letterSpacing: 2, marginBottom: 6 }}>
               🏆 {competitionLabel}
             </div>
           )}
 
-          {/* Clock */}
+          {/* Clock + (in highlights mode) a small mode marker tucked beside
+              it so the old gold highlights pill doesn't compete with Feed/Ratings */}
           <div style={{
-            fontSize: F.lg, letterSpacing: 2, marginBottom: 14,
+            fontSize: F.lg, letterSpacing: 2, marginBottom: 8,
             color: finished ? (penPhase === "shooting" ? C.gold : C.slate) : C.green,
+            display: "inline-flex", alignItems: "center", gap: 10,
           }}>
             {penPhase === "shooting" ? (
               <span style={{ animation: "pulse 1s ease infinite" }}>🥅 PENALTY SHOOTOUT</span>
@@ -235,10 +239,15 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
                 ⏱ {minute}'
               </span>
             )}
+            {!finished && isHighlights && (
+              <span style={{ fontSize: F.micro, color: C.gold, letterSpacing: 1, opacity: 0.8 }}>
+                📺 HIGHLIGHTS
+              </span>
+            )}
           </div>
 
           {/* Score */}
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: mob ? 8 : 18, marginBottom: 7 }}>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: mob ? 8 : 18, marginBottom: 4 }}>
             <div style={{ textAlign: "right", flex: 1, minWidth: 0 }}>
               <div
                 onClick={() => {
@@ -299,7 +308,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
           {/* Penalty score line */}
           {penPhase && (
             <div style={{
-              fontSize: F.xl, color: C.gold, marginBottom: 5, letterSpacing: 2,
+              fontSize: F.xl, color: C.gold, marginBottom: 3, letterSpacing: 2,
               animation: penPhase === "shooting" ? "pulse 1.5s ease infinite" : "none",
             }}>
               PENS: {penHomeScore} - {penAwayScore}
@@ -311,7 +320,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
             <div style={{
               display: "inline-block",
               fontSize: F.xs, color: resultColor, fontWeight: "bold",
-              letterSpacing: 1, marginBottom: 4,
+              letterSpacing: 1,
               padding: "2px 8px",
               border: `1px solid ${resultColor}66`,
               background: `${resultColor}15`,
@@ -323,7 +332,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
             <div style={{
               fontSize: F.xl, color: resultColor, fontWeight: "bold",
               textShadow: `0 0 10px ${resultColor}88`,
-              letterSpacing: 3, marginBottom: 4,
+              letterSpacing: 3, marginBottom: 2,
               transition: "color 0.5s ease",
             }}>
               {resultText}
@@ -341,40 +350,35 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
           isMobile={mob}
         />
 
-        {/* Speed controls — fixed slot */}
-        <div style={{ display: "flex", justifyContent: "center", gap: 9, marginBottom: isHighlights ? 5 : 14, minHeight: isHighlights ? 0 : 32, flexShrink: 0 }}>
-          {!finished && isHighlights && (
-            <div style={{ fontSize: F.xs, color: C.gold, padding: "7px 15px", border: `1px solid ${C.gold}44`, background: "rgba(250,204,21,0.06)", letterSpacing: 1 }}>
-              📺 HIGHLIGHTS
-            </div>
-          )}
-          {!finished && !isHighlights && (
-            <>
-              <button onClick={() => { setSpeed(1); onSpeedChange?.(1); wasAlwaysFast.current = false; }} style={{
-                padding: "8px 18px", fontSize: F.sm,
-                background: speed === 1 ? "rgba(74,222,128,0.15)" : "transparent",
-                border: speed === 1 ? `1px solid ${C.green}` : `1px solid ${C.bgInput}`,
-                color: speed === 1 ? C.green : C.slate,
-                fontFamily: FONT, cursor: "pointer",
-              }}>▶ SLOW</button>
-              <button onClick={() => { setSpeed(2); onSpeedChange?.(2); wasAlwaysNormal.current = false; }} style={{
-                padding: "8px 18px", fontSize: F.sm,
-                background: speed === 2 ? "rgba(74,222,128,0.15)" : "transparent",
-                border: speed === 2 ? `1px solid ${C.green}` : `1px solid ${C.bgInput}`,
-                color: speed === 2 ? C.green : C.slate,
-                fontFamily: FONT, cursor: "pointer",
-              }}>▶▶ FAST</button>
-            </>
-          )}
-        </div>
+        {/* Speed controls — only render when actually present (highlights
+            mode shows its marker beside the clock instead). Slot collapses
+            to zero height when there's nothing to show. */}
+        {!finished && !isHighlights && (
+          <div style={{ display: "flex", justifyContent: "center", gap: 9, marginBottom: 10, flexShrink: 0 }}>
+            <button onClick={() => { setSpeed(1); onSpeedChange?.(1); wasAlwaysFast.current = false; }} style={{
+              padding: "6px 16px", fontSize: F.sm,
+              background: speed === 1 ? "rgba(74,222,128,0.15)" : "transparent",
+              border: speed === 1 ? `1px solid ${C.green}` : `1px solid ${C.bgInput}`,
+              color: speed === 1 ? C.green : C.slate,
+              fontFamily: FONT, cursor: "pointer",
+            }}>▶ SLOW</button>
+            <button onClick={() => { setSpeed(2); onSpeedChange?.(2); wasAlwaysNormal.current = false; }} style={{
+              padding: "6px 16px", fontSize: F.sm,
+              background: speed === 2 ? "rgba(74,222,128,0.15)" : "transparent",
+              border: speed === 2 ? `1px solid ${C.green}` : `1px solid ${C.bgInput}`,
+              color: speed === 2 ? C.green : C.slate,
+              fontFamily: FONT, cursor: "pointer",
+            }}>▶▶ FAST</button>
+          </div>
+        )}
 
-        {/* Flash event — desktop reserves a 58px slot; mobile only renders when an event exists */}
+        {/* Flash event — desktop reserves a 52px slot; mobile only renders when an event exists */}
         {!isHighlights && !mob && (
-        <div style={{ minHeight: 58, marginBottom: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ minHeight: 52, marginBottom: 8, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {flashEvent ? (
             <div style={{
               width: "100%",
-              padding: "16px 23px",
+              padding: "12px 20px",
               background: `${flashEvent.flashColor}15`,
               border: `2px solid ${flashEvent.flashColor}`,
               textAlign: "center",
@@ -386,7 +390,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
             </div>
           ) : (
             <div style={{
-              width: "100%", padding: "16px 23px",
+              width: "100%", padding: "12px 20px",
               border: `1px solid ${C.bgCard}`,
               textAlign: "center",
             }}>
@@ -412,7 +416,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
         )}
 
         {/* Tab buttons — always visible */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 6, flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 4, flexShrink: 0 }}>
           {[{ id: "feed", label: "FEED" }, { id: "ratings", label: "RATINGS" }].map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
               flex: 1, padding: "7px", fontFamily: FONT, fontSize: F.xs, cursor: "pointer", letterSpacing: 1,
@@ -434,7 +438,7 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
           }} ref={el => { if (el) el.scrollTop = el.scrollHeight; }}>
             {displayEvents.map((evt, i) => (
               <div key={i} style={{
-                display: "flex", gap: 12, padding: "8px 15px",
+                display: "flex", gap: 12, padding: "6px 14px",
                 borderBottom: "1px solid rgba(30,41,59,0.4)",
                 fontSize: F.sm,
                 color: evt.type === "goal" ? evt.flashColor :
@@ -443,11 +447,13 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
                        evt.type === "halftime" || evt.type === "fulltime" ? C.textMuted :
                        evt.type === "card" ? C.amber :
                        evt.flash ? C.text : C.slate,
-                // On mobile, drop the tinted goal background — the persistent
-                // scorer strip already carries that signal. Keep colour + weight.
-                background: mob && evt.type === "goal" ? "transparent" :
-                            evt.type === "goal" ? `${evt.flashColor}08` :
-                            evt.type === "motm" ? "rgba(96,165,250,0.06)" :
+                // Goal rows previously had a tint background that made them
+                // read as hero cards rather than ticker lines. Drop the tint
+                // entirely (mobile already had it dropped). Colour + bold
+                // still mark them out as significant. MOTM/red keep their
+                // subtle tint because they're rarer and benefit from the
+                // extra emphasis.
+                background: evt.type === "motm" ? "rgba(96,165,250,0.06)" :
                             evt.type === "red_card" ? "rgba(239,68,68,0.06)" : "transparent",
                 fontWeight: evt.type === "goal" || evt.type === "motm" || evt.type === "red_card" ? "bold" : "normal",
               }}>
@@ -597,8 +603,16 @@ export function MatchResultScreen({ result, league, onDone, initialSpeed, onSpee
                   {subOn != null && <span style={{ color: C.green, fontSize: F.micro }}>↑{subOn}'</span>}
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  {ev.goalMinutes?.length > 0 && <span style={{ fontSize: F.xs }}>{"⚽".repeat(ev.goalMinutes.length)}</span>}
-                  {ev.assistMinutes?.length > 0 && <span style={{ fontSize: F.xs, color: "#38bdf8" }}>{"🎯".repeat(ev.assistMinutes.length)}</span>}
+                  {ev.goalMinutes?.length > 0 && (
+                    <span style={{ fontSize: F.xs }}>
+                      {ev.goalMinutes.length === 1 ? "⚽" : `⚽×${ev.goalMinutes.length}`}
+                    </span>
+                  )}
+                  {ev.assistMinutes?.length > 0 && (
+                    <span style={{ fontSize: F.xs, color: "#38bdf8" }}>
+                      {ev.assistMinutes.length === 1 ? "🎯" : `🎯×${ev.assistMinutes.length}`}
+                    </span>
+                  )}
                   {ev.card === "yellow" && <span style={{ fontSize: F.xs }}>🟨</span>}
                   {ev.card === "red" && <span style={{ fontSize: F.xs }}>🟥</span>}
                   <span style={{ color: rColor, fontSize: F.md, fontWeight: "bold", minWidth: 28, textAlign: "right" }}>
