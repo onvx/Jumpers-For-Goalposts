@@ -5,6 +5,7 @@ import { getNatFlag, inferNationality, displayName } from "../../utils/player.js
 import { OvrProgressChart } from "../charts/OvrCharts.jsx";
 import { F, C, FONT } from "../../data/tokens";
 import { useMobile } from "../../hooks/useMobile.js";
+import { findCareerKey } from "../../utils/careerLedger.js";
 
 export function ClubLegends({ clubHistory, teamName, playerSeasonStats, playerRatingTracker, league, seasonNumber, leagueTier, squad, ovrHistory, ovrCap = 20 }) {
   const [tab, setTab] = useState("records");
@@ -14,20 +15,25 @@ export function ClubLegends({ clubHistory, teamName, playerSeasonStats, playerRa
   const archive = h.seasonArchive || [];
   const totalMatches = (h.totalWins || 0) + (h.totalDraws || 0) + (h.totalLosses || 0);
 
-  // Merge archived career stats with live current-season stats
+  // Merge archived career stats with live current-season stats. The merge
+  // resolves the target key via findCareerKey so a renamed player's current
+  // season folds into their existing archived entry instead of creating a
+  // duplicate row under the new name.
   const mergedCareers = {};
   Object.entries(careers).forEach(([name, c]) => { mergedCareers[name] = { ...c }; });
   if (playerSeasonStats) {
     Object.entries(playerSeasonStats).forEach(([name, s]) => {
-      if (!mergedCareers[name]) mergedCareers[name] = { goals: 0, assists: 0, apps: 0, motm: 0, yellows: 0, reds: 0, seasons: [] };
-      mergedCareers[name] = {
-        ...mergedCareers[name],
-        goals: (mergedCareers[name].goals || 0) + (s.goals || 0),
-        assists: (mergedCareers[name].assists || 0) + (s.assists || 0),
-        apps: (mergedCareers[name].apps || 0) + (s.apps || 0),
-        motm: (mergedCareers[name].motm || 0) + (s.motm || 0),
-        yellows: (mergedCareers[name].yellows || 0) + (s.yellows || 0),
-        reds: (mergedCareers[name].reds || 0) + (s.reds || 0),
+      const liveP = squad?.find(p => p.name === name);
+      const targetKey = findCareerKey(mergedCareers, { playerId: liveP?.id, name }) || name;
+      if (!mergedCareers[targetKey]) mergedCareers[targetKey] = { goals: 0, assists: 0, apps: 0, motm: 0, yellows: 0, reds: 0, seasons: [] };
+      mergedCareers[targetKey] = {
+        ...mergedCareers[targetKey],
+        goals: (mergedCareers[targetKey].goals || 0) + (s.goals || 0),
+        assists: (mergedCareers[targetKey].assists || 0) + (s.assists || 0),
+        apps: (mergedCareers[targetKey].apps || 0) + (s.apps || 0),
+        motm: (mergedCareers[targetKey].motm || 0) + (s.motm || 0),
+        yellows: (mergedCareers[targetKey].yellows || 0) + (s.yellows || 0),
+        reds: (mergedCareers[targetKey].reds || 0) + (s.reds || 0),
       };
     });
   }
