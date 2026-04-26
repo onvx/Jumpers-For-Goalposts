@@ -224,6 +224,9 @@ export function useTickets({
   }, [shortlist, seasonNumber, ovrCap, league, leagueResults]);
 
   const useTicketTestimonialMatch = useCallback((ticketId, careerName) => {
+    // `careerName` here is the canonical playerCareers key passed straight
+    // from AchievementCabinet's Object.entries(clubHistory.playerCareers)
+    // iteration, so this is identity-correct without a findCareerKey lookup.
     const career = clubHistory?.playerCareers?.[careerName];
     if (!career?.retiredAttrs) return;
     const degradedAttrs = {};

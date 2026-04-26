@@ -17,6 +17,7 @@ import { buildAssistantLineup, buildPresetLineup } from "./utils/lineup.js";
 import { simulateMatch, generatePenaltyShootout, simulateMatchweek } from "./utils/match.js";
 import { initLeagueRosters, sortStandings, collectSeasonEndAchievements, processSeasonSwaps, initLeague, initAILeague, buildSeasonCalendar, initCup, advanceCupRound, buildNextCupRound } from "./utils/league.js";
 import { accumulateMatchStats, accumulateCupMatch, makeCupAIMatchHandler, leagueMatchId, emptyCompetitionStats, rollIntoAllTime, getTopScorers, cupKey as makeCupKey } from "./utils/competitionStats.js";
+import { archivePlayerSeason, deriveCupLabels, findCareerKey } from "./utils/careerLedger.js";
 import { checkBreakouts } from "./utils/breakouts.js";
 import { SFX, BGM } from "./utils/sfx.js";
 import * as Tone from "tone";
@@ -5812,10 +5813,13 @@ function FruitCigs() {
             })(),
           }}
           retirees={(() => {
-            // Build retiree summaries with career stats for the Departed section
+            // Build retiree summaries with career stats for the Departed
+            // section. Resolve the career key by playerId first so renamed
+            // players still surface their historical totals.
             const retiringSquad = useGameStore.getState().squad.filter(p => retiringPlayers.has(p.id));
             return retiringSquad.map(p => {
-              const career = clubHistory?.playerCareers?.[p.name];
+              const careerKey = findCareerKey(clubHistory?.playerCareers, { playerId: p.id, name: p.name });
+              const career = careerKey ? clubHistory?.playerCareers?.[careerKey] : null;
               const seasonStats = playerSeasonStats[p.name];
               const apps = (career?.apps || 0) + (seasonStats?.apps || 0);
               const goals = (career?.goals || 0) + (seasonStats?.goals || 0);
@@ -5832,10 +5836,12 @@ function FruitCigs() {
           const retirees = useGameStore.getState().squad.filter(p => retiringPlayers.has(p.id));
           // Save squad snapshot before retirements for season archiving
           const preRetirementSquad = [...useGameStore.getState().squad];  // Use ref!
-          // Testimonial achievement — retiring player with 30+ career apps
+          // Testimonial achievement — retiring player with 30+ career apps.
+          // playerId-first lookup so a renamed retiree's history still counts.
           if (!unlockedAchievements.has("testimonial")) {
             for (const p of retirees) {
-              const career = clubHistory?.playerCareers?.[p.name];
+              const ckey = findCareerKey(clubHistory?.playerCareers, { playerId: p.id, name: p.name });
+              const career = ckey ? clubHistory?.playerCareers?.[ckey] : null;
               const currentStats = playerSeasonStats[p.name];
               const careerApps = (career?.apps || 0) + (currentStats?.apps || 0);
               if (careerApps >= 30) {
@@ -5853,9 +5859,11 @@ function FruitCigs() {
             tryUnlockAchievement("time_dilation");
           }
           // Inbox: brief retirement notification per notable retiree
-          // (100+ apps OR 30+ goals — same threshold as the SeasonEndReveal Departed section)
+          // (100+ apps OR 30+ goals — same threshold as the SeasonEndReveal
+          // Departed section). playerId-first lookup as above.
           retirees.forEach(p => {
-            const career = clubHistory?.playerCareers?.[p.name];
+            const ckey = findCareerKey(clubHistory?.playerCareers, { playerId: p.id, name: p.name });
+            const career = ckey ? clubHistory?.playerCareers?.[ckey] : null;
             const currentStats = playerSeasonStats[p.name];
             const apps = (career?.apps || 0) + (currentStats?.apps || 0);
             const goals = (career?.goals || 0) + (currentStats?.goals || 0);
@@ -5939,7 +5947,7 @@ function FruitCigs() {
           });
           setSummerData(prev => ({
             ...prev,
-            retirees: retirees.map(p => ({ name: p.name, position: p.position, age: p.age, attrs: { ...p.attrs }, nationality: p.nationality })),
+            retirees: retirees.map(p => ({ id: p.id, name: p.name, position: p.position, age: p.age, attrs: { ...p.attrs }, nationality: p.nationality })),
             youthCandidates: candidates,
             preRetirementSquad,
             weeksLeft: 3,
@@ -5981,20 +5989,42 @@ function FruitCigs() {
                 seasonSubApps: 0,
               }));
 
-            // Archive careers of non-legend retirees
+            // Prestige is a real season-end too — archive the closing
+            // season's career stats before marking retirees, so the final
+            // prestige season isn't dropped from the player ledger.
             const retirees = squad.filter(p => !selectedIds.includes(p.id) && !p.isLegend);
             setClubHistory(prev => {
-              const h = { ...prev, playerCareers: { ...(prev.playerCareers || {}) } };
-              retirees.forEach(p => {
-                const career = h.playerCareers[p.name] || { goals: 0, assists: 0, apps: 0, motm: 0, seasons: [] };
-                career.retiredAttrs = { ...p.attrs };
-                career.retiredPosition = p.position;
-                career.retiredAge = p.age;
-                career.retiredNationality = p.nationality;
-                career.retiredSeason = seasonNumber;
-                h.playerCareers[p.name] = career;
+              let careers = archivePlayerSeason(prev?.playerCareers || {}, {
+                squad,
+                playerSeasonStats,
+                playerTierSeasonStats: seasonLeagueStatsByTier?.[leagueTier] || null,
+                seasonCupStatsByCup,
+                cupLabels: deriveCupLabels(cup),
+                playerRatingTracker,
+                playerRatingNames,
+                season: seasonNumber,
+                tier: leagueTier,
+                leagueName: league?.leagueName,
               });
-              return h;
+              // Mark retirement metadata on retiree careers (post-archive so
+              // the closing season's stats are already folded in). Resolve
+              // the career key by playerId first so a renamed player's
+              // metadata attaches to the existing entry rather than forking
+              // a new one under the new name.
+              const next = { ...careers };
+              retirees.forEach(p => {
+                const key = findCareerKey(next, { playerId: p.id, name: p.name });
+                const existing = next[key] || { goals: 0, assists: 0, apps: 0, motm: 0, seasons: [] };
+                next[key] = {
+                  ...existing,
+                  retiredAttrs: { ...p.attrs },
+                  retiredPosition: p.position,
+                  retiredAge: p.age,
+                  retiredNationality: p.nationality,
+                  retiredSeason: seasonNumber,
+                };
+              });
+              return { ...prev, playerCareers: next };
             });
 
             // Keep existing legends from previous prestiges
@@ -6140,8 +6170,12 @@ function FruitCigs() {
               // Count how many impressed trials are now in squad or have career history (meaning they were recruited)
               let recruitedCount = 0;
               for (const name of impressedNames) {
-                const inSquad = [...(squad || []), ...(chosen || [])].some(p => p.name === name);
-                const inHistory = clubHistory?.playerCareers?.[name]?.apps > 0;
+                const liveP = [...(squad || []), ...(chosen || [])].find(p => p.name === name);
+                const inSquad = !!liveP;
+                // Identity-aware history lookup: use the squad player's id when
+                // available so a renamed-then-recruited trial still counts.
+                const cKey = findCareerKey(clubHistory?.playerCareers, { playerId: liveP?.id, name });
+                const inHistory = (cKey ? clubHistory?.playerCareers?.[cKey]?.apps : 0) > 0;
                 if (inSquad || inHistory) recruitedCount++;
               }
               if (recruitedCount >= 3) {
@@ -6341,35 +6375,28 @@ function FruitCigs() {
                   });
                 }
 
-                // Accumulate player career stats
-                Object.entries(playerSeasonStats).forEach(([name, s]) => {
-                  if (!h.playerCareers[name]) h.playerCareers[name] = { goals: 0, assists: 0, apps: 0, motm: 0, yellows: 0, reds: 0, seasons: [] };
-                  const career = h.playerCareers[name];
-                  career.goals += s.goals || 0;
-                  career.assists = (career.assists || 0) + (s.assists || 0);
-                  career.apps += s.apps || 0;
-                  career.motm += s.motm || 0;
-                  career.yellows += s.yellows || 0;
-                  career.reds += s.reds || 0;
-                  // Compute avg rating — use squad ID, or reverse-lookup from playerRatingNames for traded-away players
-                  const p = archiveSquad.find(pl => pl.name === name);
-                  let _ratingId = p?.id;
-                  if (!_ratingId) { const _entry = Object.entries(playerRatingNames).find(([, n]) => n === name); _ratingId = _entry?.[0]; }
-                  const ratings = _ratingId ? (playerRatingTracker[_ratingId] || []) : [];
-                  const avgRating = ratings.length > 0 ? (ratings.reduce((a, b) => a + b, 0) / ratings.length) : 0;
-                  career.seasons.push({
-                    season: seasonNumber,
-                    position: p?.position || s.position || "?",
-                    avgRating: Math.round(avgRating * 100) / 100,
-                    goals: s.goals || 0,
-                    assists: s.assists || 0,
-                    apps: s.apps || 0,
-                  });
+                // Player career ledger — broad totals + per-tier / per-cup
+                // breakdown from canonical season stores. Pure helper.
+                h.playerCareers = archivePlayerSeason(h.playerCareers, {
+                  squad: archiveSquad,
+                  playerSeasonStats,
+                  playerTierSeasonStats: seasonLeagueStatsByTier?.[currentTierVal] || null,
+                  seasonCupStatsByCup,
+                  cupLabels: deriveCupLabels(cup),
+                  playerRatingTracker,
+                  playerRatingNames,
+                  season: seasonNumber,
+                  tier: currentTierVal,
+                  leagueName: summerData.leagueName,
                 });
 
-                // Store snapshot of retiring players for Testimonial Match ticket
+                // Store snapshot of retiring players for Testimonial Match
+                // ticket. Resolve the career key by playerId first so a
+                // renamed player's retirement metadata lands on the existing
+                // career entry rather than missing it.
                 (summerData.retirees || []).forEach(retiree => {
-                  const career = h.playerCareers[retiree.name];
+                  const key = findCareerKey(h.playerCareers, { playerId: retiree.id, name: retiree.name });
+                  const career = key ? h.playerCareers[key] : null;
                   if (career) {
                     career.retiredAttrs = { ...retiree.attrs };
                     career.retiredPosition = retiree.position;

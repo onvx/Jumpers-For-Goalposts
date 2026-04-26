@@ -1,6 +1,7 @@
 import { POSITION_TYPES } from "../data/positions.js";
 import { rand, getOverall } from "./calc.js";
 import { getTeamOOPMultiplier } from "./formation.js";
+import { findCareerKey } from "./careerLedger.js";
 
 // Match simulation constants — all tuning values in one place
 const MATCH = {
@@ -580,11 +581,16 @@ export function simulateMatch(homeTeam, awayTeam, playerStartingXI, playerBench,
       let contextLine = "";
       if (team.isPlayer && modifiers.playerSeasonStats) {
         const stats = modifiers.playerSeasonStats[scorer];
+        // Derive the squad player first so we can use their stable id to
+        // resolve the archived career — a renamed scorer's old career
+        // entry would otherwise be missed and "debut" commentary would
+        // fire incorrectly.
+        const squadPlayer = modifiers.playerSquad?.find(p => p.name === scorer);
         const careers = modifiers.playerCareers;
-        const careerApps = (careers?.[scorer]?.apps || 0) + (stats?.apps || 0);
+        const cKey = findCareerKey(careers, { playerId: squadPlayer?.id, name: scorer });
+        const careerApps = ((cKey ? careers?.[cKey]?.apps : 0) || 0) + (stats?.apps || 0);
         const seasonGoals = (stats?.goals || 0) + matchGoalCounts[scorerKey];
         const matchGoals = matchGoalCounts[scorerKey];
-        const squadPlayer = modifiers.playerSquad?.find(p => p.name === scorer);
         let consecutiveScoring = 0;
         const log = modifiers.playerMatchLog?.[squadPlayer?.id];
         if (log) { for (let li = log.length - 1; li >= 0; li--) { if (log[li].goals > 0) consecutiveScoring++; else break; } }

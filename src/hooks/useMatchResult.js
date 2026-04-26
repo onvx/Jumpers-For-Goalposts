@@ -10,6 +10,7 @@ import { generateFreeAgent, getOvrCap } from "../utils/player.js";
 import { getArcById, checkArcCond, getStepNarrative, processArcCompletion, resolveSeasonEndArcs } from "../utils/arcs.js";
 import { sortStandings, collectSeasonEndAchievements, processSeasonSwaps, initLeagueRosters, advanceCupRound, buildNextCupRound } from "../utils/league.js";
 import { makeCupAIMatchHandler } from "../utils/competitionStats.js";
+import { findCareerKey } from "../utils/careerLedger.js";
 import { checkAchievements } from "../utils/achievements.js";
 import { PLAYER_UNLOCK_ACHIEVEMENTS, UNLOCKABLE_PLAYERS } from "../data/achievements.js";
 import { createInboxMessage } from "../utils/messageUtils.js";
@@ -580,17 +581,21 @@ export function useMatchResult({
         // === Career milestone achievements ===
         try {
           const careers = s.clubHistory?.playerCareers || {};
-          const getCareerTotal = (name, stat) => {
-            const archived = careers[name]?.[stat] || 0;
-            const season = s.playerSeasonStats[name]?.[stat] || 0;
+          // Resolve archived career via findCareerKey so a renamed player
+          // still matches their existing entry (e.g. one-club man whose
+          // career sits under their old name).
+          const getCareerTotal = (player, stat) => {
+            const cKey = findCareerKey(careers, { playerId: player.id, name: player.name });
+            const archived = (cKey ? careers[cKey]?.[stat] : 0) || 0;
+            const season = s.playerSeasonStats[player.name]?.[stat] || 0;
             let thisMatch = 0;
-            if (stat === "apps" && s.startingXI.some(id => { const p = s.squad.find(pl => pl.id === id); return p?.name === name; })) thisMatch = 1;
+            if (stat === "apps" && s.startingXI.some(id => id === player.id)) thisMatch = 1;
             if (stat === "goals" && matchResult.scorers) {
               const side = playerIsHome ? "home" : "away";
-              const key = `${side}|${name}`;
+              const key = `${side}|${player.name}`;
               thisMatch = matchResult.scorers[key] || 0;
             }
-            if (stat === "motm" && matchResult.motmName === name) thisMatch = 1;
+            if (stat === "motm" && matchResult.motmName === player.name) thisMatch = 1;
             return archived + season + thisMatch;
           };
 
@@ -606,7 +611,7 @@ export function useMatchResult({
           for (const ms of milestoneChecks) {
             if (s.unlockedAchievements.has(ms.id) || s.careerMilestones[ms.id]) continue;
             for (const p of s.squad) {
-              const total = getCareerTotal(p.name, ms.stat);
+              const total = getCareerTotal(p, ms.stat);
               if (total >= ms.threshold) {
                 s.setCareerMilestones(prev => ({ ...prev, [ms.id]: p.name }));
                 if (ms.check(p)) {
