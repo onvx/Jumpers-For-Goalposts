@@ -6170,8 +6170,12 @@ function FruitCigs() {
               // Count how many impressed trials are now in squad or have career history (meaning they were recruited)
               let recruitedCount = 0;
               for (const name of impressedNames) {
-                const inSquad = [...(squad || []), ...(chosen || [])].some(p => p.name === name);
-                const inHistory = clubHistory?.playerCareers?.[name]?.apps > 0;
+                const liveP = [...(squad || []), ...(chosen || [])].find(p => p.name === name);
+                const inSquad = !!liveP;
+                // Identity-aware history lookup: use the squad player's id when
+                // available so a renamed-then-recruited trial still counts.
+                const cKey = findCareerKey(clubHistory?.playerCareers, { playerId: liveP?.id, name });
+                const inHistory = (cKey ? clubHistory?.playerCareers?.[cKey]?.apps : 0) > 0;
                 if (inSquad || inHistory) recruitedCount++;
               }
               if (recruitedCount >= 3) {

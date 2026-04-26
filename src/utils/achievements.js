@@ -6,6 +6,7 @@ import { getOverall } from "../utils/calc.js";
 import { getFormationPositions, getEffectiveSlots } from "../utils/formation.js";
 import { sortStandings } from "../utils/league.js";
 import { getFirstName, getLastName } from "../utils/player.js";
+import { findCareerKey } from "./careerLedger.js";
 
 export function createUnlockablePlayer(unlockDef, joinedSeason, ovrCap = 20) {
   // capBonus: player's attrs can exceed the normal ovrCap by this amount (e.g. Trask Ulgo)
@@ -439,7 +440,8 @@ export function checkAchievements(state) {
       const motmP = squad.find(p => p.name === lastMatchResult.motmName);
       if (motmP && motmP.isUnlockable) {
         const currentApps = playerSeasonStats[motmP.name]?.apps || 0;
-        const careerApps = clubHistory?.playerCareers?.[motmP.name]?.apps || 0;
+        const cKey = findCareerKey(clubHistory?.playerCareers, { playerId: motmP.id, name: motmP.name });
+        const careerApps = (cKey ? clubHistory?.playerCareers?.[cKey]?.apps : 0) || 0;
         if (currentApps === 0 && careerApps === 0) newUnlocks.push("worth_the_wait");
       }
     }
@@ -788,7 +790,8 @@ export function checkAchievements(state) {
   // Century Club — player reaches 100 career goals
   if (!unlocked.has("century_club") && playerSeasonStats && squad) {
     for (const p of squad) {
-      const careerGoals = (clubHistory?.playerCareers?.[p.name]?.goals || 0) + (playerSeasonStats[p.name]?.goals || 0);
+      const cKey = findCareerKey(clubHistory?.playerCareers, { playerId: p.id, name: p.name });
+      const careerGoals = ((cKey ? clubHistory?.playerCareers?.[cKey]?.goals : 0) || 0) + (playerSeasonStats[p.name]?.goals || 0);
       if (careerGoals >= 100) { newUnlocks.push("century_club"); break; }
     }
   }
@@ -796,7 +799,8 @@ export function checkAchievements(state) {
   // Fifty Not Out — 50 career appearances
   if (!unlocked.has("fifty_not_out") && playerSeasonStats && clubHistory?.playerCareers) {
     for (const p of squad) {
-      const careerApps = (clubHistory.playerCareers[p.name]?.apps || 0) + (playerSeasonStats[p.name]?.apps || 0);
+      const cKey = findCareerKey(clubHistory.playerCareers, { playerId: p.id, name: p.name });
+      const careerApps = ((cKey ? clubHistory.playerCareers[cKey]?.apps : 0) || 0) + (playerSeasonStats[p.name]?.apps || 0);
       if (careerApps >= 50) { newUnlocks.push("fifty_not_out"); break; }
     }
   }
@@ -807,7 +811,11 @@ export function checkAchievements(state) {
     const scorers = (lastMatchResult.events || []).filter(e => e.type === "goal" && e.side === side).map(e => e.player);
     for (const scorerName of scorers) {
       const currentApps = playerSeasonStats[scorerName]?.apps || 0;
-      const careerApps = clubHistory?.playerCareers?.[scorerName]?.apps || 0;
+      // Resolve the scorer's career via squad (gives us their stable id);
+      // fall back to name-only when no squad match.
+      const scorerP = squad?.find(p => p.name === scorerName);
+      const cKey = findCareerKey(clubHistory?.playerCareers, { playerId: scorerP?.id, name: scorerName });
+      const careerApps = (cKey ? clubHistory?.playerCareers?.[cKey]?.apps : 0) || 0;
       // Stats haven't been updated yet for this match, so 0 means this IS the debut
       if (currentApps === 0 && careerApps === 0) { newUnlocks.push("remember_the_name"); break; }
     }
@@ -971,7 +979,8 @@ export function checkAchievements(state) {
       const player = squad.find(p => p.name === g.player);
       if (player && player.fromTransferInsider) {
         const currentApps = playerSeasonStats[player.name]?.apps || 0;
-        const careerApps = clubHistory?.playerCareers?.[player.name]?.apps || 0;
+        const cKey = findCareerKey(clubHistory?.playerCareers, { playerId: player.id, name: player.name });
+        const careerApps = (cKey ? clubHistory?.playerCareers?.[cKey]?.apps : 0) || 0;
         if (currentApps === 0 && careerApps === 0) { newUnlocks.push("instant_impact"); break; }
       }
     }
