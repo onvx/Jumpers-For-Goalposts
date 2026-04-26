@@ -216,6 +216,76 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
     </div>
   );
 
+  // Shared renderer for ranked stat lists (Stats tab + All-Time tab).
+  // One implementation = consistent grid, padding, type scale, and empty
+  // states across goals / assists / yellow / red / all-time sections.
+  // `valueColor` colours the value column. `getRowAccent` gets called per
+  // row so callers can flag the player's own team or top-three highlights.
+  const renderRankedList = ({
+    title, icon, list, valueField, valueColor,
+    emptyText = "No data yet",
+    getRowAccent,
+    onPlayerClickArgs,
+  }) => (
+    <div style={{ marginBottom: 22 }}>
+      <div style={{ fontSize: mob ? F.sm : F.md, color: C.gold, marginBottom: 10, letterSpacing: 1 }}>{icon} {title}</div>
+      {list.length === 0 ? (
+        <div style={{ fontSize: F.xs, color: C.bgInput, padding: 8 }}>{emptyText}</div>
+      ) : (
+        list.map((p, i) => {
+          const accent = getRowAccent ? getRowAccent(p, i) : null;
+          const isPlayer = p.isPlayer || p.isPlayerTeam;
+          // Top-1 gets a subtle gold tint; player team beats it; explicit
+          // accent overrides everything else.
+          const rowBg = accent === "gold" || i === 0 ? "rgba(250,204,21,0.06)"
+            : isPlayer ? "rgba(74,222,128,0.04)"
+            : "transparent";
+          const rankColor = i === 0 ? C.gold : i < 3 ? C.textMuted : C.slate;
+          return (
+            <div key={`${p.name}|${p.teamName}|${i}`} style={{
+              display: "grid",
+              gridTemplateColumns: mob ? "30px 1fr 1fr 50px" : "35px 1fr 1fr 60px",
+              padding: "10px 12px", fontSize: F.xs, gap: 4,
+              borderBottom: `1px solid ${C.bgCard}`,
+              background: rowBg,
+              alignItems: "center",
+            }}>
+              <span style={{ color: rankColor, fontWeight: i < 3 ? "bold" : "normal" }}>{i + 1}</span>
+              <span
+                onClick={() => onPlayerClick?.(p.name, p.teamName, ...(onPlayerClickArgs?.(p) || []))}
+                style={{
+                  color: isPlayer ? C.green : C.text,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  cursor: "pointer",
+                  textDecoration: "underline", textDecorationStyle: "dotted",
+                  textDecorationColor: isPlayer ? "#4ade8044" : "#e2e8f044",
+                  textUnderlineOffset: 3,
+                }}
+              >
+                {displayName(p.name, mob)}
+              </span>
+              <span
+                onClick={() => onTeamClick?.(p.teamName)}
+                style={{
+                  color: C.textDim, fontSize: mob ? F.micro : F.xs,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  cursor: "pointer",
+                  textDecoration: "underline", textDecorationStyle: "dotted",
+                  textDecorationColor: "#64748b44", textUnderlineOffset: 3,
+                }}
+              >
+                {p.teamName}
+              </span>
+              <span style={{ textAlign: "right", color: valueColor, fontWeight: "bold", fontSize: mob ? F.sm : F.md }}>
+                {p[valueField]}
+              </span>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+
   const tabStyle = (tab) => ({
     padding: mob ? "10px 13px" : "10px 18px",
     fontSize: mob ? F.xs : F.sm,
@@ -431,127 +501,30 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
           </div>
         )}
         {activeTab === "stats" && (!isPlayerDisplayTier || seasonLeagueStatsAvailable) && (
-          <div style={{ padding: mob ? "21px 14px" : "26px" }}>
+          <div style={{ padding: mob ? "20px 14px" : "24px" }}>
             {renderTierChips()}
-            {/* Top Scorers */}
-            <div style={{ fontSize: mob ? F.lg : F.xl, color: C.gold, marginBottom: 14, letterSpacing: 1 }}>🥇 TOP SCORERS</div>
-            {topScorers.length > 0 ? (
-              <div style={{ marginBottom: 28 }}>
-                {topScorers.map((s, i) => (
-                  <div key={i} style={{
-                    display: "grid", gridTemplateColumns: mob ? "35px 1fr 1fr 51px" : "40px 1fr 1fr 59px",
-                    padding: "14px", fontSize: F.md, gap: 5,
-                    borderBottom: `1px solid ${C.bgCard}`,
-                    background: i === 0 ? "rgba(250,204,21,0.06)" : s.isPlayer ? "rgba(74,222,128,0.04)" : "transparent",
-                    alignItems: "center",
-                  }}>
-                    <span style={{ color: i === 0 ? C.gold : i < 3 ? C.textMuted : C.slate, fontWeight: i < 3 ? "bold" : "normal" }}>
-                      {i + 1}
-                    </span>
-                    <span onClick={() => onPlayerClick?.(s.name, s.teamName)} style={{ color: s.isPlayer ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: s.isPlayer ? "#4ade8044" : "#e2e8f044", textUnderlineOffset: 3 }}>
-                      {displayName(s.name, mob)}
-                    </span>
-                    <span onClick={() => onTeamClick?.(s.teamName)} style={{ color: C.textDim, fontSize: mob ? F.xs : F.sm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#64748b44", textUnderlineOffset: 3 }}>
-                      {s.teamName}
-                    </span>
-                    <span style={{ textAlign: "center", color: C.green, fontWeight: "bold", fontSize: F.xl }}>
-                      {s.goals}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ textAlign: "center", padding: 18, fontSize: F.md, color: C.bgInput, marginBottom: 28 }}>No goals scored yet</div>
-            )}
-
-            {/* Top Assists */}
-            <div style={{ fontSize: mob ? F.lg : F.xl, color: C.gold, marginBottom: 14, letterSpacing: 1 }}>🎯 TOP ASSISTS</div>
-            {topAssists.length > 0 ? (
-              <div style={{ marginBottom: 28 }}>
-                {topAssists.map((s, i) => (
-                  <div key={i} style={{
-                    display: "grid", gridTemplateColumns: mob ? "35px 1fr 1fr 51px" : "40px 1fr 1fr 59px",
-                    padding: "14px", fontSize: F.md, gap: 5,
-                    borderBottom: `1px solid ${C.bgCard}`,
-                    background: i === 0 ? "rgba(250,204,21,0.06)" : s.isPlayer ? "rgba(74,222,128,0.04)" : "transparent",
-                    alignItems: "center",
-                  }}>
-                    <span style={{ color: i === 0 ? C.gold : i < 3 ? C.textMuted : C.slate, fontWeight: i < 3 ? "bold" : "normal" }}>
-                      {i + 1}
-                    </span>
-                    <span onClick={() => onPlayerClick?.(s.name, s.teamName)} style={{ color: s.isPlayer ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: s.isPlayer ? "#4ade8044" : "#e2e8f044", textUnderlineOffset: 3 }}>
-                      {displayName(s.name, mob)}
-                    </span>
-                    <span onClick={() => onTeamClick?.(s.teamName)} style={{ color: C.textDim, fontSize: mob ? F.xs : F.sm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#64748b44", textUnderlineOffset: 3 }}>
-                      {s.teamName}
-                    </span>
-                    <span style={{ textAlign: "center", color: "#38bdf8", fontWeight: "bold", fontSize: F.xl }}>
-                      {s.assists}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ textAlign: "center", padding: 18, fontSize: F.md, color: C.bgInput, marginBottom: 28 }}>No assists recorded yet</div>
-            )}
-
-            {/* Most Yellow Cards */}
-            <div style={{ fontSize: mob ? F.lg : F.xl, color: C.gold, marginBottom: 14, letterSpacing: 1 }}>🟨 MOST YELLOW CARDS</div>
-            {topYellows.length > 0 ? (
-              <div style={{ marginBottom: 28 }}>
-                {topYellows.map((c, i) => (
-                  <div key={i} style={{
-                    display: "grid", gridTemplateColumns: mob ? "30px 1fr 1fr 44px" : "35px 1fr 1fr 51px",
-                    padding: "12px", fontSize: F.sm, gap: 4,
-                    borderBottom: `1px solid ${C.bgCard}`,
-                    background: c.isPlayer ? "rgba(74,222,128,0.04)" : "transparent",
-                    alignItems: "center",
-                  }}>
-                    <span style={{ color: C.slate }}>{i + 1}</span>
-                    <span onClick={() => onPlayerClick?.(c.name, c.teamName)} style={{ color: c.isPlayer ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: c.isPlayer ? "#4ade8044" : "#e2e8f044", textUnderlineOffset: 3 }}>
-                      {displayName(c.name, mob)}
-                    </span>
-                    <span onClick={() => onTeamClick?.(c.teamName)} style={{ color: C.textDim, fontSize: mob ? F.xs : F.sm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#64748b44", textUnderlineOffset: 3 }}>
-                      {c.teamName}
-                    </span>
-                    <span style={{ textAlign: "center", color: C.amber, fontWeight: "bold", fontSize: F.lg }}>
-                      {c.yellows}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ textAlign: "center", padding: 16, fontSize: F.sm, color: C.bgInput, marginBottom: 28 }}>No yellows issued yet</div>
-            )}
-
-            {/* Most Red Cards */}
-            <div style={{ fontSize: mob ? F.lg : F.xl, color: C.gold, marginBottom: 14, letterSpacing: 1 }}>🟥 MOST RED CARDS</div>
-            {topReds.length > 0 ? (
-              <div>
-                {topReds.map((c, i) => (
-                  <div key={i} style={{
-                    display: "grid", gridTemplateColumns: mob ? "30px 1fr 1fr 44px" : "35px 1fr 1fr 51px",
-                    padding: "12px", fontSize: F.sm, gap: 4,
-                    borderBottom: `1px solid ${C.bgCard}`,
-                    background: c.isPlayer ? "rgba(74,222,128,0.04)" : "transparent",
-                    alignItems: "center",
-                  }}>
-                    <span style={{ color: C.slate }}>{i + 1}</span>
-                    <span onClick={() => onPlayerClick?.(c.name, c.teamName)} style={{ color: c.isPlayer ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: c.isPlayer ? "#4ade8044" : "#e2e8f044", textUnderlineOffset: 3 }}>
-                      {displayName(c.name, mob)}
-                    </span>
-                    <span onClick={() => onTeamClick?.(c.teamName)} style={{ color: C.textDim, fontSize: mob ? F.xs : F.sm, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#64748b44", textUnderlineOffset: 3 }}>
-                      {c.teamName}
-                    </span>
-                    <span style={{ textAlign: "center", color: C.red, fontWeight: "bold", fontSize: F.lg }}>
-                      {c.reds}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ textAlign: "center", padding: 16, fontSize: F.sm, color: C.bgInput }}>No reds issued yet</div>
-            )}
+            <div style={{ marginTop: 18 }}>
+              {renderRankedList({
+                title: "TOP SCORERS", icon: "🥇",
+                list: topScorers, valueField: "goals", valueColor: C.green,
+                emptyText: "No goals scored yet",
+              })}
+              {renderRankedList({
+                title: "TOP ASSISTS", icon: "🎯",
+                list: topAssists, valueField: "assists", valueColor: "#38bdf8",
+                emptyText: "No assists recorded yet",
+              })}
+              {renderRankedList({
+                title: "MOST YELLOW CARDS", icon: "🟨",
+                list: topYellows, valueField: "yellows", valueColor: C.amber,
+                emptyText: "No yellows issued yet",
+              })}
+              {renderRankedList({
+                title: "MOST RED CARDS", icon: "🟥",
+                list: topReds, valueField: "reds", valueColor: C.red,
+                emptyText: "No reds issued yet",
+              })}
+            </div>
           </div>
         )}
 
@@ -890,45 +863,28 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
           const assisterList = rows.filter(r => r.assists > 0).sort((a, b) => b.assists - a.assists).slice(0, 20);
           const cardList = rows.filter(r => r.cards > 0).sort((a, b) => b.cards - a.cards).slice(0, 20);
 
-          const renderAllTimeList = (title, icon, list, valueFn, unitLabel) => (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: mob ? F.xs : F.sm, color: C.gold, marginBottom: 8, letterSpacing: 1 }}>{icon} {title}</div>
-              {list.length > 0 ? list.map((p, i) => (
-                <div key={i} style={{
-                  display: "grid", gridTemplateColumns: mob ? "26px 1fr 100px 54px" : "30px 1fr 156px 64px",
-                  padding: "10px", fontSize: F.xs, gap: 4,
-                  borderBottom: `1px solid ${C.bgCard}`,
-                  background: p.isPlayerTeam ? "rgba(74,222,128,0.04)" : "transparent",
-                  alignItems: "center",
-                }}>
-                  <span style={{ color: i < 3 ? C.gold : C.slate }}>{i + 1}</span>
-                  <div style={{ overflow: "hidden" }}>
-                    <span onClick={() => onPlayerClick?.(p.name, p.teamName)} style={{ color: p.isPlayerTeam ? C.green : C.text, cursor: "pointer" }}>{displayName(p.name, mob)}</span>
-                  </div>
-                  <span onClick={() => onTeamClick?.(p.teamName)} style={{ color: C.textDim, fontSize: mob ? F.micro : F.xs, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>
-                    {p.teamName}
-                  </span>
-                  <span style={{ textAlign: "right", color: i === 0 ? C.gold : C.text, fontWeight: i < 3 ? "bold" : "normal", fontSize: mob ? F.sm : F.md }}>
-                    {valueFn(p)}
-                  </span>
-                </div>
-              )) : (
-                <div style={{ fontSize: F.xs, color: C.bgInput, padding: 8 }}>No data yet</div>
-              )}
-            </div>
-          );
-
           const displayDef = LEAGUE_DEFS[displayTier];
           return (
-            <div style={{ padding: mob ? "16px 10px" : "20px" }}>
+            <div style={{ padding: mob ? "20px 14px" : "24px" }}>
               {renderTierChips()}
-              <div style={{ fontSize: mob ? F.sm : F.md, color: displayDef?.color || C.gold, marginBottom: 4, letterSpacing: 1 }}>🏛️ {displayDef?.name?.toUpperCase() || "LEAGUE"} ALL-TIME RECORDS</div>
-              <div style={{ fontSize: mob ? F.micro : F.xs, color: C.slate, marginBottom: 16 }}>
-                Cumulative goals/assists/cards earned in this division across all seasons
+              <div style={{ marginTop: 18 }}>
+                <div style={{ fontSize: mob ? F.sm : F.md, color: displayDef?.color || C.gold, marginBottom: 16, letterSpacing: 1 }}>🏛️ {displayDef?.name?.toUpperCase() || "LEAGUE"} ALL-TIME RECORDS</div>
+                {renderRankedList({
+                  title: "TOP SCORERS", icon: "⚽",
+                  list: scorerList, valueField: "goals", valueColor: C.green,
+                  emptyText: "No data yet",
+                })}
+                {renderRankedList({
+                  title: "TOP ASSISTS", icon: "🎯",
+                  list: assisterList, valueField: "assists", valueColor: "#38bdf8",
+                  emptyText: "No data yet",
+                })}
+                {renderRankedList({
+                  title: "MOST BOOKED", icon: "🟨",
+                  list: cardList, valueField: "cards", valueColor: C.amber,
+                  emptyText: "No data yet",
+                })}
               </div>
-              {renderAllTimeList("TOP SCORERS", "⚽", scorerList, p => p.goals)}
-              {renderAllTimeList("TOP ASSISTS", "🎯", assisterList, p => p.assists)}
-              {renderAllTimeList("MOST BOOKED", "🟨", cardList, p => p.cards)}
             </div>
           );
         })()}
