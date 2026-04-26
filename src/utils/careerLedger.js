@@ -76,25 +76,30 @@ function hasAnyStat(s) {
 }
 
 /**
- * Find an existing career entry for a player. Prefers playerId match (a
- * career object that already records the same playerId); falls back to the
- * name-keyed entry for back-compat with pre-id careers.
+ * Resolve the career-key for a given player, preferring playerId match over
+ * name. This is the same identity logic the archiver uses, exposed so that
+ * other paths (retirement metadata, etc.) can attach to the right career
+ * entry instead of accidentally duplicating one under a new name.
  *
- * Returns { name: existingNameKey, career: existingCareer } if found,
- * otherwise { name, career: null }.
+ * Returns the existing key when found, or the supplied `name` as the
+ * fall-through key for callers that want to create a new entry there.
  */
-function findExistingCareer(playerCareers, playerId, name) {
+export function findCareerKey(playerCareers, { playerId, name }) {
+  if (!playerCareers) return name || null;
   if (playerId) {
     for (const [key, c] of Object.entries(playerCareers)) {
       if (c && c.playerId && String(c.playerId) === String(playerId)) {
-        return { name: key, career: c };
+        return key;
       }
     }
   }
-  if (name && playerCareers[name]) {
-    return { name, career: playerCareers[name] };
-  }
-  return { name, career: null };
+  if (name && playerCareers[name]) return name;
+  return name || null;
+}
+
+function findExistingCareer(playerCareers, playerId, name) {
+  const key = findCareerKey(playerCareers, { playerId, name });
+  return { name: key, career: key && playerCareers[key] ? playerCareers[key] : null };
 }
 
 /**

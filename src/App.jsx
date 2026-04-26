@@ -17,7 +17,7 @@ import { buildAssistantLineup, buildPresetLineup } from "./utils/lineup.js";
 import { simulateMatch, generatePenaltyShootout, simulateMatchweek } from "./utils/match.js";
 import { initLeagueRosters, sortStandings, collectSeasonEndAchievements, processSeasonSwaps, initLeague, initAILeague, buildSeasonCalendar, initCup, advanceCupRound, buildNextCupRound } from "./utils/league.js";
 import { accumulateMatchStats, accumulateCupMatch, makeCupAIMatchHandler, leagueMatchId, emptyCompetitionStats, rollIntoAllTime, getTopScorers, cupKey as makeCupKey } from "./utils/competitionStats.js";
-import { archivePlayerSeason, deriveCupLabels } from "./utils/careerLedger.js";
+import { archivePlayerSeason, deriveCupLabels, findCareerKey } from "./utils/careerLedger.js";
 import { checkBreakouts } from "./utils/breakouts.js";
 import { SFX, BGM } from "./utils/sfx.js";
 import * as Tone from "tone";
@@ -6000,11 +6000,15 @@ function FruitCigs() {
                 leagueName: league?.leagueName,
               });
               // Mark retirement metadata on retiree careers (post-archive so
-              // the closing season's stats are already folded in).
+              // the closing season's stats are already folded in). Resolve
+              // the career key by playerId first so a renamed player's
+              // metadata attaches to the existing entry rather than forking
+              // a new one under the new name.
               const next = { ...careers };
               retirees.forEach(p => {
-                const existing = next[p.name] || { goals: 0, assists: 0, apps: 0, motm: 0, seasons: [] };
-                next[p.name] = {
+                const key = findCareerKey(next, { playerId: p.id, name: p.name });
+                const existing = next[key] || { goals: 0, assists: 0, apps: 0, motm: 0, seasons: [] };
+                next[key] = {
                   ...existing,
                   retiredAttrs: { ...p.attrs },
                   retiredPosition: p.position,
@@ -6375,9 +6379,13 @@ function FruitCigs() {
                   leagueName: summerData.leagueName,
                 });
 
-                // Store snapshot of retiring players for Testimonial Match ticket
+                // Store snapshot of retiring players for Testimonial Match
+                // ticket. Resolve the career key by playerId first so a
+                // renamed player's retirement metadata lands on the existing
+                // career entry rather than missing it.
                 (summerData.retirees || []).forEach(retiree => {
-                  const career = h.playerCareers[retiree.name];
+                  const key = findCareerKey(h.playerCareers, { playerId: retiree.id, name: retiree.name });
+                  const career = key ? h.playerCareers[key] : null;
                   if (career) {
                     career.retiredAttrs = { ...retiree.attrs };
                     career.retiredPosition = retiree.position;

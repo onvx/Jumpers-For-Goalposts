@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { archivePlayerSeason, deriveCupLabels } from "../careerLedger.js";
+import { archivePlayerSeason, deriveCupLabels, findCareerKey } from "../careerLedger.js";
 
 // === Fixtures ===============================================================
 
@@ -326,6 +326,68 @@ describe("archivePlayerSeason — composite-key fallback for id-less canonical e
     });
     expect(next["Remy Diaby"].competitions["league:T8"].goals).toBe(4);
     expect(next["Iker Hernando"].competitions["league:T8"].goals).toBe(1);
+  });
+});
+
+describe("findCareerKey — used by retirement metadata paths", () => {
+  it("resolves to the existing key by playerId even when name has changed", () => {
+    const careers = {
+      "Old Name": { playerId: "p1", goals: 10, seasons: [] },
+      "Other": { playerId: "p9", goals: 0, seasons: [] },
+    };
+    expect(findCareerKey(careers, { playerId: "p1", name: "New Name" })).toBe("Old Name");
+  });
+
+  it("falls back to name when playerId not found", () => {
+    const careers = { "Tim": { goals: 5, seasons: [] } };
+    expect(findCareerKey(careers, { playerId: "missing", name: "Tim" })).toBe("Tim");
+  });
+
+  it("returns the supplied name when nothing matches (caller can create new entry)", () => {
+    expect(findCareerKey({}, { playerId: "p1", name: "Fresh" })).toBe("Fresh");
+  });
+});
+
+describe("retirement metadata via findCareerKey — Bandon regression", () => {
+  // Pins the integration contract: archivePlayerSeason matches an existing
+  // career by playerId (even under an old name key); retirement metadata
+  // attaches to that same entry instead of forking a new "New Name" career.
+  it("renamed retiree's metadata lands on the existing old-name career", () => {
+    const playerCareers = {
+      "Old Name": {
+        playerId: "p1", goals: 10, assists: 3, apps: 20, motm: 2,
+        yellows: 1, reds: 0, seasons: [{ season: 1, goals: 10 }], competitions: {},
+      },
+    };
+    // Player was renamed mid-career; squad now reflects "New Name"
+    const retiree = { id: "p1", name: "New Name", attrs: { pace: 18 }, position: "ST", age: 36, nationality: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" };
+
+    // 1. Archive picks up the existing career under the old key (helper contract)
+    const afterArchive = archivePlayerSeason(playerCareers, {
+      squad: [{ id: "p1", name: "New Name", position: "ST" }],
+      playerSeasonStats: { "New Name": { goals: 5, assists: 1, apps: 18, motm: 0, yellows: 0, reds: 0 } },
+      playerTierSeasonStats: { players: { p1: { key: "p1", playerId: "p1", name: "New Name", teamId: 0, teamName: "Player FC", position: "ST", goals: 5, assists: 1, yellows: 0, reds: 0 } }, processedMatches: {} },
+      seasonCupStatsByCup: {}, cupLabels: {},
+      playerRatingTracker: {}, playerRatingNames: {},
+      season: 2, tier: 8, leagueName: "Sunday League",
+    });
+    expect(afterArchive["Old Name"]).toBeTruthy();
+    expect(afterArchive["New Name"]).toBeUndefined();
+
+    // 2. Retirement metadata should resolve via playerId to "Old Name" too
+    const key = findCareerKey(afterArchive, { playerId: retiree.id, name: retiree.name });
+    expect(key).toBe("Old Name");
+    afterArchive[key].retiredAttrs = { ...retiree.attrs };
+    afterArchive[key].retiredPosition = retiree.position;
+    afterArchive[key].retiredAge = retiree.age;
+    afterArchive[key].retiredSeason = 2;
+
+    // 3. No duplicate "New Name" career
+    expect(afterArchive["New Name"]).toBeUndefined();
+    // Metadata sits on the merged career entry
+    expect(afterArchive["Old Name"].retiredPosition).toBe("ST");
+    expect(afterArchive["Old Name"].retiredAge).toBe(36);
+    expect(afterArchive["Old Name"].goals).toBe(15); // 10 + 5
   });
 });
 
