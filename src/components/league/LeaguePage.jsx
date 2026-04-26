@@ -505,7 +505,7 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
             {renderTierChips()}
             <div style={{ marginTop: 18 }}>
               {renderRankedList({
-                title: "TOP SCORERS", icon: "🥇",
+                title: "TOP SCORERS", icon: "⚽",
                 list: topScorers, valueField: "goals", valueColor: C.green,
                 emptyText: "No goals scored yet",
               })}
@@ -855,34 +855,38 @@ export function LeaguePage({ league, leagueResults, matchweekIndex, teamName, pl
           const rows = Object.values(merged).map(p => ({
             name: p.name, teamName: p.teamName,
             goals: p.goals, assists: p.assists,
-            cards: (p.yellows || 0) + (p.reds || 0),
+            yellows: p.yellows || 0, reds: p.reds || 0,
             isPlayerTeam: p.teamName === teamName && isPlayerDisplayTier,
           }));
 
           const scorerList = rows.filter(r => r.goals > 0).sort((a, b) => b.goals - a.goals).slice(0, 20);
           const assisterList = rows.filter(r => r.assists > 0).sort((a, b) => b.assists - a.assists).slice(0, 20);
-          const cardList = rows.filter(r => r.cards > 0).sort((a, b) => b.cards - a.cards).slice(0, 20);
+          const yellowList = rows.filter(r => r.yellows > 0).sort((a, b) => b.yellows - a.yellows).slice(0, 20);
+          const redList = rows.filter(r => r.reds > 0).sort((a, b) => b.reds - a.reds).slice(0, 20);
 
-          const displayDef = LEAGUE_DEFS[displayTier];
           return (
             <div style={{ padding: mob ? "20px 14px" : "24px" }}>
               {renderTierChips()}
               <div style={{ marginTop: 18 }}>
-                <div style={{ fontSize: mob ? F.sm : F.md, color: displayDef?.color || C.gold, marginBottom: 16, letterSpacing: 1 }}>🏛️ {displayDef?.name?.toUpperCase() || "LEAGUE"} ALL-TIME RECORDS</div>
                 {renderRankedList({
                   title: "TOP SCORERS", icon: "⚽",
                   list: scorerList, valueField: "goals", valueColor: C.green,
-                  emptyText: "No data yet",
+                  emptyText: "No goals on record yet",
                 })}
                 {renderRankedList({
                   title: "TOP ASSISTS", icon: "🎯",
                   list: assisterList, valueField: "assists", valueColor: "#38bdf8",
-                  emptyText: "No data yet",
+                  emptyText: "No assists on record yet",
                 })}
                 {renderRankedList({
-                  title: "MOST BOOKED", icon: "🟨",
-                  list: cardList, valueField: "cards", valueColor: C.amber,
-                  emptyText: "No data yet",
+                  title: "MOST YELLOW CARDS", icon: "🟨",
+                  list: yellowList, valueField: "yellows", valueColor: C.amber,
+                  emptyText: "No yellows on record yet",
+                })}
+                {renderRankedList({
+                  title: "MOST RED CARDS", icon: "🟥",
+                  list: redList, valueField: "reds", valueColor: C.red,
+                  emptyText: "No reds on record yet",
                 })}
               </div>
             </div>

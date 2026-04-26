@@ -490,14 +490,18 @@ export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlaye
                     || allTimeTopYellows.length > 0 || allTimeTopReds.length > 0;
                   return (
                     <>
-                      {renderPlayerList("TOP SCORERS", "🥇", playerTopScorers, "goals", C.green)}
+                      {renderPlayerList("TOP SCORERS", "⚽", playerTopScorers, "goals", C.green)}
                       {renderPlayerList("TOP ASSISTS", "🎯", playerTopAssists, "assists", "#38bdf8")}
                       {renderPlayerList("MOST YELLOW CARDS", "🟨", playerTopYellows, "yellows", C.amber)}
                       {renderPlayerList("MOST RED CARDS", "🟥", playerTopReds, "reds", C.red)}
                       {hasAnyAllTime && (
-                        <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${C.bgInput}` }}>
-                          <div style={{ fontSize: mob ? F.sm : F.md, color: C.gold, marginBottom: 16, letterSpacing: 1 }}>
-                            🏛️ {cup?.cupName?.toUpperCase() || "CUP"} ALL-TIME RECORDS
+                        <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${C.bgInput}` }}>
+                          {/* Parent label for the all-time block. CupPage
+                              shows current and all-time in the same tab, so
+                              we need a signpost — sized like a section
+                              parent, not a peer of the rows below. */}
+                          <div style={{ fontSize: mob ? F.md : F.lg, color: C.gold, marginBottom: 18, letterSpacing: 2 }}>
+                            🏛️ ALL-TIME RECORDS
                           </div>
                           {renderPlayerList("TOP SCORERS", "⚽", allTimeTopScorers, "goals", C.green)}
                           {renderPlayerList("TOP ASSISTS", "🎯", allTimeTopAssists, "assists", "#38bdf8")}
