@@ -137,6 +137,14 @@ export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlaye
     () => getTopAssisters(allTimeMerged, 10).map(p => ({ name: p.name, teamName: p.teamName || "?", assists: p.assists })),
     [allTimeMerged]
   );
+  const allTimeTopYellows = React.useMemo(
+    () => getMostYellows(allTimeMerged, 10).map(p => ({ name: p.name, teamName: p.teamName || "?", yellows: p.yellows })),
+    [allTimeMerged]
+  );
+  const allTimeTopReds = React.useMemo(
+    () => getMostReds(allTimeMerged, 10).map(p => ({ name: p.name, teamName: p.teamName || "?", reds: p.reds })),
+    [allTimeMerged]
+  );
 
   // Team of the Cup — best XI based on cup performance (goals + wins + round reached)
   const teamOfCup = React.useMemo(() => {
@@ -481,7 +489,8 @@ export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlaye
                       {renderPlayerList("TOP ASSISTS", "🎯", playerTopAssists, "assists", "#38bdf8")}
                       {renderPlayerList("MOST YELLOW CARDS", "🟨", playerTopYellows, "yellows", C.amber)}
                       {renderPlayerList("MOST RED CARDS", "🟥", playerTopReds, "reds", C.red)}
-                      {(allTimeTopScorers.length > 0 || allTimeTopAssists.length > 0) && (
+                      {(allTimeTopScorers.length > 0 || allTimeTopAssists.length > 0
+                        || allTimeTopYellows.length > 0 || allTimeTopReds.length > 0) && (
                         <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${C.bgInput}` }}>
                           <div style={{ fontSize: mob ? F.xs : F.sm, color: C.slate, marginBottom: 4, letterSpacing: 1 }}>
                             🏛️ {cup?.cupName?.toUpperCase() || "CUP"} — ALL-TIME
@@ -491,6 +500,8 @@ export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlaye
                           </div>
                           {renderPlayerList("ALL-TIME TOP SCORERS", "⚽", allTimeTopScorers, "goals", C.green)}
                           {renderPlayerList("ALL-TIME TOP ASSISTS", "🎯", allTimeTopAssists, "assists", "#38bdf8")}
+                          {renderPlayerList("ALL-TIME MOST YELLOW CARDS", "🟨", allTimeTopYellows, "yellows", C.amber)}
+                          {renderPlayerList("ALL-TIME MOST RED CARDS", "🟥", allTimeTopReds, "reds", C.red)}
                         </div>
                       )}
                     </>
