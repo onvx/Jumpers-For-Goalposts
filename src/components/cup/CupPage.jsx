@@ -464,44 +464,45 @@ export function CupPage({ cup, clubHistory, seasonNumber, leagueRosters, onPlaye
             ) : (
               <>
                 {(() => {
+                  // Single ranked-list renderer used by current-season and
+                  // all-time blocks below. Right-aligned value column for
+                  // numeric stability; matches the LeaguePage scale.
                   const renderPlayerList = (title, icon, list, valueField, valueColor) => list.length > 0 && (
-                    <div style={{ marginTop: 24 }}>
-                      <div style={{ fontSize: mob ? F.sm : F.md, color: C.gold, marginBottom: 12, letterSpacing: 1 }}>{icon} {title}</div>
+                    <div style={{ marginBottom: 22 }}>
+                      <div style={{ fontSize: mob ? F.sm : F.md, color: C.gold, marginBottom: 10, letterSpacing: 1 }}>{icon} {title}</div>
                       {list.map((s, i) => (
-                        <div key={i} style={{
-                          display: "grid", gridTemplateColumns: mob ? "26px 1fr 1fr 38px" : "30px 1fr 1fr 44px",
-                          padding: "10px", fontSize: F.xs, gap: 4,
+                        <div key={`${s.name}|${s.teamName}|${i}`} style={{
+                          display: "grid", gridTemplateColumns: mob ? "30px 1fr 1fr 50px" : "35px 1fr 1fr 60px",
+                          padding: "10px 12px", fontSize: F.xs, gap: 4,
                           borderBottom: `1px solid ${C.bgCard}`,
                           background: i === 0 ? "rgba(250,204,21,0.06)" : "transparent",
                           alignItems: "center",
                         }}>
-                          <span style={{ color: i === 0 ? C.gold : C.slate }}>{i + 1}</span>
+                          <span style={{ color: i === 0 ? C.gold : i < 3 ? C.textMuted : C.slate, fontWeight: i < 3 ? "bold" : "normal" }}>{i + 1}</span>
                           <span onClick={() => onPlayerClick?.(s.name, s.teamName)} style={{ color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#e2e8f044", textUnderlineOffset: 3 }}>{displayName(s.name, mob)}</span>
-                          <span onClick={() => onTeamClick?.(s.teamName)} style={{ color: C.textDim, fontSize: mob ? F.micro : F.xs, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}>{s.teamName}</span>
-                          <span style={{ textAlign: "center", color: valueColor, fontWeight: "bold", fontSize: F.md }}>{s[valueField]}</span>
+                          <span onClick={() => onTeamClick?.(s.teamName)} style={{ color: C.textDim, fontSize: mob ? F.micro : F.xs, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textDecorationColor: "#64748b44", textUnderlineOffset: 3 }}>{s.teamName}</span>
+                          <span style={{ textAlign: "right", color: valueColor, fontWeight: "bold", fontSize: mob ? F.sm : F.md }}>{s[valueField]}</span>
                         </div>
                       ))}
                     </div>
                   );
+                  const hasAnyAllTime = allTimeTopScorers.length > 0 || allTimeTopAssists.length > 0
+                    || allTimeTopYellows.length > 0 || allTimeTopReds.length > 0;
                   return (
                     <>
                       {renderPlayerList("TOP SCORERS", "🥇", playerTopScorers, "goals", C.green)}
                       {renderPlayerList("TOP ASSISTS", "🎯", playerTopAssists, "assists", "#38bdf8")}
                       {renderPlayerList("MOST YELLOW CARDS", "🟨", playerTopYellows, "yellows", C.amber)}
                       {renderPlayerList("MOST RED CARDS", "🟥", playerTopReds, "reds", C.red)}
-                      {(allTimeTopScorers.length > 0 || allTimeTopAssists.length > 0
-                        || allTimeTopYellows.length > 0 || allTimeTopReds.length > 0) && (
+                      {hasAnyAllTime && (
                         <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${C.bgInput}` }}>
-                          <div style={{ fontSize: mob ? F.xs : F.sm, color: C.slate, marginBottom: 4, letterSpacing: 1 }}>
-                            🏛️ {cup?.cupName?.toUpperCase() || "CUP"} — ALL-TIME
+                          <div style={{ fontSize: mob ? F.sm : F.md, color: C.gold, marginBottom: 16, letterSpacing: 1 }}>
+                            🏛️ {cup?.cupName?.toUpperCase() || "CUP"} ALL-TIME RECORDS
                           </div>
-                          <div style={{ fontSize: mob ? F.micro : F.xs, color: C.bgInput, marginBottom: 12 }}>
-                            Cumulative across every season this cup has been played
-                          </div>
-                          {renderPlayerList("ALL-TIME TOP SCORERS", "⚽", allTimeTopScorers, "goals", C.green)}
-                          {renderPlayerList("ALL-TIME TOP ASSISTS", "🎯", allTimeTopAssists, "assists", "#38bdf8")}
-                          {renderPlayerList("ALL-TIME MOST YELLOW CARDS", "🟨", allTimeTopYellows, "yellows", C.amber)}
-                          {renderPlayerList("ALL-TIME MOST RED CARDS", "🟥", allTimeTopReds, "reds", C.red)}
+                          {renderPlayerList("TOP SCORERS", "⚽", allTimeTopScorers, "goals", C.green)}
+                          {renderPlayerList("TOP ASSISTS", "🎯", allTimeTopAssists, "assists", "#38bdf8")}
+                          {renderPlayerList("MOST YELLOW CARDS", "🟨", allTimeTopYellows, "yellows", C.amber)}
+                          {renderPlayerList("MOST RED CARDS", "🟥", allTimeTopReds, "reds", C.red)}
                         </div>
                       )}
                     </>
